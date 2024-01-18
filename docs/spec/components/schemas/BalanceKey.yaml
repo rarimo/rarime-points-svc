@@ -1,0 +1,12 @@
+type: object
+required:
+  - id
+  - type
+properties:
+  id:
+    type: string
+    example: "157801"
+  type:
+    type: string
+    enum:
+      - balance

@@ -1,0 +1,24 @@
+get:
+  tags:
+    - Points balance
+  summary: Get points balance for user
+  description: Balance of authorized user who makes the request
+  operationId: getPointsBalance
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/Balance'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'

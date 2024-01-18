@@ -1,0 +1,5 @@
+description: You must provide a valid authorization params.
+content:
+  application/vnd.api+json:
+    schema:
+      $ref: '#/components/schemas/Errors'

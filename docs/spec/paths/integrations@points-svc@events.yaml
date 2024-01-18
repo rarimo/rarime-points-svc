@@ -1,0 +1,38 @@
+get:
+  tags:
+    - Events
+  summary: Get events for user
+  description: |
+    Returns list of _available_ and _claimed_ events for the single user.
+    Events are sorted by `created_at` field.
+  operationId: getEvents
+  parameters:
+    - in: query
+      name: 'filter[is_claimed]'
+      description: If event has been already claimed. By default all events are returned.
+      required: false
+      schema:
+        type: boolean
+    - $ref: '#/components/parameters/pageLimitParam'
+    - $ref: '#/components/parameters/pageCursorParam'
+    - $ref: '#/components/parameters/sortingParam'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+        $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'

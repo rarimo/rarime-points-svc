@@ -1,0 +1,31 @@
+put:
+  tags:
+    - Events
+  summary: Claim points for event
+  description: Update event status to _claimed_ and accrue points.
+  operationId: claimEvent
+  parameters:
+    - in: path
+      name: 'id'
+      required: true
+      schema:
+        type: string
+        example: "157801"
+  responses:
+    200:
+      description: OK
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/Event'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'

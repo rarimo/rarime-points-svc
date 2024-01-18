@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 
-GENERATOR_IMAGE=tokend/openapi-generator:v0.1.0
+GENERATOR_IMAGE=registry.gitlab.com/tokend/openapi-go-generator:c59241b52b0e37bbbeb02a214ab5bfd07627aabc
 
+[[ ! -x "$(command -v go 2>/dev/null)" ]] && echo "go is not installed" && exit 1
 
-GENERATED="${GOPATH}/src/github.com/rarimo/rarime-points-svc/resources"
-OPENAPI_DIR="${GOPATH}/src/github.com/rarimo/rarime-points-svc/docs/web_deploy"
+GENERATED="$PWD/resources"
+OPENAPI_DIR="$PWD/docs/web_deploy"
 PACKAGE_NAME=resources
 
 function printHelp {
@@ -50,7 +51,8 @@ function parseArgs {
 
 function generate {
     (cd docs && npm run build)
-    docker run -v "${OPENAPI_DIR}":/openapi -v "${GENERATED}":/generated "${GENERATOR_IMAGE}" generate -pkg "${PACKAGE_NAME}" --raw-formats-as-types
+    docker run --rm -v "${OPENAPI_DIR}":/openapi -v "${GENERATED}":/generated "${GENERATOR_IMAGE}" \
+        generate -pkg "${PACKAGE_NAME}" --raw-formats-as-types --meta-for-lists
     goimports -w ${GENERATED}
 }
 

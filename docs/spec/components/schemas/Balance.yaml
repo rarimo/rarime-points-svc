@@ -1,0 +1,25 @@
+allOf:
+  - $ref: '#/components/schemas/BalanceKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - amount
+          - events_count
+          - updated_at
+        properties:
+          amount:
+            type: integer
+            description: Amount of points
+            example: 580
+          events_count:
+            type: integer
+            description: Amount of events that have been claimed
+            example: 19
+          updated_at:
+            type: integer
+            description: Unix milliseconds timestamp of the last points accruing
+            example: 1705573056000

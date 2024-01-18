@@ -1,0 +1,34 @@
+allOf:
+  - $ref: '#/components/schemas/EventKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - type
+          - reward
+          - metadata
+          - is_claimed
+          - created_at
+        properties:
+          type:
+            type: string
+            description: Event type. Allowed event types are configured on back-end.
+            example: "org_id"
+          reward:
+            type: integer
+            description: Event reward in points. Configured along with `type`.
+            example: 200
+          is_claimed:
+            type: boolean
+            description: If event has been already claimed
+          created_at:
+            type: integer
+            description: Unix milliseconds timestamp of event creation
+            example: 1705573056000
+          metadata:
+            type: string
+            description: Event metadata in JSON format. Configured along with `type`.
+            format: json.RawMessage
