@@ -1,0 +1,22 @@
+type: object
+required:
+  - static
+properties:
+  static:
+    type: string
+    format: json.RawMessage
+    description: |
+      Primary event metadata in plain JSON. This is a template
+      to be filled by `dynamic` when it's present.
+    example:
+      {
+        "title": "Verify proof {:id}",
+        "description": "Your proof should be verified by somebody",
+        "type": "unlimited",
+        "reward": 5
+      }
+  dynamic:
+    type: string
+    format: json.RawMessage
+    description: Some events require dynamic data, which can be filled into `static` template.
+    example: { "id": "123" }

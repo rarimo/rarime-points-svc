@@ -4,11 +4,13 @@
 
 package resources
 
+import "time"
+
 type BalanceAttributes struct {
 	// Amount of points
 	Amount int32 `json:"amount"`
-	// Amount of events that have been claimed
-	EventsCount int32 `json:"events_count"`
-	// Unix milliseconds timestamp of the last points accruing
-	UpdatedAt int32 `json:"updated_at"`
+	// UTC time (RFC3339) of the last points accruing
+	UpdatedAt time.Time `json:"updated_at"`
+	// DID of the points owner
+	UserDid string `json:"user_did"`
 }
