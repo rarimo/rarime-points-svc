@@ -7,19 +7,20 @@ allOf:
       attributes:
         type: object
         required:
+          - user_did
           - amount
-          - events_count
           - updated_at
         properties:
+          user_did:
+            type: string
+            description: DID of the points owner
+            example: "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
           amount:
             type: integer
             description: Amount of points
             example: 580
-          events_count:
-            type: integer
-            description: Amount of events that have been claimed
-            example: 19
           updated_at:
-            type: integer
-            description: Unix milliseconds timestamp of the last points accruing
-            example: 1705573056000
+            type: string
+            format: time.Time
+            description: UTC time (RFC3339) of the last points accruing
+            example: "2021-08-12T13:00:00Z"

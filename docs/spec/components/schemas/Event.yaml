@@ -7,28 +7,37 @@ allOf:
       attributes:
         type: object
         required:
-          - type
-          - reward
-          - metadata
-          - is_claimed
+          - status
           - created_at
+          - meta
         properties:
-          type:
+          status:
             type: string
-            description: Event type. Allowed event types are configured on back-end.
-            example: "org_id"
-          reward:
-            type: integer
-            description: Event reward in points. Configured along with `type`.
-            example: 200
-          is_claimed:
-            type: boolean
-            description: If event has been already claimed
+            description: See `filter[status]` parameter for explanation
+            enum: [open, fulfilled, claimed]
           created_at:
-            type: integer
-            description: Unix milliseconds timestamp of event creation
-            example: 1705573056000
-          metadata:
             type: string
-            description: Event metadata in JSON format. Configured along with `type`.
-            format: json.RawMessage
+            format: time.Time
+            description: UTC time (RFC3339) of event creation
+            example: "2021-08-12T13:00:00Z"
+          meta:
+            type: object
+            required:
+              - static
+            properties:
+              static:
+                type: string
+                format: json.RawMessage
+                description: Primary event metadata. This is a template to be filled by `dynamic` when it's present.
+                example: |
+                  {
+                    "title": "Verify proof {:id}",
+                    "description": "Your proof should be verified by somebody",
+                    "type": "unlimited",
+                    "reward": 5
+                  }
+              dynamic:
+                type: string
+                format: json.RawMessage
+                description: Some events require dynamic data, which can be filled into `static` template.
+                example: { "id": "123" }

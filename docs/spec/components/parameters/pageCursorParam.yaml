@@ -1,0 +1,7 @@
+in: query
+name: 'page[cursor]'
+required: false
+schema:
+  type: integer
+  example: 157781
+description: Cursor position

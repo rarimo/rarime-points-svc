@@ -1,18 +1,23 @@
 get:
   tags:
     - Events
-  summary: Get events for user
-  description: |
-    Returns list of _available_ and _claimed_ events for the single user.
-    Events are sorted by `created_at` field.
+  summary: Get events
+  description: Returns events for a single user.
   operationId: getEvents
   parameters:
     - in: query
-      name: 'filter[is_claimed]'
-      description: If event has been already claimed. By default all events are returned.
+      name: 'filter[status]'
+      description: |
+        Filter by event status, which is:
+          - `open` - you need to do something on the platform
+          - `fulfilled` - you have done something and are eligible to claim the reward
+          - `claimed` - you have claimed the reward
       required: false
       schema:
-        type: boolean
+        type: array
+        items:
+          type: string
+          enum: [open, fulfilled, claimed]
     - $ref: '#/components/parameters/pageLimitParam'
     - $ref: '#/components/parameters/pageCursorParam'
     - $ref: '#/components/parameters/sortingParam'
@@ -33,6 +38,6 @@ get:
     400:
       $ref: '#/components/responses/invalidParameter'
     401:
-        $ref: '#/components/responses/invalidAuth'
+      $ref: '#/components/responses/invalidAuth'
     500:
       $ref: '#/components/responses/internalError'
