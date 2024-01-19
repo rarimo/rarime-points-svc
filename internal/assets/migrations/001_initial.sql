@@ -7,13 +7,11 @@ AS $$ BEGIN NEW.updated_at = NOW() at time zone 'utc'; RETURN NEW; END; $$;
 
 CREATE TABLE IF NOT EXISTS balances
 (
-    id serial primary key,
-    did text not null unique,
-    amount integer not null default 0,
+    id         serial PRIMARY KEY,
+    did        text                        not null unique,
+    amount     integer                     not null default 0,
     updated_at timestamp without time zone not null default NOW()
 );
-
-CREATE INDEX IF NOT EXISTS balances_did_index on balances using btree (did);
 
 CREATE TRIGGER set_updated_at
     before update
@@ -21,23 +19,21 @@ CREATE TRIGGER set_updated_at
     for each row
 EXECUTE FUNCTION trigger_set_updated_at();
 
+CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed');
+
 CREATE TABLE IF NOT EXISTS events
 (
-    id serial primary key,
-    did text not null,
-    type text not null,
-    is_claimed boolean not null,
-    created_at timestamp without time zone not null default NOW()
+    id         serial PRIMARY KEY,
+    type_id    smallint                    not null,
+    balance_id integer                     null REFERENCES balances (id),
+    status     event_status                not null,
+    created_at timestamp without time zone not null default NOW(),
+    meta       text
 );
 
-CREATE INDEX IF NOT EXISTS events_did_index on events using btree (did);
-
 -- +migrate Down
-DROP INDEX IF EXISTS events_did_index;
 DROP TABLE IF EXISTS events;
-
+DROP TYPE IF EXISTS event_status;
 DROP TRIGGER IF EXISTS set_updated_at on balances;
-DROP INDEX IF EXISTS balances_did_index;
 DROP TABLE IF EXISTS balances;
-
 DROP FUNCTION IF EXISTS trigger_set_updated_at cascade;
