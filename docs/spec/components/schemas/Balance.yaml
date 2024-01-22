@@ -17,6 +17,7 @@ allOf:
             example: "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
           amount:
             type: integer
+            format: int
             description: Amount of points
             example: 580
           updated_at:

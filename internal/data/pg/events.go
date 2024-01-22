@@ -45,7 +45,7 @@ func (q *events) Insert(event data.Event) error {
 	return nil
 }
 
-func (q *events) UpdateStatus(status string) error {
+func (q *events) UpdateStatus(status data.EventStatus) error {
 	stmt := q.updater.Set("status", status)
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -65,6 +65,16 @@ func (q *events) Select() ([]data.Event, error) {
 	return res, nil
 }
 
+func (q *events) Get() (*data.Event, error) {
+	var res data.Event
+
+	if err := q.db.Get(&res, q.selector); err != nil {
+		return nil, fmt.Errorf("get event: %w", err)
+	}
+
+	return &res, nil
+}
+
 func (q *events) FilterByID(id string) data.EventsQ {
 	q.selector = q.selector.Where(squirrel.Eq{"id": id})
 	q.updater = q.updater.Where(squirrel.Eq{"id": id})
@@ -77,7 +87,7 @@ func (q *events) FilterByBalanceID(ids ...string) data.EventsQ {
 	return q
 }
 
-func (q *events) FilterByStatus(statuses ...string) data.EventsQ {
+func (q *events) FilterByStatus(statuses ...data.EventStatus) data.EventsQ {
 	q.selector = q.selector.Where(squirrel.Eq{"status": statuses})
 	q.updater = q.updater.Where(squirrel.Eq{"status": statuses})
 	return q

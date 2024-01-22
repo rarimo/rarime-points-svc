@@ -5,15 +5,24 @@ import (
 	"time"
 )
 
+type EventStatus string
+
+const (
+	EventOpen      EventStatus = "open"
+	EventFulfilled EventStatus = "fulfilled"
+	EventClaimed   EventStatus = "claimed"
+)
+
 type EventsQ interface {
 	New() EventsQ
 	Insert(Event) error
-	UpdateStatus(string) error
+	UpdateStatus(EventStatus) error
 	Select() ([]Event, error)
+	Get() (*Event, error)
 
 	FilterByID(string) EventsQ
 	FilterByBalanceID(...string) EventsQ
-	FilterByStatus(...string) EventsQ
+	FilterByStatus(...EventStatus) EventsQ
 }
 
 type BalancesQ interface {
@@ -30,7 +39,7 @@ type Event struct {
 	ID        string         `db:"id"`
 	TypeID    string         `db:"type_id"`
 	BalanceID string         `db:"balance_id"`
-	Status    string         `db:"status"`
+	Status    EventStatus    `db:"status"`
 	CreatedAt time.Time      `db:"created_at"`
 	Meta      sql.NullString `db:"meta"`
 }
