@@ -37,6 +37,8 @@ type BalancesQ interface {
 	New() BalancesQ
 	Insert(Balance) error
 	UpdateAmount(int) error
+
+	SelectLeaders(count int) ([]Balance, error)
 	Get() (*Balance, error)
 
 	FilterByID(string) BalancesQ

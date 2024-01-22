@@ -54,6 +54,21 @@ func (q *balances) UpdateAmount(amount int) error {
 	return nil
 }
 
+func (q *balances) SelectLeaders(count int) ([]data.Balance, error) {
+	var res []data.Balance
+
+	stmt := squirrel.Select("*").
+		From(balancesTable).
+		OrderBy("amount DESC, updated_at ASC").
+		Limit(uint64(count))
+
+	if err := q.db.Select(&res, stmt); err != nil {
+		return nil, fmt.Errorf("select leaders: %w", err)
+	}
+
+	return res, nil
+}
+
 func (q *balances) Get() (*data.Balance, error) {
 	var res data.Balance
 
