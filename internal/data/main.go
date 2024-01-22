@@ -22,7 +22,7 @@ func (s EventStatus) String() string {
 type EventsQ interface {
 	New() EventsQ
 	Insert(Event) error
-	UpdateStatus(EventStatus) error
+	Update(Event) error
 
 	Page(*pgdb.CursorPageParams) EventsQ
 	Select() ([]Event, error)
@@ -47,12 +47,13 @@ type BalancesQ interface {
 }
 
 type Event struct {
-	ID        string         `db:"id"`
-	TypeID    string         `db:"type_id"`
-	BalanceID string         `db:"balance_id"`
-	Status    EventStatus    `db:"status"`
-	CreatedAt time.Time      `db:"created_at"`
-	Meta      sql.NullString `db:"meta"`
+	ID           string         `db:"id"`
+	TypeID       string         `db:"type_id"`
+	BalanceID    string         `db:"balance_id"`
+	Status       EventStatus    `db:"status"`
+	CreatedAt    time.Time      `db:"created_at"`
+	Meta         sql.NullString `db:"meta"`
+	PointsAmount sql.NullInt32  `db:"points_amount"`
 }
 
 type Balance struct {

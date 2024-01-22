@@ -40,7 +40,12 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = EventsQ(r).FilterByID(eventID).UpdateStatus(data.EventClaimed); err != nil {
+	err = EventsQ(r).Update(data.Event{
+		ID:     event.ID,
+		Status: data.EventClaimed,
+		// TODO: add points amount from config, accrue points
+	})
+	if err != nil {
 		Log(r).WithError(err).Error("Failed to claim event")
 		ape.RenderErr(w, problems.InternalError())
 		return

@@ -23,12 +23,13 @@ CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed');
 
 CREATE TABLE IF NOT EXISTS events
 (
-    id         serial PRIMARY KEY,
-    type_id    smallint                    not null,
-    balance_id integer                     null REFERENCES balances (id),
-    status     event_status                not null,
-    created_at timestamp without time zone not null default NOW(),
-    meta       text
+    id            serial PRIMARY KEY,
+    type_id       smallint                    not null,
+    balance_id    integer                     null REFERENCES balances (id),
+    status        event_status                not null,
+    created_at    timestamp without time zone not null default NOW(),
+    meta          text,
+    points_amount integer
 );
 
 -- +migrate Down

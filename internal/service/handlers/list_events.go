@@ -55,6 +55,11 @@ func newEventsResponse(events []data.Event) *resources.EventListResponse {
 			dynamic = &d
 		}
 
+		var points *int32
+		if event.PointsAmount.Valid {
+			points = &event.PointsAmount.Int32
+		}
+
 		list[i] = resources.Event{
 			Key: resources.Key{
 				ID:   event.ID,
@@ -66,7 +71,8 @@ func newEventsResponse(events []data.Event) *resources.EventListResponse {
 					Static:  json.RawMessage{}, // TODO: add from config
 					Dynamic: dynamic,
 				},
-				Status: event.Status.String(),
+				Status:       event.Status.String(),
+				PointsAmount: points,
 			},
 		}
 	}
