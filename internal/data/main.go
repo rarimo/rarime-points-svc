@@ -3,6 +3,8 @@ package data
 import (
 	"database/sql"
 	"time"
+
+	"gitlab.com/distributed_lab/kit/pgdb"
 )
 
 type EventStatus string
@@ -13,10 +15,16 @@ const (
 	EventClaimed   EventStatus = "claimed"
 )
 
+func (s EventStatus) String() string {
+	return string(s)
+}
+
 type EventsQ interface {
 	New() EventsQ
 	Insert(Event) error
 	UpdateStatus(EventStatus) error
+
+	Page(*pgdb.CursorPageParams) EventsQ
 	Select() ([]Event, error)
 	Get() (*Event, error)
 

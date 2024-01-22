@@ -55,6 +55,11 @@ func (q *events) UpdateStatus(status data.EventStatus) error {
 	return nil
 }
 
+func (q *events) Page(page *pgdb.CursorPageParams) data.EventsQ {
+	q.selector = page.ApplyTo(q.selector, "id")
+	return q
+}
+
 func (q *events) Select() ([]data.Event, error) {
 	var res []data.Event
 
