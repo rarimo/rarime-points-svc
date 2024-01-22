@@ -14,16 +14,6 @@ get:
         minimum: 3
         maximum: 50
         default: 10
-    - in: query
-      name: 'page[order_by]'
-      description: |
-        First field to sort by. If you specify `events`, then the leaderboard
-        will be sorted by number of claimed events and then by points.
-      required: false
-      schema:
-        type: string
-        enum: [points, events]
-        default: points
   responses:
     200:
       description: Success
