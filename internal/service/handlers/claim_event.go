@@ -18,7 +18,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance := getBalanceByDID(did, w, r)
+	balance := getBalanceByDID(did, false, w, r)
 	if balance == nil {
 		return
 	}

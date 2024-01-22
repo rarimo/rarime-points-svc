@@ -25,3 +25,8 @@ allOf:
             format: time.Time
             description: UTC time (RFC3339) of the last points accruing
             example: "2021-08-12T13:00:00Z"
+          rank:
+            type: integer
+            format: int
+            description: Rank of the user in the full leaderboard. Returned only for the single user.
+            example: 294

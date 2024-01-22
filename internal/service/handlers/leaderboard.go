@@ -30,18 +30,7 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 func newLeaderboardResponse(balances []data.Balance) resources.BalanceListResponse {
 	list := make([]resources.Balance, len(balances))
 	for i, balance := range balances {
-
-		list[i] = resources.Balance{
-			Key: resources.Key{
-				ID:   balance.ID,
-				Type: resources.BALANCE,
-			},
-			Attributes: resources.BalanceAttributes{
-				Amount:    balance.Amount,
-				UpdatedAt: balance.UpdatedAt,
-				UserDid:   balance.DID,
-			},
-		}
+		list[i] = newBalanceModel(balance)
 	}
 
 	return resources.BalanceListResponse{Data: list}

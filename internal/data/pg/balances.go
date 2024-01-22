@@ -82,6 +82,11 @@ func (q *balances) Get() (*data.Balance, error) {
 	return &res, nil
 }
 
+func (q *balances) WithRank() data.BalancesQ {
+	q.selector = q.selector.Column("RANK() OVER (ORDER BY amount DESC, updated_at ASC) AS rank")
+	return q
+}
+
 func (q *balances) FilterByID(id string) data.BalancesQ {
 	q.selector = q.selector.Where(squirrel.Eq{"id": id})
 	q.updater = q.updater.Where(squirrel.Eq{"id": id})

@@ -2,7 +2,7 @@ get:
   tags:
     - Points balance
   summary: Get points balance for user
-  description: Balance of authorized user who makes the request
+  description: Balance of authorized user who makes the request. Rank in leaderboard is included.
   operationId: getPointsBalance
   responses:
     200:

@@ -40,6 +40,7 @@ type BalancesQ interface {
 
 	SelectLeaders(count int) ([]Balance, error)
 	Get() (*Balance, error)
+	WithRank() BalancesQ
 
 	FilterByID(string) BalancesQ
 	FilterByUserDID(string) BalancesQ
@@ -59,4 +60,5 @@ type Balance struct {
 	DID       string    `db:"did"`
 	Amount    int       `db:"amount"`
 	UpdatedAt time.Time `db:"updated_at"`
+	Rank      *int      `db:"rank"`
 }
