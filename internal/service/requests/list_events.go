@@ -13,7 +13,7 @@ import (
 type ListEvents struct {
 	page.CursorParams
 	DID          string
-	FilterStatus *data.EventStatus `filter:"status"`
+	FilterStatus []data.EventStatus `filter:"status"`
 }
 
 func NewListEvents(r *http.Request) (req ListEvents, err error) {
@@ -24,5 +24,8 @@ func NewListEvents(r *http.Request) (req ListEvents, err error) {
 	}
 
 	req.DID = r.Header.Get("X-User-DID")
+	err = validation.Errors{
+		"filter[status]": validation.Validate(req.FilterStatus, validation.Each(validation.In(data.EventOpen, data.EventFulfilled, data.EventClaimed))),
+	}.Filter()
 	return
 }

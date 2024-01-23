@@ -24,8 +24,8 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	q := EventsQ(r).FilterByBalanceID(balance.ID)
-	if req.FilterStatus != nil {
-		q.FilterByStatus(*req.FilterStatus)
+	if len(req.FilterStatus) > 0 {
+		q.FilterByStatus(req.FilterStatus...)
 	}
 
 	events, err := q.Page(&req.CursorPageParams).Select()
