@@ -1,0 +1,29 @@
+type: object
+description: |
+  Primary event metadata in plain JSON. This is a template
+  to be filled by `dynamic` when it's present.
+required:
+  - name
+  - reward
+  - title
+  - description
+properties:
+  name:
+    type: string
+    description: Unique event code name
+    example: get_poh
+  reward:
+    type: integer
+    description: Reward amount in points
+    example: 50
+  expires_at:
+    type: string
+    format: time.Time
+    description: General event expiration date
+    example: 2020-01-01T00:00:00Z
+  title:
+    type: string
+    example: Get PoH credential
+  description:
+    type: string
+    example: Lorem ipsum dolor sit amet

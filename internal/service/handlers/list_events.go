@@ -68,7 +68,7 @@ func newEventsResponse(events []data.Event) *resources.EventListResponse {
 			Attributes: resources.EventAttributes{
 				CreatedAt: event.CreatedAt,
 				Meta: resources.EventMeta{
-					Static:  json.RawMessage{}, // TODO: add from config
+					//Static:  json.RawMessage{}, // TODO: add from config
 					Dynamic: dynamic,
 				},
 				Status:       event.Status.String(),

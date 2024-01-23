@@ -3,18 +3,7 @@ required:
   - static
 properties:
   static:
-    type: string
-    format: json.RawMessage
-    description: |
-      Primary event metadata in plain JSON. This is a template
-      to be filled by `dynamic` when it's present.
-    example:
-      {
-        "title": "Verify proof {:id}",
-        "description": "Your proof should be verified by somebody",
-        "type": "unlimited",
-        "reward": 5
-      }
+    $ref: '#/components/schemas/EventStaticMeta'
   dynamic:
     type: string
     format: json.RawMessage

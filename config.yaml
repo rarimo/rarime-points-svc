@@ -3,7 +3,7 @@ log:
   disable_sentry: true
 
 db:
-  url: db_url
+  url: postgres://points:points@localhost:5432/points?sslmode=disable
 
 listener:
   addr: :8000
@@ -14,3 +14,18 @@ cop:
   upstream: "http://..."
   service_name: rarime-points-svc
   service_port: 80
+
+event_types:
+  types:
+    - id: 1
+      name: get_poh
+      title: Get PoH credential
+      reward: 50
+      description: Lorem ipsum dolor sit amet
+      expires_at: 2020-01-01T00:00:00Z
+    - id: 2
+      name: daily_login
+      title: Daily login
+      reward: 5
+      description: Lorem ipsum dolor sit amet
+      expires_at: 2020-01-01T00:00:00Z
