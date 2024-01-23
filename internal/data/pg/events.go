@@ -14,12 +14,14 @@ const eventsTable = "events"
 type events struct {
 	db       *pgdb.DB
 	selector squirrel.SelectBuilder
+	counter  squirrel.SelectBuilder
 }
 
 func NewEvents(db *pgdb.DB) data.EventsQ {
 	return &events{
 		db:       db,
 		selector: squirrel.Select("*").From(eventsTable),
+		counter:  squirrel.Select("count(id) AS count").From(eventsTable),
 	}
 }
 
@@ -86,17 +88,38 @@ func (q *events) Get() (*data.Event, error) {
 	return &res, nil
 }
 
+func (q *events) Count() (int, error) {
+	var res struct {
+		Count int `db:"count"`
+	}
+
+	if err := q.db.Get(&res, q.counter); err != nil {
+		return 0, fmt.Errorf("count events: %w", err)
+	}
+
+	return res.Count, nil
+}
+
 func (q *events) FilterByID(id string) data.EventsQ {
 	q.selector = q.selector.Where(squirrel.Eq{"id": id})
+	q.counter = q.counter.Where(squirrel.Eq{"id": id})
 	return q
 }
 
 func (q *events) FilterByBalanceID(ids ...string) data.EventsQ {
+	if len(ids) == 0 {
+		return q
+	}
 	q.selector = q.selector.Where(squirrel.Eq{"balance_id": ids})
+	q.counter = q.counter.Where(squirrel.Eq{"balance_id": ids})
 	return q
 }
 
 func (q *events) FilterByStatus(statuses ...data.EventStatus) data.EventsQ {
+	if len(statuses) == 0 {
+		return q
+	}
 	q.selector = q.selector.Where(squirrel.Eq{"status": statuses})
+	q.counter = q.counter.Where(squirrel.Eq{"status": statuses})
 	return q
 }

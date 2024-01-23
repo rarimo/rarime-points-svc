@@ -23,16 +23,28 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	q := EventsQ(r).FilterByBalanceID(balance.ID)
-	if len(req.FilterStatus) > 0 {
-		q.FilterByStatus(req.FilterStatus...)
-	}
-
-	events, err := q.Page(&req.CursorPageParams).Select()
+	events, err := EventsQ(r).
+		FilterByBalanceID(balance.ID).
+		FilterByStatus(req.FilterStatus...).
+		Page(&req.CursorPageParams).
+		Select()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get event list")
 		ape.RenderErr(w, problems.InternalError())
 		return
+	}
+
+	var eventsCount int
+	if req.Count {
+		eventsCount, err = EventsQ(r).
+			FilterByBalanceID(balance.ID).
+			FilterByStatus(req.FilterStatus...).
+			Count()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to count events")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
 	}
 
 	meta, ok := getOrderedEventsMeta(events, w, r)
@@ -47,6 +59,11 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 
 	resp := newEventsResponse(events, meta)
 	resp.Links = req.CursorParams.GetCursorLinks(r, last)
+	if req.Count {
+		_ = resp.PutMeta(struct {
+			EventsCount int `json:"events_count"`
+		}{eventsCount})
+	}
 	ape.Render(w, resp)
 }
 

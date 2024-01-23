@@ -27,6 +27,7 @@ type EventsQ interface {
 	Page(*pgdb.CursorPageParams) EventsQ
 	Select() ([]Event, error)
 	Get() (*Event, error)
+	Count() (int, error)
 
 	FilterByID(string) EventsQ
 	FilterByBalanceID(...string) EventsQ

@@ -14,6 +14,7 @@ type ListEvents struct {
 	page.CursorParams
 	DID          string
 	FilterStatus []data.EventStatus `filter:"status"`
+	Count        bool               `url:"count"`
 }
 
 func NewListEvents(r *http.Request) (req ListEvents, err error) {
