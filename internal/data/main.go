@@ -21,7 +21,7 @@ func (s EventStatus) String() string {
 
 type EventsQ interface {
 	New() EventsQ
-	Insert(Event) error
+	Insert(...Event) error
 	Update(Event) error
 
 	Page(*pgdb.CursorPageParams) EventsQ

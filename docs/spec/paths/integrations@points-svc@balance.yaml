@@ -2,7 +2,9 @@ get:
   tags:
     - Points balance
   summary: Get points balance for user
-  description: Balance of authorized user who makes the request. Rank in leaderboard is included.
+  description: |
+    Balance of authorized user who makes the request. Rank in leaderboard is included.
+    You should create new balance for the new user by making POST request.
   operationId: getPointsBalance
   responses:
     200:
@@ -20,5 +22,37 @@ get:
       $ref: '#/components/responses/invalidParameter'
     401:
       $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'
+
+post:
+  tags:
+    - Points balance
+  summary: Create points balance
+  description: |
+    Create an empty balance for authorized user who makes the request. Rank is included.
+    This operation might be time-consuming, because `open` events should be added for
+    the new account synchronously (to display them right after the request).
+  operationId: createPointsBalance
+  responses:
+    201:
+      description: Created
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/Balance'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    409:
+      description: Balance already exists for provided DID
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
     500:
       $ref: '#/components/responses/internalError'

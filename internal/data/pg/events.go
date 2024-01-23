@@ -27,18 +27,19 @@ func (q *events) New() data.EventsQ {
 	return NewEvents(q.db.Clone())
 }
 
-func (q *events) Insert(event data.Event) error {
-	imap := map[string]any{ // ID must be created sequentially
-		"balance_id":    event.BalanceID,
-		"type":          event.Type,
-		"status":        event.Status,
-		"created_at":    event.CreatedAt,
-		"meta":          event.Meta,
-		"points_amount": event.PointsAmount,
+func (q *events) Insert(events ...data.Event) error {
+	if len(events) == 0 {
+		return nil
 	}
 
-	if err := q.db.Exec(squirrel.Insert(eventsTable).SetMap(imap)); err != nil {
-		return fmt.Errorf("insert event %+v: %w", event, err)
+	stmt := squirrel.Insert(eventsTable).
+		Columns("balance_id", "type", "status", "created_at", "meta", "points_amount")
+	for _, event := range events {
+		stmt = stmt.Values(event.BalanceID, event.Type, event.Status, event.CreatedAt, event.Meta, event.PointsAmount)
+	}
+
+	if err := q.db.Exec(stmt); err != nil {
+		return fmt.Errorf("insert events [%+v]: %w", events, err)
 	}
 
 	return nil

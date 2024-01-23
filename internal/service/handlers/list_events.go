@@ -35,25 +35,35 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	orderedMeta := make([]resources.EventStaticMeta, len(events))
-	for i, event := range events {
-		evType := EventTypes(r).Get(event.Type)
-		if evType == nil {
-			Log(r).Error("Wrong event type is stored in DB: might be bad event config")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-		orderedMeta[i] = *evType
+	meta, ok := getOrderedEventsMeta(events, w, r)
+	if !ok {
+		return
 	}
-	resp := newEventsResponse(events, orderedMeta)
 
 	var last string
 	if len(events) > 0 {
 		last = events[len(events)-1].ID
 	}
 
+	resp := newEventsResponse(events, meta)
 	resp.Links = req.CursorParams.GetCursorLinks(r, last)
 	ape.Render(w, resp)
+}
+
+func getOrderedEventsMeta(events []data.Event, w http.ResponseWriter, r *http.Request) ([]resources.EventStaticMeta, bool) {
+	res := make([]resources.EventStaticMeta, len(events))
+
+	for i, event := range events {
+		evType := EventTypes(r).Get(event.Type)
+		if evType == nil {
+			Log(r).Error("Wrong event type is stored in DB: might be bad event config")
+			ape.RenderErr(w, problems.InternalError())
+			return nil, false
+		}
+		res[i] = *evType
+	}
+
+	return res, true
 }
 
 func newEventsResponse(events []data.Event, meta []resources.EventStaticMeta) *resources.EventListResponse {

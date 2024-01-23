@@ -11,6 +11,7 @@ import (
 
 func GetBalance(w http.ResponseWriter, r *http.Request) {
 	did := r.Header.Get("X-User-DID") // TODO: get DID from auth
+
 	balance := getBalanceByDID(did, true, w, r)
 	if balance == nil {
 		return

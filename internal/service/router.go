@@ -22,9 +22,10 @@ func (s *service) router() chi.Router {
 	)
 	r.Route("/integrations/points-svc", func(r chi.Router) {
 		r.Get("/balance", handlers.GetBalance)
+		r.Post("/balance", handlers.CreateBalance)
 		r.Get("/leaderboard", handlers.Leaderboard)
 		r.Get("/events", handlers.ListEvents)
-		r.Put("/events/{id}", handlers.ClaimEvent)
+		r.Patch("/events/{id}", handlers.ClaimEvent)
 	})
 
 	return r
