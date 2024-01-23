@@ -21,8 +21,10 @@ event_types:
       title: Get PoH credential
       reward: 50
       description: Lorem ipsum dolor sit amet
+      frequency: one-time
       expires_at: 2020-01-01T00:00:00Z
     - name: daily_login
       title: Daily login
       reward: 5
+      frequency: daily
       description: Lorem ipsum dolor sit amet

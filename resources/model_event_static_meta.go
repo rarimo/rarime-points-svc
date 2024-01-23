@@ -11,6 +11,8 @@ type EventStaticMeta struct {
 	Description string `json:"description"`
 	// General event expiration date
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	// Event frequency, which means how often you can fulfill certain task and claim the reward.
+	Frequency string `json:"frequency"`
 	// Unique event code name
 	Name string `json:"name"`
 	// Reward amount in points

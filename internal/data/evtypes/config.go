@@ -31,6 +31,7 @@ func (c *config) EventTypes() Types {
 				Description string     `fig:"description,required"`
 				Reward      int32      `fig:"reward,required"`
 				Title       string     `fig:"title,required"`
+				Frequency   Frequency  `fig:"frequency,required"`
 				ExpiresAt   *time.Time `fig:"expires_at"`
 			} `fig:"types,required"`
 		}
@@ -44,15 +45,28 @@ func (c *config) EventTypes() Types {
 
 		inner := make(map[string]resources.EventStaticMeta, len(raw.Types))
 		for _, t := range raw.Types {
+			if !checkFreqValue(t.Frequency) {
+				panic(fmt.Errorf("invalid frequency: %s", t.Frequency))
+			}
+
 			inner[t.Name] = resources.EventStaticMeta{
 				Name:        t.Name,
 				Description: t.Description,
 				Reward:      t.Reward,
 				Title:       t.Title,
+				Frequency:   t.Frequency.String(),
 				ExpiresAt:   t.ExpiresAt,
 			}
 		}
 
 		return Types{inner}
 	}).(Types)
+}
+
+func checkFreqValue(f Frequency) bool {
+	switch f {
+	case OneTime, Daily, Weekly, Unlimited, Custom:
+		return true
+	}
+	return false
 }

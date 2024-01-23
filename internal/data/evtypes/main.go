@@ -6,6 +6,20 @@ import (
 	"github.com/rarimo/points-svc/resources"
 )
 
+type Frequency string
+
+func (f Frequency) String() string {
+	return string(f)
+}
+
+const (
+	OneTime   Frequency = "one-time"
+	Daily     Frequency = "daily"
+	Weekly    Frequency = "weekly"
+	Unlimited Frequency = "unlimited"
+	Custom    Frequency = "custom"
+)
+
 type Types struct {
 	inner map[string]resources.EventStaticMeta
 }

@@ -7,6 +7,7 @@ required:
   - reward
   - title
   - description
+  - frequency
 properties:
   name:
     type: string
@@ -27,3 +28,9 @@ properties:
   description:
     type: string
     example: Lorem ipsum dolor sit amet
+  frequency:
+    type: string
+    description: |
+      Event frequency, which means how often you can fulfill
+      certain task and claim the reward.
+    enum: [one-time, daily, weekly, unlimited, custom]
