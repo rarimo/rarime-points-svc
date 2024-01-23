@@ -4,8 +4,8 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/rarimo/points-svc/internal/data"
-	"github.com/rarimo/points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 

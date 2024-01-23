@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/rarimo/points-svc/internal/data"
-	"github.com/rarimo/points-svc/internal/service/page"
+	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/service/page"
 	"gitlab.com/distributed_lab/urlval/v4"
 )
 

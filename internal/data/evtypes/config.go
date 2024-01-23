@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rarimo/points-svc/resources"
+	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"

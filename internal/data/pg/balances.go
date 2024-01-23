@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Masterminds/squirrel"
-	"github.com/rarimo/points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data"
 	"gitlab.com/distributed_lab/kit/pgdb"
 )
 

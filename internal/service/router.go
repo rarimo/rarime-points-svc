@@ -2,8 +2,8 @@ package service
 
 import (
 	"github.com/go-chi/chi"
-	"github.com/rarimo/points-svc/internal/data/pg"
-	"github.com/rarimo/points-svc/internal/service/handlers"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"gitlab.com/distributed_lab/ape"
 )
 
@@ -20,7 +20,7 @@ func (s *service) router() chi.Router {
 			handlers.CtxEventTypes(s.cfg.EventTypes()),
 		),
 	)
-	r.Route("/integrations/points-svc", func(r chi.Router) {
+	r.Route("/integrations/rarime-points-svc", func(r chi.Router) {
 		r.Get("/balance", handlers.GetBalance)
 		r.Post("/balance", handlers.CreateBalance)
 		r.Get("/leaderboard", handlers.Leaderboard)

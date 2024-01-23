@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/rarimo/points-svc/resources"
+	"github.com/rarimo/rarime-points-svc/resources"
 )
 
 func (p *CursorParams) GetCursorLinks(r *http.Request, last string) *resources.Links {

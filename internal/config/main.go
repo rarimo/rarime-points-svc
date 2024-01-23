@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/rarimo/points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/copus"
 	"gitlab.com/distributed_lab/kit/copus/types"
