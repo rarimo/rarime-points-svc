@@ -1,13 +1,13 @@
 configVersion: 1
-project: "rarime-points-svc"
+project: "points-svc"
 ---
 image: builder
 from: golang:1.21-alpine
 docker:
-  WORKDIR: /go/src/github.com/rarimo/rarime-points-svc
+  WORKDIR: /go/src/github.com/rarimo/points-svc
 git:
   - add: /
-    to: /go/src/github.com/rarimo/rarime-points-svc
+    to: /go/src/github.com/rarimo/points-svc
     stageDependencies:
       install:
         - go.mod
@@ -20,26 +20,26 @@ shell:
     - export CGO_ENABLED=1
     - export GO111MODULE=on
     - export GOOS=linux
-    - cd /go/src/github.com/rarimo/rarime-points-svc
+    - cd /go/src/github.com/rarimo/points-svc
     - go mod tidy
     - go mod vendor
   setup:
     - export CGO_ENABLED=1
     - export GO111MODULE=on
     - export GOOS=linux
-    - cd /go/src/github.com/rarimo/rarime-points-svc
-    - go build -o /usr/local/bin/rarime-points-svc /go/src/github.com/rarimo/rarime-points-svc
+    - cd /go/src/github.com/rarimo/points-svc
+    - go build -o /usr/local/bin/points-svc /go/src/github.com/rarimo/points-svc
 
 ---
 image: service
 from: alpine:3.9
 docker:
-  ENTRYPOINT: rarime-points-svc
+  ENTRYPOINT: points-svc
 shell:
   setup:
     - apk add --no-cache ca-certificates
 import:
   - image: builder
-    add: /usr/local/bin/rarime-points-svc
-    to: /usr/local/bin/rarime-points-svc
+    add: /usr/local/bin/points-svc
+    to: /usr/local/bin/points-svc
     after: setup
