@@ -1,6 +1,6 @@
 module github.com/rarimo/rarime-points-svc
 
-go 1.21
+go 1.21.3
 
 require (
 	github.com/Masterminds/squirrel v1.4.0
