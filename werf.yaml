@@ -1,8 +1,8 @@
 configVersion: 1
-project: 'backend'
+project: "points-svc"
 ---
 image: builder
-from: golang:1.20-alpine
+from: golang:1.21-alpine
 docker:
   WORKDIR: /go/src/github.com/rarimo/points-svc
 git:
@@ -15,19 +15,19 @@ git:
       setup:
         - "**/*"
 shell:
-  beforeInstall:
-    - apk add git build-base
   install:
-    - git config --global url."https://gitlab-ci-token:{{ env "CI_JOB_TOKEN" }}@gitlab.com/".insteadOf https://gitlab.com/
-    - git config --global url."https://{{ env "CI_JOB_TOKEN" }}@github.com/".insteadOf https://github.com/
-    - go env -w GOPRIVATE=github.com/*,gitlab.com/*
-  setup:
+    - apk add git build-base
     - export CGO_ENABLED=1
     - export GO111MODULE=on
     - export GOOS=linux
     - cd /go/src/github.com/rarimo/points-svc
     - go mod tidy
     - go mod vendor
+  setup:
+    - export CGO_ENABLED=1
+    - export GO111MODULE=on
+    - export GOOS=linux
+    - cd /go/src/github.com/rarimo/points-svc
     - go build -o /usr/local/bin/points-svc /go/src/github.com/rarimo/points-svc
 
 ---
