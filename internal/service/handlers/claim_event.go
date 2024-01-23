@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -40,13 +41,30 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	evType := EventTypes(r).Get(event.Type)
+	if evType == nil {
+		Log(r).Error("Wrong event type is stored in DB: might be bad event config")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
 	err = EventsQ(r).Update(data.Event{
 		ID:     event.ID,
 		Status: data.EventClaimed,
-		// TODO: add points amount from config, accrue points
+		PointsAmount: sql.NullInt32{
+			Int32: evType.Reward,
+			Valid: true,
+		},
 	})
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to claim event")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	err = BalancesQ(r).FilterByID(balance.ID).UpdateAmount(int(evType.Reward))
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to accrue points to the balance")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

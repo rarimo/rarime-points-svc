@@ -2,6 +2,7 @@ package pg
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/rarimo/points-svc/internal/data"
@@ -28,8 +29,8 @@ func (q *events) New() data.EventsQ {
 
 func (q *events) Insert(event data.Event) error {
 	imap := map[string]any{ // ID must be created sequentially
-		"type_id":       event.TypeID,
 		"balance_id":    event.BalanceID,
+		"type":          event.Type,
 		"status":        event.Status,
 		"created_at":    event.CreatedAt,
 		"meta":          event.Meta,
@@ -48,6 +49,7 @@ func (q *events) Update(event data.Event) error {
 		"status":        event.Status,
 		"meta":          event.Meta,
 		"points_amount": event.PointsAmount,
+		"updated_at":    time.Now().UTC(),
 	}
 
 	stmt := squirrel.Update(eventsTable).SetMap(umap).Where(squirrel.Eq{"id": event.ID})

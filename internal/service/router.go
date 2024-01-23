@@ -17,6 +17,7 @@ func (s *service) router() chi.Router {
 			handlers.CtxLog(s.log),
 			handlers.CtxEventsQ(pg.NewEvents(s.cfg.DB())),
 			handlers.CtxBalancesQ(pg.NewBalances(s.cfg.DB())),
+			handlers.CtxEventTypes(s.cfg.EventTypes()),
 		),
 	)
 	r.Route("/integrations/points-svc", func(r chi.Router) {

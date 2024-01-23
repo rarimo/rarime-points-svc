@@ -27,7 +27,6 @@ func (c *config) EventTypes() Types {
 	return c.once.Do(func() interface{} {
 		var raw struct {
 			Types []struct {
-				ID          int32      `fig:"id,required"`
 				Name        string     `fig:"name,required"`
 				Description string     `fig:"description,required"`
 				Reward      int32      `fig:"reward,required"`
@@ -43,9 +42,9 @@ func (c *config) EventTypes() Types {
 			panic(fmt.Errorf("failed to figure out event_types: %s", err))
 		}
 
-		inner := make([]resources.EventStaticMeta, len(raw.Types))
+		inner := make(map[string]resources.EventStaticMeta, len(raw.Types))
 		for _, t := range raw.Types {
-			inner[t.ID-1] = resources.EventStaticMeta{
+			inner[t.Name] = resources.EventStaticMeta{
 				Name:        t.Name,
 				Description: t.Description,
 				Reward:      t.Reward,

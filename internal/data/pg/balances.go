@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/rarimo/points-svc/internal/data"
@@ -45,7 +46,9 @@ func (q *balances) Insert(balance data.Balance) error {
 }
 
 func (q *balances) UpdateAmount(amount int) error {
-	stmt := q.updater.Set("amount", amount)
+	stmt := q.updater.
+		Set("amount", amount).
+		Set("updated_at", time.Now().UTC())
 
 	if err := q.db.Exec(stmt); err != nil {
 		return fmt.Errorf("update balance amount to %d: %w", amount, err)

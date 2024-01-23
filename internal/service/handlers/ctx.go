@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rarimo/points-svc/internal/data"
+	"github.com/rarimo/points-svc/internal/data/evtypes"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -14,6 +15,7 @@ const (
 	logCtxKey ctxKey = iota
 	eventsQCtxKey
 	balancesQCtxKey
+	eventTypesCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -44,4 +46,14 @@ func CtxBalancesQ(q data.BalancesQ) func(context.Context) context.Context {
 
 func BalancesQ(r *http.Request) data.BalancesQ {
 	return r.Context().Value(balancesQCtxKey).(data.BalancesQ).New()
+}
+
+func CtxEventTypes(types evtypes.Types) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, eventTypesCtxKey, types)
+	}
+}
+
+func EventTypes(r *http.Request) evtypes.Types {
+	return r.Context().Value(eventTypesCtxKey).(evtypes.Types)
 }

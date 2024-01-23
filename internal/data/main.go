@@ -48,8 +48,8 @@ type BalancesQ interface {
 
 type Event struct {
 	ID           string         `db:"id"`
-	TypeID       string         `db:"type_id"`
 	BalanceID    string         `db:"balance_id"`
+	Type         string         `db:"type"`
 	Status       EventStatus    `db:"status"`
 	CreatedAt    time.Time      `db:"created_at"`
 	Meta         sql.NullString `db:"meta"`

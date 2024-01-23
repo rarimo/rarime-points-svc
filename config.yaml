@@ -17,15 +17,12 @@ cop:
 
 event_types:
   types:
-    - id: 1
-      name: get_poh
+    - name: get_poh
       title: Get PoH credential
       reward: 50
       description: Lorem ipsum dolor sit amet
       expires_at: 2020-01-01T00:00:00Z
-    - id: 2
-      name: daily_login
+    - name: daily_login
       title: Daily login
       reward: 5
       description: Lorem ipsum dolor sit amet
-      expires_at: 2020-01-01T00:00:00Z
