@@ -2,7 +2,7 @@ package service
 
 import (
 	"github.com/go-chi/chi"
-	"github.com/rarimo/points-svc/internal/service/handlers"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"gitlab.com/distributed_lab/ape"
 )
 
@@ -16,7 +16,7 @@ func (s *service) router() chi.Router {
 			handlers.CtxLog(s.log),
 		),
 	)
-	r.Route("/integrations/points-svc", func(r chi.Router) {
+	r.Route("/integrations/rarime-points-svc", func(r chi.Router) {
 		// configure endpoints here
 	})
 

@@ -1,4 +1,4 @@
-module github.com/rarimo/points-svc
+module github.com/rarimo/rarime-points-svc
 
 go 1.21.3
 

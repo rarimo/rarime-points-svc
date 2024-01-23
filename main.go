@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/rarimo/points-svc/internal/cli"
+	"github.com/rarimo/rarime-points-svc/internal/cli"
 )
 
 func main() {

@@ -4,7 +4,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/rarimo/points-svc/internal/config"
+	"github.com/rarimo/rarime-points-svc/internal/config"
 	"gitlab.com/distributed_lab/kit/copus/types"
 	"gitlab.com/distributed_lab/logan/v3"
 	"gitlab.com/distributed_lab/logan/v3/errors"

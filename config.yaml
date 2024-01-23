@@ -12,5 +12,5 @@ cop:
   disabled: true
   endpoint: "http://..."
   upstream: "http://..."
-  service_name: points-svc
+  service_name: rarime-points-svc
   service_port: 80

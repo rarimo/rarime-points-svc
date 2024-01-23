@@ -1,4 +1,4 @@
-# points-svc
+# rarime-points-svc
 
 ## Description
 
@@ -7,8 +7,8 @@ Core service of Rarimo Points System
 ## Install
 
   ```
-  git clone github.com/rarimo/points-svc
-  cd points-svc
+  git clone github.com/rarimo/rarime-points-svc
+  cd rarime-points-svc
   go build main.go
   export KV_VIPER_FILE=./config.yaml
   ./main migrate up
@@ -41,8 +41,8 @@ Make sure that docker installed.
 use `docker run ` with `-p 8080:80` to expose port 80 to 8080
 
   ```
-  docker build -t github.com/rarimo/points-svc .
-  docker run -e KV_VIPER_FILE=/config.yaml github.com/rarimo/points-svc
+  docker build -t github.com/rarimo/rarime-points-svc .
+  docker run -e KV_VIPER_FILE=/config.yaml github.com/rarimo/rarime-points-svc
   ```
 
 ## Running from Source

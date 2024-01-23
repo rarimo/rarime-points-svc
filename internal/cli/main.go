@@ -2,8 +2,8 @@ package cli
 
 import (
 	"github.com/alecthomas/kingpin"
-	"github.com/rarimo/points-svc/internal/config"
-	"github.com/rarimo/points-svc/internal/service"
+	"github.com/rarimo/rarime-points-svc/internal/config"
+	"github.com/rarimo/rarime-points-svc/internal/service"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -20,7 +20,7 @@ func Run(args []string) bool {
 	cfg := config.New(kv.MustFromEnv())
 	log = cfg.Log()
 
-	app := kingpin.New("points-svc", "")
+	app := kingpin.New("rarime-points-svc", "")
 
 	runCmd := app.Command("run", "run command")
 	serviceCmd := runCmd.Command("service", "run service") // you can insert custom help

@@ -3,8 +3,8 @@
 GENERATOR_IMAGE=tokend/openapi-generator:v0.1.0
 
 
-GENERATED="${GOPATH}/src/github.com/rarimo/points-svc/resources"
-OPENAPI_DIR="${GOPATH}/src/github.com/rarimo/points-svc/docs/web_deploy"
+GENERATED="${GOPATH}/src/github.com/rarimo/rarime-points-svc/resources"
+OPENAPI_DIR="${GOPATH}/src/github.com/rarimo/rarime-points-svc/docs/web_deploy"
 PACKAGE_NAME=resources
 
 function printHelp {
