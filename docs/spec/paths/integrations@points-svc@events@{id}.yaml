@@ -13,13 +13,34 @@ patch:
       schema:
         type: string
         example: "157801"
+  requestBody:
+    required: true
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/ClaimEvent'
   responses:
     200:
       description: Event claimed, points accrued
       content:
         application/vnd.api+json:
           schema:
-            $ref: '#/components/schemas/ClaimEvent'
+            type: object
+            required:
+              - data
+              - included
+            properties:
+              data:
+                $ref: '#/components/schemas/Event'
+              included:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
     400:
       $ref: '#/components/responses/invalidParameter'
     401:
