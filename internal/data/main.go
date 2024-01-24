@@ -32,6 +32,7 @@ type EventsQ interface {
 	FilterByID(string) EventsQ
 	FilterByBalanceID(...string) EventsQ
 	FilterByStatus(...EventStatus) EventsQ
+	FilterByType(...string) EventsQ
 }
 
 type BalancesQ interface {

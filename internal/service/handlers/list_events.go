@@ -18,8 +18,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	did := UserDID(r)
-	balance := getBalanceByDID(did, false, w, r)
+	balance := getBalanceByDID(req.FilterDID, false, w, r)
 	if balance == nil {
 		return
 	}
@@ -27,6 +26,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	events, err := EventsQ(r).
 		FilterByBalanceID(balance.ID).
 		FilterByStatus(req.FilterStatus...).
+		FilterByType(req.FilterType...).
 		Page(&req.CursorPageParams).
 		Select()
 	if err != nil {
@@ -40,6 +40,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		eventsCount, err = EventsQ(r).
 			FilterByBalanceID(balance.ID).
 			FilterByStatus(req.FilterStatus...).
+			FilterByType(req.FilterType...).
 			Count()
 		if err != nil {
 			Log(r).WithError(err).Error("Failed to count events")
@@ -84,36 +85,39 @@ func getOrderedEventsMeta(events []data.Event, w http.ResponseWriter, r *http.Re
 	return res, true
 }
 
+func newEventModel(event data.Event, meta resources.EventStaticMeta) resources.Event {
+	var dynamic *json.RawMessage
+	if event.Meta.Valid {
+		d := json.RawMessage(event.Meta.String)
+		dynamic = &d
+	}
+
+	var points *int32
+	if event.PointsAmount.Valid {
+		points = &event.PointsAmount.Int32
+	}
+
+	return resources.Event{
+		Key: resources.Key{
+			ID:   event.ID,
+			Type: resources.EVENT,
+		},
+		Attributes: resources.EventAttributes{
+			CreatedAt: event.CreatedAt,
+			Meta: resources.EventMeta{
+				Static:  meta,
+				Dynamic: dynamic,
+			},
+			Status:       event.Status.String(),
+			PointsAmount: points,
+		},
+	}
+}
+
 func newEventsResponse(events []data.Event, meta []resources.EventStaticMeta) *resources.EventListResponse {
 	list := make([]resources.Event, len(events))
-
 	for i, event := range events {
-		var dynamic *json.RawMessage
-		if event.Meta.Valid {
-			d := json.RawMessage(event.Meta.String)
-			dynamic = &d
-		}
-
-		var points *int32
-		if event.PointsAmount.Valid {
-			points = &event.PointsAmount.Int32
-		}
-
-		list[i] = resources.Event{
-			Key: resources.Key{
-				ID:   event.ID,
-				Type: resources.EVENT,
-			},
-			Attributes: resources.EventAttributes{
-				CreatedAt: event.CreatedAt,
-				Meta: resources.EventMeta{
-					Static:  meta[i],
-					Dynamic: dynamic,
-				},
-				Status:       event.Status.String(),
-				PointsAmount: points,
-			},
-		}
+		list[i] = newEventModel(event, meta[i])
 	}
 
 	return &resources.EventListResponse{Data: list}

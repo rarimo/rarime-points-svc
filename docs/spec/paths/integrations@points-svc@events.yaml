@@ -1,7 +1,7 @@
 get:
   tags:
     - Events
-  summary: Get events
+  summary: List events
   description: Returns events for a single user.
   operationId: getEvents
   parameters:

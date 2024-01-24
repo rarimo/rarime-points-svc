@@ -5,21 +5,27 @@ import (
 	"net/http"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
 
 func CreateBalance(w http.ResponseWriter, r *http.Request) {
-	did := UserDID(r)
+	req, err := requests.NewCreateBalance(r)
+	if err != nil {
+		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
 
+	did := req.Data.Attributes.UserDid
 	balance := getBalanceByDID(did, false, w, r)
 	if balance != nil {
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
 
-	if err := BalancesQ(r).Insert(data.Balance{DID: did}); err != nil {
+	if err = BalancesQ(r).Insert(data.Balance{DID: did}); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance")
 		ape.RenderErr(w, problems.InternalError())
 		return
@@ -32,7 +38,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := EventsQ(r).Insert(prepareOpenEvents(balance.ID, EventTypes(r).List())...)
+	err = EventsQ(r).Insert(prepareOpenEvents(balance.ID, EventTypes(r).List())...)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to add open events")
 		ape.RenderErr(w, problems.InternalError())

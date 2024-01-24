@@ -2,41 +2,30 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
 
-	"github.com/go-chi/chi"
+	"github.com/rarimo/rarime-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/service/requests"
+	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
 
 func ClaimEvent(w http.ResponseWriter, r *http.Request) {
-	did := UserDID(r)
-	eventID := chi.URLParam(r, "id")
-	if eventID == "" {
-		ape.RenderErr(w, problems.BadRequest(nil)...)
-		return
-	}
-
-	balance := getBalanceByDID(did, false, w, r)
-	if balance == nil {
-		return
-	}
-
-	event, err := EventsQ(r).
-		FilterByID(eventID).
-		FilterByBalanceID(balance.ID).
-		FilterByStatus(data.EventFulfilled).
-		Get()
-
+	req, err := requests.NewClaimEvent(r)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get event by balance ID")
-		ape.RenderErr(w, problems.InternalError())
+		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
+
+	event := getEventToClaim(req.Data.ID, w, r)
 	if event == nil {
-		Log(r).Debugf("Event not found for id=%s balance_id=%s status=%s", eventID, balance.ID, data.EventFulfilled)
-		ape.RenderErr(w, problems.NotFound())
+		return
+	}
+	balance := getBalanceByID(event.BalanceID, true, w, r)
+	if balance == nil {
 		return
 	}
 
@@ -47,26 +36,111 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = EventsQ(r).Update(data.Event{
+	event = claimEventWithPoints(*event, balance.Amount, int(evType.Reward), w, r)
+	if event == nil {
+		return
+	}
+	// can't return balance on update, see create_balance.go
+	balance = getBalanceByID(event.BalanceID, true, w, r)
+	if balance == nil {
+		return
+	}
+
+	ape.Render(w, newClaimEventResponse(*event, *evType, *balance))
+}
+
+func getEventToClaim(id string, w http.ResponseWriter, r *http.Request) *data.Event {
+	event, err := EventsQ(r).
+		FilterByID(id).
+		FilterByStatus(data.EventFulfilled).
+		Get()
+
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get event by balance ID")
+		ape.RenderErr(w, problems.InternalError())
+		return nil
+	}
+
+	if event == nil {
+		Log(r).Debugf("Event not found for id=%s status=%s", id, data.EventFulfilled)
+		ape.RenderErr(w, problems.NotFound())
+		return nil
+	}
+
+	return event
+}
+
+func getBalanceByID(id string, doAuth bool, w http.ResponseWriter, r *http.Request) *data.Balance {
+	balance, err := BalancesQ(r).WithRank().FilterByID(id).Get()
+
+	if err != nil || balance == nil {
+		if err == nil {
+			err = fmt.Errorf("DB constraint violation: found event with balance_id=%s not present", id)
+		}
+
+		Log(r).WithError(err).Error("Failed to get balance by ID")
+		ape.RenderErr(w, problems.InternalError())
+		return nil
+	}
+
+	if doAuth && !auth.Authenticates(UserClaims(r), auth.UserGrant(balance.DID)) {
+		ape.RenderErr(w, problems.Unauthorized())
+		return nil
+	}
+
+	return balance
+}
+
+func claimEventWithPoints(event data.Event, currBalance, reward int, w http.ResponseWriter, r *http.Request) *data.Event {
+	claimed := data.Event{
 		ID:     event.ID,
 		Status: data.EventClaimed,
 		PointsAmount: sql.NullInt32{
-			Int32: evType.Reward,
+			Int32: int32(reward),
 			Valid: true,
 		},
-	})
+	}
+
+	err := EventsQ(r).Update(claimed)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to claim event")
 		ape.RenderErr(w, problems.InternalError())
-		return
+		return nil
 	}
 
-	err = BalancesQ(r).FilterByID(balance.ID).UpdateAmount(int(evType.Reward))
+	err = BalancesQ(r).FilterByID(event.BalanceID).UpdateAmount(currBalance + reward)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to accrue points to the balance")
 		ape.RenderErr(w, problems.InternalError())
-		return
+		return nil
+	}
+	// While we don't have updated_at and other special attributes in events, we can
+	// safely return the same struct without redundant queries. It is still faster
+	// than with RETURNING clause.
+	event.Status = claimed.Status
+	event.PointsAmount = claimed.PointsAmount
+	return &event
+}
+
+func newClaimEventResponse(
+	event data.Event,
+	meta resources.EventStaticMeta,
+	balance data.Balance,
+) resources.EventResponse {
+
+	eventModel := newEventModel(event, meta)
+	eventModel.Relationships = &resources.EventRelationships{
+		Balance: resources.Relation{
+			Data: &resources.Key{
+				ID:   balance.ID,
+				Type: resources.BALANCE,
+			},
+		},
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	resp := resources.EventResponse{Data: eventModel}
+	inc := newBalanceModel(balance)
+	resp.Included.Add(&inc)
+
+	return resp
 }

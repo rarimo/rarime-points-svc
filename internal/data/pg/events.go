@@ -123,3 +123,12 @@ func (q *events) FilterByStatus(statuses ...data.EventStatus) data.EventsQ {
 	q.counter = q.counter.Where(squirrel.Eq{"status": statuses})
 	return q
 }
+
+func (q *events) FilterByType(types ...string) data.EventsQ {
+	if len(types) == 0 {
+		return q
+	}
+	q.selector = q.selector.Where(squirrel.Eq{"type": types})
+	q.counter = q.counter.Where(squirrel.Eq{"type": types})
+	return q
+}

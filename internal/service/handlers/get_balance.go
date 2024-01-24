@@ -3,16 +3,22 @@ package handlers
 import (
 	"net/http"
 
+	"github.com/rarimo/rarime-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
 
 func GetBalance(w http.ResponseWriter, r *http.Request) {
-	did := UserDID(r)
+	req, err := requests.NewGetBalance(r)
+	if err != nil {
+		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
 
-	balance := getBalanceByDID(did, true, w, r)
+	balance := getBalanceByDID(req.FilterDID, true, w, r)
 	if balance == nil {
 		return
 	}
@@ -36,6 +42,11 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 }
 
 func getBalanceByDID(did string, withRank bool, w http.ResponseWriter, r *http.Request) *data.Balance {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(did)) {
+		ape.RenderErr(w, problems.Unauthorized())
+		return nil
+	}
+
 	q := BalancesQ(r).FilterByUserDID(did)
 	if withRank {
 		q.WithRank()
