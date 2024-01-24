@@ -20,6 +20,15 @@ get:
           type: string
           enum: [open, fulfilled, claimed]
     - in: query
+      name: 'filter[meta.static.name]'
+      description: Filter by event type name. Possible values should be hard-coded in the client.
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          example: "create_org"
+    - in: query
       name: count
       description: Count total number of events for a single user, applying filters.
       required: false
