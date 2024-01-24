@@ -31,3 +31,14 @@ event_types:
 
 auth:
   addr: http://rarime-auth
+
+sbt_check:
+  networks:
+    - name: polygon
+      rpc: https://your-rpc
+      request_timeout: 3s
+      contract: 0x...
+    - name: ethereum
+      rpc: https://your-rpc
+      request_timeout: 5s
+      contract: 0x...

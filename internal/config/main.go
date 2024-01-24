@@ -3,6 +3,7 @@ package config
 import (
 	"github.com/rarimo/rarime-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/sbtcheck"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/copus"
 	"gitlab.com/distributed_lab/kit/copus/types"
@@ -15,8 +16,9 @@ type Config interface {
 	pgdb.Databaser
 	types.Copuser
 	comfig.Listenerer
-	evtypes.EventTypeser
 	auth.Auther
+	evtypes.EventTypeser
+	sbtcheck.SbtChecker
 }
 
 type config struct {
@@ -24,8 +26,9 @@ type config struct {
 	pgdb.Databaser
 	types.Copuser
 	comfig.Listenerer
-	evtypes.EventTypeser
 	auth.Auther
+	evtypes.EventTypeser
+	sbtcheck.SbtChecker
 
 	getter kv.Getter
 }
@@ -38,6 +41,7 @@ func New(getter kv.Getter) Config {
 		Listenerer:   comfig.NewListenerer(getter),
 		Logger:       comfig.NewLogger(getter, comfig.LoggerOpts{}),
 		EventTypeser: evtypes.NewConfig(getter),
-		Auther:       auth.NewAuther(getter),
+		Auther:       auth.NewAuther(getter), //nolint:misspell
+		SbtChecker:   sbtcheck.NewConfig(getter),
 	}
 }
