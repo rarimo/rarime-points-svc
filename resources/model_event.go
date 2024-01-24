@@ -8,8 +8,8 @@ import "encoding/json"
 
 type Event struct {
 	Key
-	Attributes    EventAttributes    `json:"attributes"`
-	Relationships EventRelationships `json:"relationships"`
+	Attributes    EventAttributes     `json:"attributes"`
+	Relationships *EventRelationships `json:"relationships,omitempty"`
 }
 type EventResponse struct {
 	Data     Event    `json:"data"`

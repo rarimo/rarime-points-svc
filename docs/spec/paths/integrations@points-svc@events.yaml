@@ -35,7 +35,6 @@ get:
       schema:
         type: boolean
         example: true
-    - $ref: '#/components/parameters/includeBalance'
     - $ref: '#/components/parameters/pageLimit'
     - $ref: '#/components/parameters/pageCursor'
     - $ref: '#/components/parameters/pageOrder'
@@ -53,10 +52,6 @@ get:
                 type: array
                 items:
                   $ref: '#/components/schemas/Event'
-              included:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Balance'
               meta:
                 type: object
                 required:
