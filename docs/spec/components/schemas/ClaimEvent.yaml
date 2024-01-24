@@ -1,0 +1,17 @@
+allOf:
+  - $ref: '#/components/schemas/ClaimEventKey'
+  - type: object
+    x-go-is-request: true
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - user_did
+          - status
+        properties:
+          status:
+            type: string
+            description: New status. Just to be JSON:API compliant.
+            enum: [ claimed ]

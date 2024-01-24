@@ -8,5 +8,5 @@ schema:
     - desc
   default: desc
   description: >-
-    Order of records on the page. If sortingParam is not specified, order of
+    Order of records on the page. If pageOrder is not specified, order of
     records is by default sorted by ID.

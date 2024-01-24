@@ -3,6 +3,7 @@ allOf:
   - type: object
     required:
       - attributes
+      - relationships
     properties:
       attributes:
         type: object
@@ -29,3 +30,15 @@ allOf:
               This is necessary, as the reward might change over time, while
               the certain balance should be left intact.
             example: 50
+      relationships:
+        type: object
+        required:
+          - balance
+        properties:
+          balance:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BalanceKey'

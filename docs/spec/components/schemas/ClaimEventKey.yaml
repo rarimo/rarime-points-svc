@@ -8,4 +8,4 @@ properties:
     example: "157801"
   type:
     type: string
-    enum: [ balance ]
+    enum: [ claim_event ]

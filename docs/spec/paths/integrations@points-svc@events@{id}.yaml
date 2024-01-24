@@ -2,7 +2,9 @@ patch:
   tags:
     - Events
   summary: Claim points for event
-  description: Update event status to _claimed_ and accrue points.
+  description: |
+    Update event status to _claimed_ and accrue points.
+    User must be authorized, and event must be _fulfilled_ by him.
   operationId: claimEvent
   parameters:
     - in: path
@@ -12,8 +14,12 @@ patch:
         type: string
         example: "157801"
   responses:
-    204:
-      description: No content
+    200:
+      description: Event claimed, points accrued
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/ClaimEvent'
     400:
       $ref: '#/components/responses/invalidParameter'
     401:

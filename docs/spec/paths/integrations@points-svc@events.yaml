@@ -5,6 +5,7 @@ get:
   description: Returns events for a single user.
   operationId: getEvents
   parameters:
+    - $ref: '#/components/parameters/filterDID'
     - in: query
       name: 'filter[status]'
       description: |
@@ -25,9 +26,10 @@ get:
       schema:
         type: boolean
         example: true
-    - $ref: '#/components/parameters/pageLimitParam'
-    - $ref: '#/components/parameters/pageCursorParam'
-    - $ref: '#/components/parameters/sortingParam'
+    - $ref: '#/components/parameters/includeBalance'
+    - $ref: '#/components/parameters/pageLimit'
+    - $ref: '#/components/parameters/pageCursor'
+    - $ref: '#/components/parameters/pageOrder'
   responses:
     200:
       description: Success

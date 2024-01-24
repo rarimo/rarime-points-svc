@@ -1,0 +1,9 @@
+in: query
+name: include
+description: Include user balance after updating
+required: false
+schema:
+  type: array
+  items:
+    type: string
+    enum: [ balance ]

@@ -6,6 +6,8 @@ get:
     Balance of authorized user who makes the request. Rank in leaderboard is included.
     You should create new balance for the new user by making POST request.
   operationId: getPointsBalance
+  parameters:
+    - $ref: '#/components/parameters/filterDID'
   responses:
     200:
       description: Success
@@ -34,6 +36,16 @@ post:
     This operation might be time-consuming, because `open` events should be added for
     the new account synchronously (to display them right after the request).
   operationId: createPointsBalance
+  requestBody:
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/CreateBalance'
   responses:
     201:
       description: Created
