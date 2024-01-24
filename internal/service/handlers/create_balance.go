@@ -11,7 +11,7 @@ import (
 )
 
 func CreateBalance(w http.ResponseWriter, r *http.Request) {
-	did := r.Header.Get("X-User-DID")
+	did := UserDID(r)
 
 	balance := getBalanceByDID(did, false, w, r)
 	if balance != nil {

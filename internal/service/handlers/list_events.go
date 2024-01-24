@@ -18,7 +18,8 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance := getBalanceByDID(req.DID, false, w, r)
+	did := UserDID(r)
+	balance := getBalanceByDID(did, false, w, r)
 	if balance == nil {
 		return
 	}

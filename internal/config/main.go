@@ -1,6 +1,7 @@
 package config
 
 import (
+	"github.com/rarimo/rarime-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/copus"
@@ -15,6 +16,7 @@ type Config interface {
 	types.Copuser
 	comfig.Listenerer
 	evtypes.EventTypeser
+	auth.Auther
 }
 
 type config struct {
@@ -23,6 +25,7 @@ type config struct {
 	types.Copuser
 	comfig.Listenerer
 	evtypes.EventTypeser
+	auth.Auther
 
 	getter kv.Getter
 }
@@ -30,10 +33,11 @@ type config struct {
 func New(getter kv.Getter) Config {
 	return &config{
 		getter:       getter,
-		EventTypeser: evtypes.NewConfig(getter),
 		Databaser:    pgdb.NewDatabaser(getter),
 		Copuser:      copus.NewCopuser(getter),
 		Listenerer:   comfig.NewListenerer(getter),
 		Logger:       comfig.NewLogger(getter, comfig.LoggerOpts{}),
+		EventTypeser: evtypes.NewConfig(getter),
+		Auther:       auth.NewAuther(getter),
 	}
 }

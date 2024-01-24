@@ -11,8 +11,7 @@ import (
 )
 
 func ClaimEvent(w http.ResponseWriter, r *http.Request) {
-	did := r.Header.Get("X-User-DID")
-
+	did := UserDID(r)
 	eventID := chi.URLParam(r, "id")
 	if eventID == "" {
 		ape.RenderErr(w, problems.BadRequest(nil)...)

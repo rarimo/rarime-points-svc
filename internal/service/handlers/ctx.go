@@ -16,6 +16,8 @@ const (
 	eventsQCtxKey
 	balancesQCtxKey
 	eventTypesCtxKey
+	userClaimCtxKey
+	userDidCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -56,4 +58,14 @@ func CtxEventTypes(types evtypes.Types) func(context.Context) context.Context {
 
 func EventTypes(r *http.Request) evtypes.Types {
 	return r.Context().Value(eventTypesCtxKey).(evtypes.Types)
+}
+
+func CtxUserDID(did string) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, userDidCtxKey, did)
+	}
+}
+
+func UserDID(r *http.Request) string {
+	return r.Context().Value(userDidCtxKey).(string)
 }
