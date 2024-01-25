@@ -15,7 +15,11 @@ import (
 const baseTimeout = 5 * time.Second
 
 type SbtChecker interface {
-	SbtCheck() *Runner
+	SbtCheck() Config
+}
+
+type Config struct {
+	networks map[string]network
 }
 
 type config struct {
@@ -27,7 +31,7 @@ func NewConfig(getter kv.Getter) SbtChecker {
 	return &config{getter: getter}
 }
 
-func (c *config) SbtCheck() *Runner {
+func (c *config) SbtCheck() Config {
 	return c.once.Do(func() interface{} {
 		var cfg struct {
 			Networks []struct {
@@ -73,6 +77,6 @@ func (c *config) SbtCheck() *Runner {
 			}
 		}
 
-		return &Runner{networks: nmap}
-	}).(*Runner)
+		return Config{networks: nmap}
+	}).(Config)
 }

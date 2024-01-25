@@ -5,6 +5,8 @@ import (
 
 	"github.com/alecthomas/kingpin"
 	"github.com/rarimo/rarime-points-svc/internal/config"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/sbtcheck"
 	"github.com/rarimo/rarime-points-svc/internal/service"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -39,7 +41,14 @@ func Run(args []string) bool {
 
 	switch cmd {
 	case serviceCmd.FullCommand():
-		if err = cfg.SbtCheck().Run(context.Background()); err != nil {
+		err = sbtcheck.NewRunner(
+			cfg.SbtCheck(),
+			pg.NewBalances(cfg.DB()),
+			pg.NewEvents(cfg.DB()),
+			cfg.EventTypes(),
+			log.WithField("service", "sbt-checker"),
+		).Run(context.Background())
+		if err != nil {
 			log.WithError(err).Error("Failed to run sbt checker")
 			return false
 		}

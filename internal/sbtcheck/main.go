@@ -26,7 +26,7 @@ type Runner struct {
 	// ensure to always call .New() for balancesQ and eventsQ
 	balancesQ data.BalancesQ
 	eventsQ   data.EventsQ
-	types     *evtypes.Types
+	types     evtypes.Types
 	log       *logan.Entry
 }
 
@@ -34,6 +34,22 @@ type network struct {
 	events   *verifiers.SBTIdentityVerifierFilterer
 	timeout  time.Duration
 	disabled bool
+}
+
+func NewRunner(
+	cfg Config,
+	balancesQ data.BalancesQ,
+	eventsQ data.EventsQ,
+	types evtypes.Types,
+	log *logan.Entry,
+) *Runner {
+	return &Runner{
+		networks:  cfg.networks,
+		balancesQ: balancesQ,
+		eventsQ:   eventsQ,
+		types:     types,
+		log:       log,
+	}
 }
 
 func (r *Runner) Run(ctx context.Context) error {

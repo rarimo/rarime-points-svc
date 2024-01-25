@@ -7,7 +7,6 @@ import (
 	"github.com/rarimo/rarime-auth-svc/resources"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
-	"github.com/rarimo/rarime-points-svc/internal/sbtcheck"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -19,7 +18,6 @@ const (
 	balancesQCtxKey
 	eventTypesCtxKey
 	userClaimsCtxKey
-	sbtCheckCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -70,14 +68,4 @@ func CtxUserClaims(claim []resources.Claim) func(context.Context) context.Contex
 
 func UserClaims(r *http.Request) []resources.Claim {
 	return r.Context().Value(userClaimsCtxKey).([]resources.Claim)
-}
-
-func CtxSbtCheck(sbtCheck *sbtcheck.Runner) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		return context.WithValue(ctx, sbtCheckCtxKey, sbtCheck)
-	}
-}
-
-func SbtCheck(r *http.Request) *sbtcheck.Runner {
-	return r.Context().Value(sbtCheckCtxKey).(*sbtcheck.Runner)
 }
