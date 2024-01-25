@@ -59,6 +59,10 @@ func (c *config) EventTypes() Types {
 			}
 		}
 
+		if _, ok := inner[TypeGetPoH]; !ok {
+			panic(fmt.Errorf("event_types: missing %s entry", TypeGetPoH))
+		}
+
 		return Types{inner}
 	}).(Types)
 }

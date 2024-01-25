@@ -1,8 +1,10 @@
 package evtypes
 
 import (
+	"database/sql"
 	"time"
 
+	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/resources"
 )
 
@@ -20,6 +22,8 @@ const (
 	Custom    Frequency = "custom"
 )
 
+const TypeGetPoH = "get_poh"
+
 type Types struct {
 	inner map[string]resources.EventStaticMeta
 }
@@ -35,6 +39,27 @@ func (t Types) Get(name string) *resources.EventStaticMeta {
 	}
 
 	return &v
+}
+
+func (t Types) PrepareOpenEvents(balanceID string) []data.Event {
+	evTypes := t.List()
+	events := make([]data.Event, len(evTypes))
+
+	for i, evType := range evTypes {
+		// TODO: add advanced logic for specific event types
+		// for example, proof verification events should appear after the proof was issued
+		events[i] = data.Event{
+			BalanceID: balanceID,
+			Type:      evType.Name,
+			Status:    data.EventOpen,
+			PointsAmount: sql.NullInt32{
+				Int32: evType.Reward,
+				Valid: true,
+			},
+		}
+	}
+
+	return events
 }
 
 // List returns non-expired event types

@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/rarimo/rarime-points-svc/internal/sbtcheck/erc721"
+	"github.com/rarimo/rarime-points-svc/internal/sbtcheck/verifiers"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
@@ -15,7 +15,7 @@ import (
 const baseTimeout = 5 * time.Second
 
 type SbtChecker interface {
-	SbtCheck() *Connector
+	SbtCheck() *Runner
 }
 
 type config struct {
@@ -27,7 +27,7 @@ func NewConfig(getter kv.Getter) SbtChecker {
 	return &config{getter: getter}
 }
 
-func (c *config) SbtCheck() *Connector {
+func (c *config) SbtCheck() *Runner {
 	return c.once.Do(func() interface{} {
 		var cfg struct {
 			Networks []struct {
@@ -35,6 +35,7 @@ func (c *config) SbtCheck() *Connector {
 				RPC            string        `fig:"rpc,required"`
 				Contract       string        `fig:"contract,required"`
 				RequestTimeout time.Duration `fig:"request_timeout"`
+				Disabled       bool          `fig:"disabled"`
 			} `fig:"networks,required"`
 		}
 
@@ -47,15 +48,19 @@ func (c *config) SbtCheck() *Connector {
 
 		nmap := make(map[string]network, len(cfg.Networks))
 		for _, net := range cfg.Networks {
+			if net.Disabled {
+				nmap[net.Name] = network{disabled: true}
+				continue
+			}
 
 			cli, err := ethclient.Dial(net.RPC)
 			if err != nil {
 				panic(fmt.Errorf("failed to connect to rpc: %w", err))
 			}
 
-			caller, err := erc721.NewIERC721Caller(common.HexToAddress(net.Contract), cli)
+			filterer, err := verifiers.NewSBTIdentityVerifierFilterer(common.HexToAddress(net.Contract), cli)
 			if err != nil {
-				panic(fmt.Errorf("failed to init contract caller: %w", err))
+				panic(fmt.Errorf("failed to init contract filterer: %w", err))
 			}
 
 			if net.RequestTimeout == 0 {
@@ -63,11 +68,11 @@ func (c *config) SbtCheck() *Connector {
 			}
 
 			nmap[net.Name] = network{
-				caller:  caller,
+				events:  filterer,
 				timeout: net.RequestTimeout,
 			}
 		}
 
-		return &Connector{networks: nmap}
-	}).(*Connector)
+		return &Runner{networks: nmap}
+	}).(*Runner)
 }

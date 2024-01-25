@@ -42,3 +42,8 @@ sbt_check:
       rpc: https://your-rpc
       request_timeout: 5s
       contract: 0x...
+    - name: disabled_sample
+      disabled: true
+      rpc: https://your-rpc
+      request_timeout: 5s
+      contract: 0x...

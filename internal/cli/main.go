@@ -1,6 +1,8 @@
 package cli
 
 import (
+	"context"
+
 	"github.com/alecthomas/kingpin"
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/service"
@@ -29,8 +31,6 @@ func Run(args []string) bool {
 	migrateUpCmd := migrateCmd.Command("up", "migrate db up")
 	migrateDownCmd := migrateCmd.Command("down", "migrate db down")
 
-	// custom commands go here...
-
 	cmd, err := app.Parse(args[1:])
 	if err != nil {
 		log.WithError(err).Error("failed to parse arguments")
@@ -39,12 +39,16 @@ func Run(args []string) bool {
 
 	switch cmd {
 	case serviceCmd.FullCommand():
+		if err = cfg.SbtCheck().Run(context.Background()); err != nil {
+			log.WithError(err).Error("Failed to run sbt checker")
+			return false
+		}
 		service.Run(cfg)
+
 	case migrateUpCmd.FullCommand():
 		err = MigrateUp(cfg)
 	case migrateDownCmd.FullCommand():
 		err = MigrateDown(cfg)
-	// handle any custom commands here in the same way
 	default:
 		log.Errorf("unknown command %s", cmd)
 		return false

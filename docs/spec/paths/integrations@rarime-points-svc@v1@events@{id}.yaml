@@ -45,5 +45,7 @@ patch:
       $ref: '#/components/responses/invalidParameter'
     401:
       $ref: '#/components/responses/invalidAuth'
+    404:
+      $ref: '#/components/responses/notFound'
     500:
       $ref: '#/components/responses/internalError'

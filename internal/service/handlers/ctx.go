@@ -72,12 +72,12 @@ func UserClaims(r *http.Request) []resources.Claim {
 	return r.Context().Value(userClaimsCtxKey).([]resources.Claim)
 }
 
-func CtxSbtCheck(sbtCheck *sbtcheck.Connector) func(context.Context) context.Context {
+func CtxSbtCheck(sbtCheck *sbtcheck.Runner) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, sbtCheckCtxKey, sbtCheck)
 	}
 }
 
-func SbtCheck(r *http.Request) *sbtcheck.Connector {
-	return r.Context().Value(sbtCheckCtxKey).(*sbtcheck.Connector)
+func SbtCheck(r *http.Request) *sbtcheck.Runner {
+	return r.Context().Value(sbtCheckCtxKey).(*sbtcheck.Runner)
 }
