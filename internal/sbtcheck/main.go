@@ -9,118 +9,166 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/event"
 	iden3 "github.com/iden3/go-iden3-core/v2"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/sbtcheck/verifiers"
+	"gitlab.com/distributed_lab/kit/comfig"
+	"gitlab.com/distributed_lab/kit/pgdb"
 	"gitlab.com/distributed_lab/logan/v3"
 	"gitlab.com/distributed_lab/running"
 )
 
-// all retries of runner are done on failures
-const abnormalPeriod = 5 * time.Second
-
-type Runner struct {
-	networks map[string]network
-	// ensure to always call .New() for balancesQ and eventsQ
-	balancesQ data.BalancesQ
-	eventsQ   data.EventsQ
-	types     evtypes.Types
-	log       *logan.Entry
+type runner struct {
+	network
+	db    *pgdb.DB
+	types evtypes.Types
+	log   *logan.Entry
 }
 
 type network struct {
-	events   *verifiers.SBTIdentityVerifierFilterer
-	timeout  time.Duration
-	disabled bool
+	name         string
+	filterer     filterer
+	blockHandler blockHandler
+	timeout      time.Duration
+	fromBlock    uint64
+	blockWindow  uint64
+	maxBlocks    uint64
+	disabled     bool
 }
 
-func NewRunner(
-	cfg Config,
-	balancesQ data.BalancesQ,
-	eventsQ data.EventsQ,
-	types evtypes.Types,
-	log *logan.Entry,
-) *Runner {
-	return &Runner{
-		networks:  cfg.networks,
-		balancesQ: balancesQ,
-		eventsQ:   eventsQ,
-		types:     types,
-		log:       log,
-	}
+type blockHandler interface {
+	BlockNumber(ctx context.Context) (uint64, error)
 }
 
-func (r *Runner) Run(ctx context.Context) error {
+type filterer interface {
+	FilterSBTIdentityProved(opts *bind.FilterOpts, identityId []*big.Int) (*verifiers.SBTIdentityVerifierSBTIdentityProvedIterator, error)
+}
+
+type extConfig interface {
+	comfig.Logger
+	pgdb.Databaser
+	evtypes.EventTypeser
+	SbtChecker
+}
+
+func Run(ctx context.Context, cfg extConfig) error {
+	log := cfg.Log().WithField("who", "sbt-checker")
 	var wg sync.WaitGroup
-	for name, net := range r.networks {
+
+	for name, net := range cfg.SbtCheck().networks {
 		if net.disabled {
-			r.log.Infof("SBT check: network %s disabled", name)
+			log.Infof("SBT check: network %s disabled", name)
 			continue
 		}
 
-		r.log.Infof("SBT check: running for network %s", name)
+		log.Infof("SBT check: running for network %s", name)
 		wg.Add(1)
 
-		if err := r.run(ctx, net, &wg); err != nil {
-			return fmt.Errorf("run checker for network %s: %w", name, err)
+		r := &runner{
+			network: net,
+			db:      cfg.DB(),
+			types:   cfg.EventTypes(),
+			log:     log.WithField("network", name),
 		}
+
+		runnerName := fmt.Sprintf("sbt-checker[%s]", net.name)
+		go func() {
+			running.WithBackOff(ctx, r.log, runnerName, r.subscription,
+				30*time.Second, 5*time.Second, 30*time.Second)
+			wg.Done()
+		}()
 	}
 
 	wg.Wait()
-	r.log.Infof("SBT check: all network checkers stopped")
+	log.Infof("SBT check: all network checkers stopped")
 	return nil
 }
 
-func (r *Runner) run(ctx context.Context, net network, wg *sync.WaitGroup) error {
-	sink := make(chan *verifiers.SBTIdentityVerifierSBTIdentityProved)
+func (r *runner) subscription(ctx context.Context) error {
+	toBlock, err := r.getLastBlock(ctx)
+	if err != nil {
+		return fmt.Errorf("get last block: %w", err)
+	}
+	if toBlock == nil {
+		return nil
+	}
 
-	toCtx, cancel := context.WithTimeout(ctx, net.timeout)
+	r.log.Infof("Starting subscription from %d to %d", r.fromBlock, toBlock)
+	defer r.log.Info("Subscription finished")
+
+	ctx2, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
 
-	sub, err := net.events.WatchSBTIdentityProved(&bind.WatchOpts{Context: toCtx}, sink, nil)
+	return r.filterEvents(ctx2, toBlock)
+}
+
+func (r *runner) getLastBlock(ctx context.Context) (*uint64, error) {
+	ctx2, cancel := context.WithTimeout(ctx, r.timeout)
+	defer cancel()
+
+	lastBlock, err := r.blockHandler.BlockNumber(ctx2)
 	if err != nil {
-		return fmt.Errorf("subscribe to SBTIdentityProved event: %w", err)
+		return nil, fmt.Errorf("get last block number: %w", err)
 	}
 
-	go running.UntilSuccess(ctx, r.log, "sbt-checker", func(ctx context.Context) (bool, error) {
-		err = r.subscribe(ctx, sub, sink)
-		if err == nil {
-			wg.Done()
+	lastBlock -= r.blockWindow
+
+	if lastBlock < r.fromBlock {
+		r.log.Infof("Skipping window: start=%d > finish=%d", r.fromBlock, lastBlock)
+		return nil, nil
+	}
+
+	if r.fromBlock+r.maxBlocks < lastBlock {
+		r.log.Debugf("maxBlockPerRequest limit exceeded: setting last block to %d instead of %d", r.fromBlock+r.maxBlocks, lastBlock)
+		lastBlock = r.fromBlock + r.maxBlocks
+	}
+
+	return &lastBlock, nil
+}
+
+func (r *runner) filterEvents(ctx context.Context, toBlock *uint64) error {
+	it, err := r.filterer.FilterSBTIdentityProved(&bind.FilterOpts{
+		Start:   r.fromBlock,
+		End:     toBlock,
+		Context: ctx,
+	}, nil)
+	if err != nil {
+		return fmt.Errorf("filter SBTIdentityProved events: %w", err)
+	}
+
+	defer func() {
+		// https://ethereum.stackexchange.com/questions/8199/are-both-the-eth-newfilter-from-to-fields-inclusive
+		// End in FilterLogs is inclusive
+		r.fromBlock = *toBlock + 1
+		_ = it.Close()
+	}()
+
+	for it.Next() {
+		evt := it.Event
+		if evt == nil {
+			r.log.Error("Got nil event")
+			continue
 		}
-		return err == nil, err
-	}, abnormalPeriod, abnormalPeriod)
+
+		if err = r.handleEvent(*evt); err != nil {
+			r.log.WithError(err).Error("Failed to handle event")
+			continue
+		}
+	}
 
 	return nil
 }
 
-func (r *Runner) subscribe(
-	ctx context.Context,
-	sub event.Subscription,
-	sink chan *verifiers.SBTIdentityVerifierSBTIdentityProved,
-) error {
+func (r *runner) handleEvent(evt verifiers.SBTIdentityVerifierSBTIdentityProved) error {
+	r.log.WithFields(map[string]any{
+		"tx_hash":   evt.Raw.TxHash,
+		"tx_index":  evt.Raw.TxIndex,
+		"log_index": evt.Raw.Index,
+		"block":     evt.Raw.BlockNumber,
+	}).Debugf("Got SBTIdentityProved event (identityId=%s)", evt.IdentityId)
 
-	for {
-		select {
-		case <-ctx.Done():
-			r.log.Info("SBTIdentityProved subscription stopped")
-			return nil
-		case err := <-sub.Err():
-			return fmt.Errorf("SBTIdentityProved subscription error: %w", err)
-		case evt := <-sink:
-			if evt == nil {
-				r.log.Debug("Got nil SBTIdentityProved event from subscription, continue")
-				continue
-			}
-			if err := r.handleEvent(*evt); err != nil {
-				return fmt.Errorf("handle event: %w", err)
-			}
-		}
-	}
-}
-
-func (r *Runner) handleEvent(evt verifiers.SBTIdentityVerifierSBTIdentityProved) error {
 	did, err := parseDidFromUint256(evt.IdentityId)
 	if err != nil {
 		return fmt.Errorf("parse did from uint256 (identityId=%s): %w", evt.IdentityId, err)
@@ -143,8 +191,8 @@ func (r *Runner) handleEvent(evt verifiers.SBTIdentityVerifierSBTIdentityProved)
 	return nil
 }
 
-func (r *Runner) getOrCreateBalance(did string) (string, error) {
-	balance, err := r.balancesQ.New().FilterByUserDID(did).Get()
+func (r *runner) getOrCreateBalance(did string) (string, error) {
+	balance, err := r.balancesQ().FilterByUserDID(did).Get()
 	if err != nil {
 		return "", fmt.Errorf("get balance: %w", err)
 	}
@@ -162,8 +210,8 @@ func (r *Runner) getOrCreateBalance(did string) (string, error) {
 	return id, nil
 }
 
-func (r *Runner) findPohEvent(bid string) (*data.Event, error) {
-	poh, err := r.eventsQ.New().
+func (r *runner) findPohEvent(bid string) (*data.Event, error) {
+	poh, err := r.eventsQ().
 		FilterByBalanceID(bid).
 		FilterByType(evtypes.TypeGetPoH).
 		FilterByStatus(data.EventOpen).
@@ -178,13 +226,13 @@ func (r *Runner) findPohEvent(bid string) (*data.Event, error) {
 	return poh, nil
 }
 
-func (r *Runner) fulfillPohEvent(poh data.Event) error {
+func (r *runner) fulfillPohEvent(poh data.Event) error {
 	getPoh := r.types.Get(evtypes.TypeGetPoH)
 	if getPoh == nil {
 		return fmt.Errorf("event types were not correctly initialized: missing %s", evtypes.TypeGetPoH)
 	}
 
-	return r.eventsQ.New().FilterByID(poh.ID).Update(data.Event{
+	return r.eventsQ().FilterByID(poh.ID).Update(data.Event{
 		Status: data.EventFulfilled,
 		PointsAmount: sql.NullInt32{
 			Int32: getPoh.Reward,
@@ -193,18 +241,18 @@ func (r *Runner) fulfillPohEvent(poh data.Event) error {
 	})
 }
 
-func (r *Runner) createBalance(did string) (string, error) {
-	err := r.balancesQ.New().Insert(data.Balance{DID: did})
+func (r *runner) createBalance(did string) (string, error) {
+	err := r.balancesQ().Insert(data.Balance{DID: did})
 	if err != nil {
 		return "", fmt.Errorf("insert balance: %w", err)
 	}
 
-	balance, err := r.balancesQ.New().FilterByUserDID(did).Get()
+	balance, err := r.balancesQ().FilterByUserDID(did).Get()
 	if err != nil {
 		return "", fmt.Errorf("get balance back: %w", err)
 	}
 
-	err = r.eventsQ.New().Insert(r.types.PrepareOpenEvents(balance.ID)...)
+	err = r.eventsQ().Insert(r.types.PrepareOpenEvents(balance.ID)...)
 	if err != nil {
 		return "", fmt.Errorf("insert open events: %w", err)
 	}
@@ -224,4 +272,12 @@ func parseDidFromUint256(raw *big.Int) (string, error) {
 	}
 
 	return did.String(), nil
+}
+
+func (r *runner) balancesQ() data.BalancesQ {
+	return pg.NewBalances(r.db.Clone())
+}
+
+func (r *runner) eventsQ() data.EventsQ {
+	return pg.NewEvents(r.db.Clone())
 }

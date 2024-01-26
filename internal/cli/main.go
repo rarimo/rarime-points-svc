@@ -5,7 +5,6 @@ import (
 
 	"github.com/alecthomas/kingpin"
 	"github.com/rarimo/rarime-points-svc/internal/config"
-	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/sbtcheck"
 	"github.com/rarimo/rarime-points-svc/internal/service"
 	"gitlab.com/distributed_lab/kit/kv"
@@ -27,7 +26,7 @@ func Run(args []string) bool {
 	app := kingpin.New("rarime-points-svc", "")
 
 	runCmd := app.Command("run", "run command")
-	serviceCmd := runCmd.Command("service", "run service") // you can insert custom help
+	serviceCmd := runCmd.Command("service", "run service")
 
 	migrateCmd := app.Command("migrate", "migrate command")
 	migrateUpCmd := migrateCmd.Command("up", "migrate db up")
@@ -41,13 +40,7 @@ func Run(args []string) bool {
 
 	switch cmd {
 	case serviceCmd.FullCommand():
-		err = sbtcheck.NewRunner(
-			cfg.SbtCheck(),
-			pg.NewBalances(cfg.DB()),
-			pg.NewEvents(cfg.DB()),
-			cfg.EventTypes(),
-			log.WithField("service", "sbt-checker"),
-		).Run(context.Background())
+		err = sbtcheck.Run(context.Background(), cfg)
 		if err != nil {
 			log.WithError(err).Error("Failed to run sbt checker")
 			return false

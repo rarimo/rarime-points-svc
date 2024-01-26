@@ -35,15 +35,18 @@ auth:
 sbt_check:
   networks:
     - name: polygon
-      rpc: wss://your-rpc
-      request_timeout: 3s
+      rpc: https://your-rpc
       contract: 0x...
-    - name: ethereum
-      rpc: wss://your-rpc
       request_timeout: 5s
+      start_from_block: 48984542
+      block_window: 3
+      max_blocks_per_request: 5000
+    - name: ethereum
+      rpc: https://your-rpc
       contract: 0x...
+      request_timeout: 5s
     - name: disabled_sample
       disabled: true
-      rpc: wss://your-rpc
-      request_timeout: 5s
+      rpc: https://your-rpc
       contract: 0x...
+      request_timeout: 5s

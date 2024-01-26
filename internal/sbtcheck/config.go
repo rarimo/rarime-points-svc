@@ -35,11 +35,14 @@ func (c *config) SbtCheck() Config {
 	return c.once.Do(func() interface{} {
 		var cfg struct {
 			Networks []struct {
-				Name           string        `fig:"name,required"`
-				RPC            string        `fig:"rpc,required"`
-				Contract       string        `fig:"contract,required"`
-				RequestTimeout time.Duration `fig:"request_timeout"`
-				Disabled       bool          `fig:"disabled"`
+				Name                string        `fig:"name,required"`
+				RPC                 string        `fig:"rpc,required"`
+				Contract            string        `fig:"contract,required"`
+				RequestTimeout      time.Duration `fig:"request_timeout"`
+				StartFromBlock      uint64        `fig:"start_from_block"`
+				BlockWindow         uint64        `fig:"block_window"`
+				MaxBlocksPerRequest uint64        `fig:"max_blocks_per_request"`
+				Disabled            bool          `fig:"disabled"`
 			} `fig:"networks,required"`
 		}
 
@@ -53,7 +56,7 @@ func (c *config) SbtCheck() Config {
 		nmap := make(map[string]network, len(cfg.Networks))
 		for _, net := range cfg.Networks {
 			if net.Disabled {
-				nmap[net.Name] = network{disabled: true}
+				nmap[net.Name] = network{name: net.Name, disabled: true}
 				continue
 			}
 
@@ -62,7 +65,7 @@ func (c *config) SbtCheck() Config {
 				panic(fmt.Errorf("failed to connect to rpc: %w", err))
 			}
 
-			filterer, err := verifiers.NewSBTIdentityVerifierFilterer(common.HexToAddress(net.Contract), cli)
+			filter, err := verifiers.NewSBTIdentityVerifierFilterer(common.HexToAddress(net.Contract), cli)
 			if err != nil {
 				panic(fmt.Errorf("failed to init contract filterer: %w", err))
 			}
@@ -72,8 +75,13 @@ func (c *config) SbtCheck() Config {
 			}
 
 			nmap[net.Name] = network{
-				events:  filterer,
-				timeout: net.RequestTimeout,
+				name:         net.Name,
+				blockHandler: cli,
+				filterer:     filter,
+				timeout:      net.RequestTimeout,
+				fromBlock:    net.StartFromBlock,
+				blockWindow:  net.BlockWindow,
+				maxBlocks:    net.MaxBlocksPerRequest,
 			}
 		}
 
