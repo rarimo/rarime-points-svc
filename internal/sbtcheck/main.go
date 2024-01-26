@@ -55,8 +55,12 @@ type extConfig interface {
 
 func Run(ctx context.Context, cfg extConfig) error {
 	log := cfg.Log().WithField("who", "sbt-checker")
-	var wg sync.WaitGroup
+	if cfg.EventTypes().IsExpired(evtypes.TypeGetPoH) {
+		log.Warn("PoH event is expired, SBT check will not run")
+		return nil
+	}
 
+	var wg sync.WaitGroup
 	for name, net := range cfg.SbtCheck().networks {
 		if net.disabled {
 			log.Infof("SBT check: network %s disabled", name)
@@ -95,8 +99,8 @@ func (r *runner) subscription(ctx context.Context) error {
 		return nil
 	}
 
-	r.log.Infof("Starting subscription from %d to %d", r.fromBlock, toBlock)
-	defer r.log.Info("Subscription finished")
+	r.log.Debugf("Starting subscription from %d to %d", r.fromBlock, toBlock)
+	defer r.log.Debugf("Subscription finished")
 
 	ctx2, cancel := context.WithTimeout(ctx, r.timeout)
 	defer cancel()
@@ -183,6 +187,10 @@ func (r *runner) handleEvent(evt verifiers.SBTIdentityVerifierSBTIdentityProved)
 	if err != nil {
 		return fmt.Errorf("find PoH event (balanceID=%s): %w", balanceID, err)
 	}
+	if poh == nil {
+		return nil
+	}
+
 	if err = r.fulfillPohEvent(*poh); err != nil {
 		return fmt.Errorf("update PoH event status to fulfilled: %w", err)
 	}
@@ -214,13 +222,18 @@ func (r *runner) findPohEvent(bid string) (*data.Event, error) {
 	poh, err := r.eventsQ().
 		FilterByBalanceID(bid).
 		FilterByType(evtypes.TypeGetPoH).
-		FilterByStatus(data.EventOpen).
 		Get()
 	if err != nil {
-		return nil, fmt.Errorf("get open PoH event: %w", err)
+		return nil, fmt.Errorf("get PoH event: %w", err)
 	}
 	if poh == nil {
 		return nil, fmt.Errorf("PoH event was not properly added on balance creation")
+	}
+
+	if poh.Status != data.EventOpen {
+		r.log.Infof("Balance %s is not eligible for another PoH event (id=%s status=%s)",
+			poh.BalanceID, poh.ID, poh.Status)
+		return nil, nil
 	}
 
 	return poh, nil

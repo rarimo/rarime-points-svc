@@ -79,6 +79,15 @@ func (t Types) List() []resources.EventStaticMeta {
 	return res
 }
 
+func (t Types) IsExpired(name string) bool {
+	evType := t.Get(name)
+	if evType == nil {
+		return false
+	}
+
+	return isExpiredEvent(*evType)
+}
+
 func isExpiredEvent(ev resources.EventStaticMeta) bool {
 	return ev.ExpiresAt != nil && ev.ExpiresAt.Before(time.Now().UTC())
 }
