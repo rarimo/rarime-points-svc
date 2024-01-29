@@ -4,14 +4,14 @@
 
 package resources
 
-import "time"
-
 type EventAttributes struct {
-	// UTC time (RFC3339) of event creation
-	CreatedAt time.Time `json:"created_at"`
+	// Unix timestamp of event creation
+	CreatedAt int32     `json:"created_at"`
 	Meta      EventMeta `json:"meta"`
 	// How many points were accrued. Required only for `claimed` events. This is necessary, as the reward might change over time, while the certain balance should be left intact.
 	PointsAmount *int32 `json:"points_amount,omitempty"`
 	// See `filter[status]` parameter for explanation
 	Status string `json:"status"`
+	// Unix timestamp of the event status change
+	UpdatedAt int32 `json:"updated_at"`
 }

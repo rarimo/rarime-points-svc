@@ -2,7 +2,7 @@ package data
 
 import (
 	"database/sql"
-	"time"
+	"encoding/json"
 
 	"gitlab.com/distributed_lab/kit/pgdb"
 )
@@ -22,7 +22,7 @@ func (s EventStatus) String() string {
 type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
-	Update(Event) error
+	Update(status EventStatus, meta []json.RawMessage, points *int32) (*Event, error)
 
 	Page(*pgdb.CursorPageParams) EventsQ
 	Select() ([]Event, error)
@@ -30,38 +30,39 @@ type EventsQ interface {
 	Count() (int, error)
 
 	FilterByID(string) EventsQ
-	FilterByBalanceID(...string) EventsQ
+	FilterByUserDID(string) EventsQ
 	FilterByStatus(...EventStatus) EventsQ
 	FilterByType(...string) EventsQ
 }
 
 type BalancesQ interface {
 	New() BalancesQ
-	Insert(Balance) error
-	UpdateAmount(int) error
+	Insert(did string) error
+	AddAmount(points int32) error
 
-	SelectLeaders(count int) ([]Balance, error)
+	Page(*pgdb.CursorPageParams) BalancesQ
+	Select() ([]Balance, error)
 	Get() (*Balance, error)
 	WithRank() BalancesQ
 
-	FilterByID(string) BalancesQ
-	FilterByUserDID(string) BalancesQ
+	FilterByDID(string) BalancesQ
 }
 
 type Event struct {
-	ID           string         `db:"id"`
-	BalanceID    string         `db:"balance_id"`
-	Type         string         `db:"type"`
-	Status       EventStatus    `db:"status"`
-	CreatedAt    time.Time      `db:"created_at"`
-	Meta         sql.NullString `db:"meta"`
-	PointsAmount sql.NullInt32  `db:"points_amount"`
+	ID           string          `db:"id"`
+	UserDID      string          `db:"user_did"`
+	Type         string          `db:"type"`
+	Status       EventStatus     `db:"status"`
+	CreatedAt    int32           `db:"created_at"`
+	UpdatedAt    int32           `db:"updated_at"`
+	Meta         json.RawMessage `db:"meta"`
+	PointsAmount sql.NullInt32   `db:"points_amount"`
 }
 
 type Balance struct {
-	ID        string    `db:"id"`
-	DID       string    `db:"did"`
-	Amount    int       `db:"amount"`
-	UpdatedAt time.Time `db:"updated_at"`
-	Rank      *int      `db:"rank"`
+	DID       string `db:"did"`
+	Amount    int    `db:"amount"`
+	CreatedAt int32  `db:"created_at"`
+	UpdatedAt int32  `db:"updated_at"`
+	Rank      *int   `db:"rank"`
 }

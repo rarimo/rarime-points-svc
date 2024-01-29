@@ -25,7 +25,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = BalancesQ(r).Insert(data.Balance{DID: did}); err != nil {
+	if err = BalancesQ(r).Insert(did); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance")
 		ape.RenderErr(w, problems.InternalError())
 		return
@@ -38,7 +38,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = EventsQ(r).Insert(prepareOpenEvents(balance.ID, EventTypes(r).List())...)
+	err = EventsQ(r).Insert(prepareOpenEvents(balance.DID, EventTypes(r).List())...)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to add open events")
 		ape.RenderErr(w, problems.InternalError())
@@ -48,13 +48,13 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newBalanceModel(*balance))
 }
 
-func prepareOpenEvents(balanceID string, evTypes []resources.EventStaticMeta) []data.Event {
+func prepareOpenEvents(did string, evTypes []resources.EventStaticMeta) []data.Event {
 	events := make([]data.Event, len(evTypes))
 	for i, evType := range evTypes {
 		events[i] = data.Event{
-			BalanceID: balanceID,
-			Type:      evType.Name,
-			Status:    data.EventOpen,
+			UserDID: did,
+			Type:    evType.Name,
+			Status:  data.EventOpen,
 			PointsAmount: sql.NullInt32{
 				Int32: evType.Reward,
 				Valid: true,

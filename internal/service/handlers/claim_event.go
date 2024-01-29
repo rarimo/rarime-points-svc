@@ -1,8 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
-	"fmt"
 	"net/http"
 
 	"github.com/rarimo/rarime-auth-svc/pkg/auth"
@@ -24,10 +22,6 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	if event == nil {
 		return
 	}
-	balance := getBalanceByID(event.BalanceID, true, w, r)
-	if balance == nil {
-		return
-	}
 
 	evType := EventTypes(r).Get(event.Type)
 	if evType == nil {
@@ -36,12 +30,12 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event = claimEventWithPoints(*event, balance.Amount, int(evType.Reward), w, r)
+	event = claimEventWithPoints(*event, evType.Reward, w, r)
 	if event == nil {
 		return
 	}
-	// can't return balance on update, see create_balance.go
-	balance = getBalanceByID(event.BalanceID, true, w, r)
+	// can't return balance with rank on update, see create_balance.go
+	balance := getBalanceByDID(event.UserDID, true, w, r)
 	if balance == nil {
 		return
 	}
@@ -67,59 +61,30 @@ func getEventToClaim(id string, w http.ResponseWriter, r *http.Request) *data.Ev
 		return nil
 	}
 
-	return event
-}
-
-func getBalanceByID(id string, doAuth bool, w http.ResponseWriter, r *http.Request) *data.Balance {
-	balance, err := BalancesQ(r).WithRank().FilterByID(id).Get()
-
-	if err != nil || balance == nil {
-		if err == nil {
-			err = fmt.Errorf("DB constraint violation: found event with balance_id=%s not present", id)
-		}
-
-		Log(r).WithError(err).Error("Failed to get balance by ID")
-		ape.RenderErr(w, problems.InternalError())
-		return nil
-	}
-
-	if doAuth && !auth.Authenticates(UserClaims(r), auth.UserGrant(balance.DID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(event.UserDID)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return nil
 	}
 
-	return balance
+	return event
 }
 
-func claimEventWithPoints(event data.Event, currBalance, reward int, w http.ResponseWriter, r *http.Request) *data.Event {
-	claimed := data.Event{
-		ID:     event.ID,
-		Status: data.EventClaimed,
-		PointsAmount: sql.NullInt32{
-			Int32: int32(reward),
-			Valid: true,
-		},
-	}
-
-	err := EventsQ(r).Update(claimed)
+func claimEventWithPoints(event data.Event, reward int32, w http.ResponseWriter, r *http.Request) *data.Event {
+	claimed, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to claim event")
 		ape.RenderErr(w, problems.InternalError())
 		return nil
 	}
 
-	err = BalancesQ(r).FilterByID(event.BalanceID).UpdateAmount(currBalance + reward)
+	err = BalancesQ(r).FilterByDID(event.UserDID).AddAmount(reward)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to accrue points to the balance")
 		ape.RenderErr(w, problems.InternalError())
 		return nil
 	}
-	// While we don't have updated_at and other special attributes in events, we can
-	// safely return the same struct without redundant queries. It is still faster
-	// than with RETURNING clause.
-	event.Status = claimed.Status
-	event.PointsAmount = claimed.PointsAmount
-	return &event
+
+	return claimed
 }
 
 func newClaimEventResponse(
@@ -132,7 +97,7 @@ func newClaimEventResponse(
 	eventModel.Relationships = &resources.EventRelationships{
 		Balance: resources.Relation{
 			Data: &resources.Key{
-				ID:   balance.ID,
+				ID:   balance.DID,
 				Type: resources.BALANCE,
 			},
 		},

@@ -1,8 +1,9 @@
 package pg
 
 import (
+	"database/sql"
+	"encoding/json"
 	"fmt"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -35,9 +36,9 @@ func (q *events) Insert(events ...data.Event) error {
 	}
 
 	stmt := squirrel.Insert(eventsTable).
-		Columns("balance_id", "type", "status", "created_at", "meta", "points_amount")
+		Columns("user_did", "type", "status", "meta", "points_amount")
 	for _, event := range events {
-		stmt = stmt.Values(event.BalanceID, event.Type, event.Status, event.CreatedAt, event.Meta, event.PointsAmount)
+		stmt = stmt.Values(event.UserDID, event.Type, event.Status, event.Meta, event.PointsAmount)
 	}
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -47,24 +48,29 @@ func (q *events) Insert(events ...data.Event) error {
 	return nil
 }
 
-func (q *events) Update(event data.Event) error {
+func (q *events) Update(status data.EventStatus, meta []json.RawMessage, points *int32) (*data.Event, error) {
 	umap := map[string]any{
-		"status":        event.Status,
-		"meta":          event.Meta,
-		"points_amount": event.PointsAmount,
-		"updated_at":    time.Now().UTC(),
+		"status": status,
+	}
+	if points != nil {
+		umap["points_amount"] = sql.NullInt32{Int32: *points, Valid: true}
+	}
+	if len(meta) != 0 {
+		umap["meta"] = meta
 	}
 
-	stmt := squirrel.Update(eventsTable).SetMap(umap).Where(squirrel.Eq{"id": event.ID})
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("update event with map %+v: %w", umap, err)
+	var res data.Event
+	stmt := squirrel.Update(eventsTable).SetMap(umap)
+
+	if err := q.db.Get(&res, stmt); err != nil {
+		return nil, fmt.Errorf("update event with map %+v: %w", umap, err)
 	}
 
-	return nil
+	return &res, nil
 }
 
 func (q *events) Page(page *pgdb.CursorPageParams) data.EventsQ {
-	q.selector = page.ApplyTo(q.selector, "id")
+	q.selector = page.ApplyTo(q.selector, "updated_at")
 	return q
 }
 
@@ -106,12 +112,9 @@ func (q *events) FilterByID(id string) data.EventsQ {
 	return q
 }
 
-func (q *events) FilterByBalanceID(ids ...string) data.EventsQ {
-	if len(ids) == 0 {
-		return q
-	}
-	q.selector = q.selector.Where(squirrel.Eq{"balance_id": ids})
-	q.counter = q.counter.Where(squirrel.Eq{"balance_id": ids})
+func (q *events) FilterByUserDID(did string) data.EventsQ {
+	q.selector = q.selector.Where(squirrel.Eq{"user_did": did})
+	q.counter = q.counter.Where(squirrel.Eq{"user_did": did})
 	return q
 }
 

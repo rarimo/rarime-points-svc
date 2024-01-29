@@ -11,13 +11,13 @@ import (
 )
 
 func Leaderboard(w http.ResponseWriter, r *http.Request) {
-	req, err := requests.NewLeaderboard(r)
+	_, err := requests.NewLeaderboard(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
 
-	leaders, err := BalancesQ(r).SelectLeaders(req.Limit)
+	leaders, err := BalancesQ(r).Select() // TODO: add pagination
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance leaders")
 		ape.RenderErr(w, problems.InternalError())

@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
+	"github.com/rarimo/rarime-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -18,13 +18,13 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance := getBalanceByDID(req.FilterDID, false, w, r)
-	if balance == nil {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.FilterDID)) {
+		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
 	events, err := EventsQ(r).
-		FilterByBalanceID(balance.ID).
+		FilterByUserDID(req.FilterDID).
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
 		Page(&req.CursorPageParams).
@@ -38,7 +38,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	var eventsCount int
 	if req.Count {
 		eventsCount, err = EventsQ(r).
-			FilterByBalanceID(balance.ID).
+			FilterByUserDID(req.FilterDID).
 			FilterByStatus(req.FilterStatus...).
 			FilterByType(req.FilterType...).
 			Count()
@@ -86,12 +86,6 @@ func getOrderedEventsMeta(events []data.Event, w http.ResponseWriter, r *http.Re
 }
 
 func newEventModel(event data.Event, meta resources.EventStaticMeta) resources.Event {
-	var dynamic *json.RawMessage
-	if event.Meta.Valid {
-		d := json.RawMessage(event.Meta.String)
-		dynamic = &d
-	}
-
 	var points *int32
 	if event.PointsAmount.Valid {
 		points = &event.PointsAmount.Int32
@@ -104,9 +98,10 @@ func newEventModel(event data.Event, meta resources.EventStaticMeta) resources.E
 		},
 		Attributes: resources.EventAttributes{
 			CreatedAt: event.CreatedAt,
+			UpdatedAt: event.UpdatedAt,
 			Meta: resources.EventMeta{
 				Static:  meta,
-				Dynamic: dynamic,
+				Dynamic: &event.Meta,
 			},
 			Status:       event.Status.String(),
 			PointsAmount: points,

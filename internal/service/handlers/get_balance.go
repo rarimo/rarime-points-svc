@@ -29,13 +29,13 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 func newBalanceModel(balance data.Balance) resources.Balance {
 	return resources.Balance{
 		Key: resources.Key{
-			ID:   balance.ID,
+			ID:   balance.DID,
 			Type: resources.BALANCE,
 		},
 		Attributes: resources.BalanceAttributes{
 			Amount:    balance.Amount,
+			CreatedAt: balance.CreatedAt,
 			UpdatedAt: balance.UpdatedAt,
-			UserDid:   balance.DID,
 			Rank:      balance.Rank,
 		},
 	}
@@ -47,7 +47,7 @@ func getBalanceByDID(did string, withRank bool, w http.ResponseWriter, r *http.R
 		return nil
 	}
 
-	q := BalancesQ(r).FilterByUserDID(did)
+	q := BalancesQ(r).FilterByDID(did)
 	if withRank {
 		q.WithRank()
 	}
