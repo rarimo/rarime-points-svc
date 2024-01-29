@@ -18,12 +18,18 @@ const (
 // CursorParams is a wrapper around pgdb.CursorPageParams with useful validation and rendering methods
 type CursorParams struct {
 	pgdb.CursorPageParams
+	IsLeaderboard bool // deny ascending order for leaderboard
 }
 
 func (p *CursorParams) Validate() error {
+	var orderRule val.Rule = val.In(pgdb.OrderTypeAsc, pgdb.OrderTypeDesc)
+	if p.IsLeaderboard {
+		orderRule = val.Empty
+	}
+
 	return val.Errors{
-		pageParamLimit:  val.Validate(p.Limit, val.Max(maxLimit)),
-		pageParamOrder:  val.Validate(p.Order, val.In(pgdb.OrderTypeAsc, pgdb.OrderTypeDesc)),
 		pageParamCursor: val.Validate(p.Cursor, val.Max(uint64(math.MaxInt32))),
+		pageParamLimit:  val.Validate(p.Limit, val.Max(maxLimit)),
+		pageParamOrder:  val.Validate(p.Order, orderRule),
 	}.Filter()
 }

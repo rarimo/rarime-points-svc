@@ -5,11 +5,14 @@ import (
 	"net/http"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/rarimo/rarime-points-svc/internal/service/page"
 	"gitlab.com/distributed_lab/urlval/v4"
 )
 
+const leaderboardDefaultLimit = 10
+
 type Leaderboard struct {
-	Limit int `page:"limit"`
+	page.CursorParams
 }
 
 func NewLeaderboard(r *http.Request) (req Leaderboard, err error) {
@@ -19,8 +22,12 @@ func NewLeaderboard(r *http.Request) (req Leaderboard, err error) {
 		}
 	}
 
+	req.IsLeaderboard = true
 	if req.Limit == 0 {
-		req.Limit = 10
+		req.Limit = leaderboardDefaultLimit
+	}
+	if err = req.Validate(); err != nil {
+		return
 	}
 
 	err = validation.Errors{
