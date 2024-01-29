@@ -1,32 +1,3 @@
-get:
-  tags:
-    - Points balance
-  summary: Get points balance for user
-  description: |
-    Balance of authorized user who makes the request. Rank in leaderboard is included.
-    You should create new balance for the new user by making POST request.
-  operationId: getPointsBalance
-  parameters:
-    - $ref: '#/components/parameters/filterDID'
-  responses:
-    200:
-      description: Success
-      content:
-        application/vnd.api+json:
-          schema:
-            type: object
-            required:
-              - data
-            properties:
-              data:
-                $ref: '#/components/schemas/Balance'
-    400:
-      $ref: '#/components/responses/invalidParameter'
-    401:
-      $ref: '#/components/responses/invalidAuth'
-    500:
-      $ref: '#/components/responses/internalError'
-
 post:
   tags:
     - Points balance
@@ -66,5 +37,33 @@ post:
         application/vnd.api+json:
           schema:
             $ref: '#/components/schemas/Errors'
+    500:
+      $ref: '#/components/responses/internalError'
+
+get:
+  tags:
+    - Points balance
+  summary: Get leaderboard
+  description: Returns leaders sorted by points in descending order.
+  operationId: getLeaderboard
+  parameters:
+    - $ref: '#/components/parameters/pageCursor'
+    - $ref: '#/components/parameters/pageLimit'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
+    400:
+      $ref: '#/components/responses/invalidParameter'
     500:
       $ref: '#/components/responses/internalError'

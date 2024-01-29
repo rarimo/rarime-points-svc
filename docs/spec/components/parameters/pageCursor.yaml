@@ -3,5 +3,5 @@ name: 'page[cursor]'
 required: false
 schema:
   type: integer
-  example: 157781
+  example: 1706531218
 description: Cursor position

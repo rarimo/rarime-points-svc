@@ -5,7 +5,8 @@ required:
 properties:
   id:
     type: string
-    example: "157801"
+    description: DID of the points owner
+    example: "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
   type:
     type: string
     enum: [ balance ]
