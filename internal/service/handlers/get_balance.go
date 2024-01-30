@@ -18,7 +18,7 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance := getBalanceByDID(req.FilterDID, true, w, r)
+	balance := getBalanceByDID(req.DID, true, w, r)
 	if balance == nil {
 		return
 	}

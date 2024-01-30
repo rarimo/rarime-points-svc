@@ -1,26 +1,20 @@
 package requests
 
 import (
-	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"gitlab.com/distributed_lab/urlval/v4"
 )
 
 type GetBalance struct {
-	FilterDID string `filter:"did"`
+	DID string
 }
 
-func NewGetBalance(r *http.Request) (req GetBalance, err error) {
-	if err = urlval.Decode(r.URL.Query(), &req); err != nil {
-		return req, validation.Errors{
-			"query": fmt.Errorf("failed to decode query: %w", err),
-		}
-	}
+func NewGetBalance(r *http.Request) (GetBalance, error) {
+	did := chi.URLParam(r, "did")
 
-	err = validation.Errors{
-		"filter[did]": validation.Validate(req.FilterDID, validation.Required),
+	return GetBalance{did}, validation.Errors{
+		"did": validation.Validate(did, validation.Required),
 	}.Filter()
-	return
 }

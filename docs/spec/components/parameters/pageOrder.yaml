@@ -7,6 +7,4 @@ schema:
     - asc
     - desc
   default: desc
-  description: >-
-    Order of records on the page. If pageOrder is not specified, order of
-    records is by default sorted by ID.
+  description: Order of records on the page.

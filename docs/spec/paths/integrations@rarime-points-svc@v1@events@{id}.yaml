@@ -23,7 +23,7 @@ patch:
             - data
           properties:
             data:
-              $ref: '#/components/schemas/ClaimEvent'
+              $ref: '#/components/schemas/ClaimEventKey'
   responses:
     200:
       description: Event claimed, points accrued

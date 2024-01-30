@@ -20,15 +20,15 @@ func (s *service) router() chi.Router {
 			handlers.CtxEventTypes(s.cfg.EventTypes()),
 		),
 	)
-	r.Route("/integrations/rarime-points-svc", func(r chi.Router) {
+	r.Route("/integrations/rarime-points-svc/v1", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(handlers.AuthMiddleware(s.cfg.Auth(), s.log))
-			r.Get("/balance", handlers.GetBalance)
-			r.Post("/balance", handlers.CreateBalance)
+			r.Get("/balances/{did}", handlers.GetBalance)
+			r.Post("/balances", handlers.CreateBalance)
 			r.Get("/events", handlers.ListEvents)
 			r.Patch("/events/{id}", handlers.ClaimEvent)
 		})
-		r.Get("/leaderboard", handlers.Leaderboard)
+		r.Get("/balances", handlers.Leaderboard)
 	})
 
 	return r

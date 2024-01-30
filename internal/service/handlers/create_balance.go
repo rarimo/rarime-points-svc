@@ -18,7 +18,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	did := req.Data.Attributes.UserDid
+	did := req.Data.ID
 	balance := getBalanceByDID(did, false, w, r)
 	if balance != nil {
 		ape.RenderErr(w, problems.Conflict())
