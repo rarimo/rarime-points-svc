@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
@@ -18,21 +17,14 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	leaders, err := BalancesQ(r).Page(&req.CursorPageParams).Select()
+	leaders, err := BalancesQ(r).Page(&req.OffsetPageParams).Select()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance leaders")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	var last string
-	if len(leaders) > 0 {
-		last = strconv.Itoa(leaders[len(leaders)-1].Amount)
-	}
-
-	resp := newLeaderboardResponse(leaders)
-	resp.Links = req.GetCursorLinks(r, last)
-	ape.Render(w, resp)
+	ape.Render(w, newLeaderboardResponse(leaders))
 }
 
 func newLeaderboardResponse(balances []data.Balance) resources.BalanceListResponse {

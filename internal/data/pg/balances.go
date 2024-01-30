@@ -50,7 +50,7 @@ func (q *balances) AddAmount(points int32) error {
 	return nil
 }
 
-func (q *balances) Page(page *pgdb.CursorPageParams) data.BalancesQ {
+func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
 	q.selector = page.ApplyTo(q.selector, "amount")
 	return q
 }

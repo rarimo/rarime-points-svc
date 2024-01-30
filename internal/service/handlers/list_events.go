@@ -60,7 +60,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := newEventsResponse(events, meta)
-	resp.Links = req.CursorParams.GetCursorLinks(r, last)
+	resp.Links = req.CursorParams.GetLinks(r, last)
 	if req.Count {
 		_ = resp.PutMeta(struct {
 			EventsCount int `json:"events_count"`

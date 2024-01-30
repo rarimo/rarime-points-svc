@@ -40,7 +40,7 @@ type BalancesQ interface {
 	Insert(did string) error
 	AddAmount(points int32) error
 
-	Page(*pgdb.CursorPageParams) BalancesQ
+	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
 	Get() (*Balance, error)
 	WithRank() BalancesQ
