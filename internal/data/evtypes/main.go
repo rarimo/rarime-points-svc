@@ -41,7 +41,7 @@ func (t Types) Get(name string) *resources.EventStaticMeta {
 	return &v
 }
 
-func (t Types) PrepareOpenEvents(balanceID string) []data.Event {
+func (t Types) PrepareOpenEvents(userDID string) []data.Event {
 	evTypes := t.List()
 	events := make([]data.Event, len(evTypes))
 
@@ -49,9 +49,9 @@ func (t Types) PrepareOpenEvents(balanceID string) []data.Event {
 		// TODO: add advanced logic for specific event types
 		// for example, proof verification events should appear after the proof was issued
 		events[i] = data.Event{
-			BalanceID: balanceID,
-			Type:      evType.Name,
-			Status:    data.EventOpen,
+			UserDID: userDID,
+			Type:    evType.Name,
+			Status:  data.EventOpen,
 			PointsAmount: sql.NullInt32{
 				Int32: evType.Reward,
 				Valid: true,

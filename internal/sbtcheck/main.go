@@ -2,7 +2,6 @@ package sbtcheck
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"math/big"
 	"sync"
@@ -178,49 +177,47 @@ func (r *runner) handleEvent(evt verifiers.SBTIdentityVerifierSBTIdentityProved)
 		return fmt.Errorf("parse did from uint256 (identityId=%s): %w", evt.IdentityId, err)
 	}
 
-	balanceID, err := r.getOrCreateBalance(did)
-	if err != nil {
+	if err = r.createBalanceIfAbsent(did); err != nil {
 		return fmt.Errorf("get or create balance (did=%s): %w", did, err)
 	}
 
-	poh, err := r.findPohEvent(balanceID)
+	poh, err := r.findPohEvent(did)
 	if err != nil {
-		return fmt.Errorf("find PoH event (balanceID=%s): %w", balanceID, err)
+		return fmt.Errorf("find PoH event (did=%s): %w", did, err)
 	}
 	if poh == nil {
 		return nil
 	}
 
 	if err = r.fulfillPohEvent(*poh); err != nil {
-		return fmt.Errorf("update PoH event status to fulfilled: %w", err)
+		return fmt.Errorf("fulfill PoH event: %w", err)
 	}
 
 	r.log.Infof("Event %s was fulfilled for DID %s", evtypes.TypeGetPoH, did)
 	return nil
 }
 
-func (r *runner) getOrCreateBalance(did string) (string, error) {
-	balance, err := r.balancesQ().FilterByUserDID(did).Get()
+func (r *runner) createBalanceIfAbsent(did string) error {
+	balance, err := r.balancesQ().FilterByDID(did).Get()
 	if err != nil {
-		return "", fmt.Errorf("get balance: %w", err)
+		return fmt.Errorf("get balance: %w", err)
 	}
 	if balance != nil {
 		r.log.Debugf("Balance exists for DID %s", did)
-		return balance.ID, nil
+		return nil
 	}
 
 	r.log.Debugf("Balance not found for DID %s, creating new one", did)
-	id, err := r.createBalance(did)
-	if err != nil {
-		return "", fmt.Errorf("create balance: %w", err)
+	if err = r.createBalance(did); err != nil {
+		return fmt.Errorf("create balance: %w", err)
 	}
 
-	return id, nil
+	return nil
 }
 
-func (r *runner) findPohEvent(bid string) (*data.Event, error) {
+func (r *runner) findPohEvent(did string) (*data.Event, error) {
 	poh, err := r.eventsQ().
-		FilterByBalanceID(bid).
+		FilterByUserDID(did).
 		FilterByType(evtypes.TypeGetPoH).
 		Get()
 	if err != nil {
@@ -231,8 +228,8 @@ func (r *runner) findPohEvent(bid string) (*data.Event, error) {
 	}
 
 	if poh.Status != data.EventOpen {
-		r.log.Infof("Balance %s is not eligible for another PoH event (id=%s status=%s)",
-			poh.BalanceID, poh.ID, poh.Status)
+		r.log.Infof("User %s is not eligible for another PoH event (did=%s status=%s)",
+			poh.UserDID, poh.ID, poh.Status)
 		return nil, nil
 	}
 
@@ -245,32 +242,25 @@ func (r *runner) fulfillPohEvent(poh data.Event) error {
 		return fmt.Errorf("event types were not correctly initialized: missing %s", evtypes.TypeGetPoH)
 	}
 
-	return r.eventsQ().FilterByID(poh.ID).Update(data.Event{
-		Status: data.EventFulfilled,
-		PointsAmount: sql.NullInt32{
-			Int32: getPoh.Reward,
-			Valid: true,
-		},
-	})
+	_, err := r.eventsQ().FilterByID(poh.ID).Update(data.EventFulfilled, nil, &getPoh.Reward)
+	if err != nil {
+		return fmt.Errorf("update PoH event status and reward: %w", err)
+	}
+
+	return nil
 }
 
-func (r *runner) createBalance(did string) (string, error) {
-	err := r.balancesQ().Insert(data.Balance{DID: did})
-	if err != nil {
-		return "", fmt.Errorf("insert balance: %w", err)
+func (r *runner) createBalance(did string) error {
+	if err := r.balancesQ().Insert(did); err != nil {
+		return fmt.Errorf("insert balance: %w", err)
 	}
 
-	balance, err := r.balancesQ().FilterByUserDID(did).Get()
+	err := r.eventsQ().Insert(r.types.PrepareOpenEvents(did)...)
 	if err != nil {
-		return "", fmt.Errorf("get balance back: %w", err)
+		return fmt.Errorf("insert open events: %w", err)
 	}
 
-	err = r.eventsQ().Insert(r.types.PrepareOpenEvents(balance.ID)...)
-	if err != nil {
-		return "", fmt.Errorf("insert open events: %w", err)
-	}
-
-	return balance.ID, nil
+	return nil
 }
 
 func parseDidFromUint256(raw *big.Int) (string, error) {

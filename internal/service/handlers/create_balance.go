@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -16,14 +15,14 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	did := req.Data.Attributes.UserDid
+	did := req.Data.ID
 	balance := getBalanceByDID(did, false, w, r)
 	if balance != nil {
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
 
-	if err = BalancesQ(r).Insert(data.Balance{DID: did}); err != nil {
+	if err = BalancesQ(r).Insert(did); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance")
 		ape.RenderErr(w, problems.InternalError())
 		return
