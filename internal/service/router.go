@@ -24,8 +24,11 @@ func (s *service) router() chi.Router {
 	r.Route("/integrations/rarime-points-svc/v1", func(r chi.Router) {
 		r.Group(func(r chi.Router) {
 			r.Use(handlers.AuthMiddleware(s.cfg.Auth(), s.log))
-			r.Get("/balances/{did}", handlers.GetBalance)
-			r.Post("/balances", handlers.CreateBalance)
+			r.Route("/balances", func(r chi.Router) {
+				r.Post("/", handlers.CreateBalance)
+				r.Get("/{did}", handlers.GetBalance)
+				r.Patch("/{did}", handlers.Withdraw)
+			})
 			r.Get("/events", handlers.ListEvents)
 			r.Patch("/events/{id}", handlers.ClaimEvent)
 		})

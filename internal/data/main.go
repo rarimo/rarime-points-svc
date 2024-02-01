@@ -62,7 +62,7 @@ type Event struct {
 
 type Balance struct {
 	DID       string         `db:"did"`
-	Amount    int            `db:"amount"`
+	Amount    int32          `db:"amount"`
 	CreatedAt int32          `db:"created_at"`
 	UpdatedAt int32          `db:"updated_at"`
 	Address   sql.NullString `db:"address"`
