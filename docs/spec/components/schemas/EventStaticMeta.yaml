@@ -8,6 +8,7 @@ required:
   - title
   - description
   - frequency
+  - no_auto_open
 properties:
   name:
     type: string
@@ -17,11 +18,6 @@ properties:
     type: integer
     description: Reward amount in points
     example: 50
-  expires_at:
-    type: string
-    format: time.Time
-    description: General event expiration date
-    example: 2020-01-01T00:00:00Z
   title:
     type: string
     example: Get PoH credential
@@ -34,3 +30,14 @@ properties:
       Event frequency, which means how often you can fulfill
       certain task and claim the reward.
     enum: [one-time, daily, weekly, unlimited, custom]
+  no_auto_open:
+    type: boolean
+    description: |
+      If true, the event will not be created with `open` status automatically
+      when user creates the balance.
+    example: true
+  expires_at:
+    type: string
+    format: time.Time
+    description: General event expiration date (UTC RFC3339)
+    example: 2020-01-01T00:00:00Z

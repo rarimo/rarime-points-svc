@@ -33,6 +33,7 @@ func (c *config) EventTypes() Types {
 				Title       string     `fig:"title,required"`
 				Frequency   Frequency  `fig:"frequency,required"`
 				ExpiresAt   *time.Time `fig:"expires_at"`
+				NoAutoOpen  bool       `fig:"no_auto_open"`
 			} `fig:"types,required"`
 		}
 
@@ -56,6 +57,7 @@ func (c *config) EventTypes() Types {
 				Title:       t.Title,
 				Frequency:   t.Frequency.String(),
 				ExpiresAt:   t.ExpiresAt,
+				NoAutoOpen:  t.NoAutoOpen,
 			}
 		}
 

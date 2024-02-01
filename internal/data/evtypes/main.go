@@ -37,7 +37,7 @@ func (t Types) Get(name string) *resources.EventStaticMeta {
 	return &v
 }
 
-// List returns non-expired event types
+// List returns non-expired and auto-opening event types
 func (t Types) List() []resources.EventStaticMeta {
 	if t.inner == nil {
 		panic("event types are not correctly initialized")
@@ -45,7 +45,7 @@ func (t Types) List() []resources.EventStaticMeta {
 
 	res := make([]resources.EventStaticMeta, 0, len(t.inner))
 	for _, v := range t.inner {
-		if isExpiredEvent(v) {
+		if v.NoAutoOpen || isExpiredEvent(v) {
 			continue
 		}
 		res = append(res, v)

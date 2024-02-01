@@ -28,6 +28,12 @@ event_types:
       reward: 5
       frequency: daily
       description: Lorem ipsum dolor sit amet
+    - name: verify_proof
+      title: Verify proof {:id}
+      reward: 10
+      frequency: unlimited
+      description: Lorem ipsum dolor sit amet
+      no_auto_open: true
 
 auth:
   addr: http://rarime-auth
