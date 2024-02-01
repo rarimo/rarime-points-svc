@@ -8,8 +8,7 @@ CREATE TABLE IF NOT EXISTS balances
     did        text PRIMARY KEY,
     amount     integer not null default 0,
     created_at integer not null default EXTRACT('EPOCH' FROM NOW()),
-    updated_at integer not null default EXTRACT('EPOCH' FROM NOW()),
-    address    text
+    updated_at integer not null default EXTRACT('EPOCH' FROM NOW())
 );
 
 CREATE INDEX IF NOT EXISTS balances_amount_index ON balances using btree (amount);
