@@ -41,7 +41,7 @@ func New(getter kv.Getter) Config {
 		Listenerer:    comfig.NewListenerer(getter),
 		Logger:        comfig.NewLogger(getter, comfig.LoggerOpts{}),
 		EventTypeser:  evtypes.NewConfig(getter),
-		Auther:        auth.NewAuther(getter),
+		Auther:        auth.NewAuther(getter), //nolint:misspell
 		Broadcasterer: broadcaster.New(getter),
 	}
 }

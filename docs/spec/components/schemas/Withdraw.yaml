@@ -1,0 +1,21 @@
+allOf:
+  - $ref: '#/components/schemas/WithdrawKey'
+  - type: object
+    x-go-is-request: true
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - amount
+          - address
+        properties:
+          amount:
+            type: integer
+            description: Amount of points to withdraw
+            example: 580
+          address:
+            type: string
+            description: Rarimo address to withdraw to. Can be any valid address.
+            example: rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds

@@ -7,12 +7,45 @@ get:
     You should create new balance for the new user by making POST request.
   operationId: getPointsBalance
   parameters:
-    - in: path
-      name: 'did'
-      required: true
-      schema:
-        type: string
-        example: "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
+    - $ref: '#/components/parameters/pathDID'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/Balance'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'
+
+patch:
+  tags:
+    - Points balance
+  summary: Withdraw points to RMO
+  description: Convert points to RMO by exchange rate and withdraw to user wallet
+  operationId: withdrawPoints
+  parameters:
+    - $ref: '#/components/parameters/pathDID'
+  requestBody:
+    required: true
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/Withdraw'
   responses:
     200:
       description: Success

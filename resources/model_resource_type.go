@@ -12,4 +12,5 @@ const (
 	CLAIM_EVENT    ResourceType = "claim_event"
 	CREATE_BALANCE ResourceType = "create_balance"
 	EVENT          ResourceType = "event"
+	WITHDRAW       ResourceType = "withdraw"
 )
