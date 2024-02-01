@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/rarimo/rarime-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -61,15 +60,11 @@ func getEventToClaim(id string, w http.ResponseWriter, r *http.Request) *data.Ev
 		return nil
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(event.UserDID)) {
-		ape.RenderErr(w, problems.Unauthorized())
-		return nil
-	}
-
 	return event
 }
 
 func claimEventWithPoints(event data.Event, reward int32, w http.ResponseWriter, r *http.Request) *data.Event {
+
 	claimed, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to claim event")
@@ -77,7 +72,7 @@ func claimEventWithPoints(event data.Event, reward int32, w http.ResponseWriter,
 		return nil
 	}
 
-	err = BalancesQ(r).FilterByDID(event.UserDID).AddAmount(reward)
+	err = BalancesQ(r).FilterByDID(event.UserDID).UpdateAmountBy(reward)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to accrue points to the balance")
 		ape.RenderErr(w, problems.InternalError())

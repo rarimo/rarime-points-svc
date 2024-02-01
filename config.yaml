@@ -31,3 +31,7 @@ event_types:
 
 auth:
   addr: http://rarime-auth
+
+broadcaster:
+  addr: "http://broadcaster"
+  sender_account: "rarimo1..."

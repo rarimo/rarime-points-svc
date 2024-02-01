@@ -38,7 +38,8 @@ type EventsQ interface {
 type BalancesQ interface {
 	New() BalancesQ
 	Insert(did string) error
-	AddAmount(points int32) error
+	UpdateAmountBy(points int32) error
+	SetAddress(string) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
@@ -60,9 +61,10 @@ type Event struct {
 }
 
 type Balance struct {
-	DID       string `db:"did"`
-	Amount    int    `db:"amount"`
-	CreatedAt int32  `db:"created_at"`
-	UpdatedAt int32  `db:"updated_at"`
-	Rank      *int   `db:"rank"`
+	DID       string         `db:"did"`
+	Amount    int            `db:"amount"`
+	CreatedAt int32          `db:"created_at"`
+	UpdatedAt int32          `db:"updated_at"`
+	Address   sql.NullString `db:"address"`
+	Rank      *int           `db:"rank"`
 }
