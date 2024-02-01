@@ -228,7 +228,7 @@ func (r *runner) findPohEvent(did string) (*data.Event, error) {
 	}
 
 	if poh.Status != data.EventOpen {
-		r.log.Infof("User %s is not eligible for another PoH event (did=%s status=%s)",
+		r.log.Infof("User %s is not eligible for another PoH event (id=%s status=%s)",
 			poh.UserDID, poh.ID, poh.Status)
 		return nil, nil
 	}

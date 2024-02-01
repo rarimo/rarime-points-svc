@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/rarimo/rarime-auth-svc/pkg/auth"
@@ -101,7 +102,7 @@ func newEventModel(event data.Event, meta resources.EventStaticMeta) resources.E
 			UpdatedAt: event.UpdatedAt,
 			Meta: resources.EventMeta{
 				Static:  meta,
-				Dynamic: &event.Meta,
+				Dynamic: (*json.RawMessage)(&event.Meta),
 			},
 			Status:       event.Status.String(),
 			PointsAmount: points,

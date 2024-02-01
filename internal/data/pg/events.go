@@ -3,6 +3,7 @@ package pg
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -15,6 +16,7 @@ const eventsTable = "events"
 type events struct {
 	db       *pgdb.DB
 	selector squirrel.SelectBuilder
+	updater  squirrel.UpdateBuilder
 	counter  squirrel.SelectBuilder
 }
 
@@ -22,6 +24,7 @@ func NewEvents(db *pgdb.DB) data.EventsQ {
 	return &events{
 		db:       db,
 		selector: squirrel.Select("*").From(eventsTable),
+		updater:  squirrel.Update(eventsTable),
 		counter:  squirrel.Select("count(id) AS count").From(eventsTable),
 	}
 }
@@ -38,7 +41,11 @@ func (q *events) Insert(events ...data.Event) error {
 	stmt := squirrel.Insert(eventsTable).
 		Columns("user_did", "type", "status", "meta", "points_amount")
 	for _, event := range events {
-		stmt = stmt.Values(event.UserDID, event.Type, event.Status, event.Meta, event.PointsAmount)
+		var meta any
+		if len(event.Meta) != 0 {
+			meta = event.Meta
+		}
+		stmt = stmt.Values(event.UserDID, event.Type, event.Status, meta, event.PointsAmount)
 	}
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -48,7 +55,7 @@ func (q *events) Insert(events ...data.Event) error {
 	return nil
 }
 
-func (q *events) Update(status data.EventStatus, meta []json.RawMessage, points *int32) (*data.Event, error) {
+func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *int32) (*data.Event, error) {
 	umap := map[string]any{
 		"status": status,
 	}
@@ -60,7 +67,7 @@ func (q *events) Update(status data.EventStatus, meta []json.RawMessage, points 
 	}
 
 	var res data.Event
-	stmt := squirrel.Update(eventsTable).SetMap(umap)
+	stmt := q.updater.SetMap(umap).Suffix("RETURNING *")
 
 	if err := q.db.Get(&res, stmt); err != nil {
 		return nil, fmt.Errorf("update event with map %+v: %w", umap, err)
@@ -88,6 +95,9 @@ func (q *events) Get() (*data.Event, error) {
 	var res data.Event
 
 	if err := q.db.Get(&res, q.selector); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get event: %w", err)
 	}
 
@@ -107,31 +117,30 @@ func (q *events) Count() (int, error) {
 }
 
 func (q *events) FilterByID(id string) data.EventsQ {
-	q.selector = q.selector.Where(squirrel.Eq{"id": id})
-	q.counter = q.counter.Where(squirrel.Eq{"id": id})
-	return q
+	return q.applyCondition(squirrel.Eq{"id": id})
 }
 
 func (q *events) FilterByUserDID(did string) data.EventsQ {
-	q.selector = q.selector.Where(squirrel.Eq{"user_did": did})
-	q.counter = q.counter.Where(squirrel.Eq{"user_did": did})
-	return q
+	return q.applyCondition(squirrel.Eq{"user_did": did})
 }
 
 func (q *events) FilterByStatus(statuses ...data.EventStatus) data.EventsQ {
 	if len(statuses) == 0 {
 		return q
 	}
-	q.selector = q.selector.Where(squirrel.Eq{"status": statuses})
-	q.counter = q.counter.Where(squirrel.Eq{"status": statuses})
-	return q
+	return q.applyCondition(squirrel.Eq{"status": statuses})
 }
 
 func (q *events) FilterByType(types ...string) data.EventsQ {
 	if len(types) == 0 {
 		return q
 	}
-	q.selector = q.selector.Where(squirrel.Eq{"type": types})
-	q.counter = q.counter.Where(squirrel.Eq{"type": types})
+	return q.applyCondition(squirrel.Eq{"type": types})
+}
+
+func (q *events) applyCondition(cond squirrel.Eq) data.EventsQ {
+	q.selector = q.selector.Where(cond)
+	q.updater = q.updater.Where(cond)
+	q.counter = q.counter.Where(cond)
 	return q
 }

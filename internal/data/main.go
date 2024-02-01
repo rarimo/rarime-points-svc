@@ -22,7 +22,7 @@ func (s EventStatus) String() string {
 type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
-	Update(status EventStatus, meta []json.RawMessage, points *int32) (*Event, error)
+	Update(status EventStatus, meta json.RawMessage, points *int32) (*Event, error)
 
 	Page(*pgdb.CursorPageParams) EventsQ
 	Select() ([]Event, error)
@@ -50,14 +50,14 @@ type BalancesQ interface {
 }
 
 type Event struct {
-	ID           string          `db:"id"`
-	UserDID      string          `db:"user_did"`
-	Type         string          `db:"type"`
-	Status       EventStatus     `db:"status"`
-	CreatedAt    int32           `db:"created_at"`
-	UpdatedAt    int32           `db:"updated_at"`
-	Meta         json.RawMessage `db:"meta"`
-	PointsAmount sql.NullInt32   `db:"points_amount"`
+	ID           string        `db:"id"`
+	UserDID      string        `db:"user_did"`
+	Type         string        `db:"type"`
+	Status       EventStatus   `db:"status"`
+	CreatedAt    int32         `db:"created_at"`
+	UpdatedAt    int32         `db:"updated_at"`
+	Meta         Jsonb         `db:"meta"`
+	PointsAmount sql.NullInt32 `db:"points_amount"`
 }
 
 type Balance struct {
