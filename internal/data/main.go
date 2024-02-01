@@ -23,6 +23,7 @@ type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
 	Update(status EventStatus, meta json.RawMessage, points *int32) (*Event, error)
+	Transaction(func() error) error
 
 	Page(*pgdb.CursorPageParams) EventsQ
 	Select() ([]Event, error)
@@ -39,7 +40,6 @@ type BalancesQ interface {
 	New() BalancesQ
 	Insert(did string) error
 	UpdateAmountBy(points int32) error
-	SetAddress(string) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)

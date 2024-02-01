@@ -81,6 +81,10 @@ func (q *events) Page(page *pgdb.CursorPageParams) data.EventsQ {
 	return q
 }
 
+func (q *events) Transaction(f func() error) error {
+	return q.db.Transaction(f)
+}
+
 func (q *events) Select() ([]data.Event, error) {
 	var res []data.Event
 

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
@@ -22,11 +23,17 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = BalancesQ(r).Insert(did); err != nil {
-		Log(r).WithError(err).Error("Failed to create balance")
-		ape.RenderErr(w, problems.InternalError())
-		return
-	}
+	err = EventsQ(r).Transaction(func() error {
+		if err = BalancesQ(r).Insert(did); err != nil {
+			return fmt.Errorf("add balance: %w", err)
+		}
+		err = EventsQ(r).Insert(EventTypes(r).PrepareOpenEvents(balance.DID)...)
+		if err != nil {
+			return fmt.Errorf("add open events: %w", err)
+		}
+		return nil
+	})
+
 	// We can't return inserted balance in a single query, because we can't calculate
 	// rank in transaction: RANK() is a window function allowed on a set of rows,
 	// while with RETURNING we operate a single one.
@@ -34,13 +41,5 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	if balance == nil {
 		return
 	}
-
-	err = EventsQ(r).Insert(EventTypes(r).PrepareOpenEvents(balance.DID)...)
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to add open events")
-		ape.RenderErr(w, problems.InternalError())
-		return
-	}
-
 	ape.Render(w, newBalanceModel(*balance))
 }

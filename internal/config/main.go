@@ -49,6 +49,6 @@ func New(getter kv.Getter) Config {
 		Auther:        auth.NewAuther(getter), //nolint:misspell
 		Broadcasterer: broadcaster.New(getter),
 		EventTypeser:  evtypes.NewConfig(getter),
-		SbtChecker:   sbtcheck.NewConfig(getter),
+		SbtChecker:    sbtcheck.NewConfig(getter),
 	}
 }

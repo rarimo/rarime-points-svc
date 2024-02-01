@@ -44,17 +44,7 @@ func (q *balances) UpdateAmountBy(points int32) error {
 	stmt := q.updater.Set("amount", squirrel.Expr("amount + ?", points))
 
 	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("add %d points: %w", points, err)
-	}
-
-	return nil
-}
-
-func (q *balances) SetAddress(addr string) error {
-	stmt := q.updater.Set("address", addr)
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set address %s: %w", addr, err)
+		return fmt.Errorf("update amount by %d points: %w", points, err)
 	}
 
 	return nil

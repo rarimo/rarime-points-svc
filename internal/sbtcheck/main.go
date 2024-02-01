@@ -42,7 +42,7 @@ type blockHandler interface {
 }
 
 type filterer interface {
-	FilterSBTIdentityProved(opts *bind.FilterOpts, identityId []*big.Int) (*verifiers.SBTIdentityVerifierSBTIdentityProvedIterator, error)
+	FilterSBTIdentityProved(*bind.FilterOpts, []*big.Int) (*verifiers.SBTIdentityVerifierSBTIdentityProvedIterator, error)
 }
 
 type extConfig interface {
@@ -251,16 +251,19 @@ func (r *runner) fulfillPohEvent(poh data.Event) error {
 }
 
 func (r *runner) createBalance(did string) error {
-	if err := r.balancesQ().Insert(did); err != nil {
-		return fmt.Errorf("insert balance: %w", err)
-	}
+	return r.eventsQ().Transaction(func() error {
 
-	err := r.eventsQ().Insert(r.types.PrepareOpenEvents(did)...)
-	if err != nil {
-		return fmt.Errorf("insert open events: %w", err)
-	}
+		if err := r.balancesQ().Insert(did); err != nil {
+			return fmt.Errorf("insert balance: %w", err)
+		}
 
-	return nil
+		err := r.eventsQ().Insert(r.types.PrepareOpenEvents(did)...)
+		if err != nil {
+			return fmt.Errorf("insert open events: %w", err)
+		}
+
+		return nil
+	})
 }
 
 func parseDidFromUint256(raw *big.Int) (string, error) {

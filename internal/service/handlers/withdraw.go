@@ -24,14 +24,19 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = BalancesQ(r).FilterByDID(req.Data.ID).UpdateAmountBy(-req.Data.Attributes.Amount)
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to update balance")
-		ape.RenderErr(w, problems.InternalError())
-		return
-	}
+	err = EventsQ(r).Transaction(func() error {
+		err = BalancesQ(r).FilterByDID(req.Data.ID).UpdateAmountBy(-req.Data.Attributes.Amount)
+		if err != nil {
+			return fmt.Errorf("decrease points amount: %w", err)
+		}
+		if err = broadcastWithdrawalTx(req, r); err != nil {
+			return fmt.Errorf("broadcast transfer tx: %w", err)
+		}
+		return nil
+	})
 
-	if !broadcastWithdrawalTx(req, r) {
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to decrease balance and broadcast tx")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -61,7 +66,7 @@ func isEnoughPoints(req resources.WithdrawRequest, w http.ResponseWriter, r *htt
 	return true
 }
 
-func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) bool {
+func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
 	var (
 		from  = cosmos.MustAccAddressFromBech32(Broadcaster(r).Sender())
 		to    = cosmos.MustAccAddressFromBech32(req.Data.Attributes.Address)
@@ -71,9 +76,8 @@ func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) bool 
 
 	err := Broadcaster(r).BroadcastTx(r.Context(), bank.NewMsgSend(from, to, coins))
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to broadcast transaction")
-		return false
+		return fmt.Errorf("broadcast withdrawal tx: %w", err)
 	}
 
-	return true
+	return nil
 }

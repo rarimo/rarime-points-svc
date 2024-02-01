@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -63,23 +64,28 @@ func getEventToClaim(id string, w http.ResponseWriter, r *http.Request) *data.Ev
 	return event
 }
 
-func claimEventWithPoints(event data.Event, reward int32, w http.ResponseWriter, r *http.Request) *data.Event {
+func claimEventWithPoints(event data.Event, reward int32, w http.ResponseWriter, r *http.Request) (claimed *data.Event) {
+	err := EventsQ(r).Transaction(func() error {
+		updated, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
+		if err != nil {
+			return fmt.Errorf("update event status: %w", err)
+		}
 
-	claimed, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to claim event")
-		ape.RenderErr(w, problems.InternalError())
+		err = BalancesQ(r).FilterByDID(event.UserDID).UpdateAmountBy(reward)
+		if err != nil {
+			return fmt.Errorf("update balance amount: %w", err)
+		}
+
+		claimed = updated
 		return nil
+	})
+
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to claim event and accrue points to the balance")
+		ape.RenderErr(w, problems.InternalError())
 	}
 
-	err = BalancesQ(r).FilterByDID(event.UserDID).UpdateAmountBy(reward)
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to accrue points to the balance")
-		ape.RenderErr(w, problems.InternalError())
-		return nil
-	}
-
-	return claimed
+	return
 }
 
 func newClaimEventResponse(
