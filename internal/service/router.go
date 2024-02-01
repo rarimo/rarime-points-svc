@@ -19,6 +19,7 @@ func (s *service) router() chi.Router {
 			handlers.CtxBalancesQ(pg.NewBalances(s.cfg.DB())),
 			handlers.CtxEventTypes(s.cfg.EventTypes()),
 			handlers.CtxBroadcaster(s.cfg.Broadcaster()),
+			handlers.CtxPointPrice(s.cfg.PointPrice()),
 		),
 	)
 	r.Route("/integrations/rarime-points-svc/v1", func(r chi.Router) {

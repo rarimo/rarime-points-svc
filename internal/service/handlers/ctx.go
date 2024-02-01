@@ -20,6 +20,7 @@ const (
 	eventTypesCtxKey
 	userClaimsCtxKey
 	broadcasterCtxKey
+	pointPriceCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -80,4 +81,14 @@ func CtxBroadcaster(broadcaster broadcaster.Broadcaster) func(context.Context) c
 
 func Broadcaster(r *http.Request) broadcaster.Broadcaster {
 	return r.Context().Value(broadcasterCtxKey).(broadcaster.Broadcaster)
+}
+
+func CtxPointPrice(price int32) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, pointPriceCtxKey, price)
+	}
+}
+
+func PointPrice(r *http.Request) int32 {
+	return r.Context().Value(pointPriceCtxKey).(int32)
 }

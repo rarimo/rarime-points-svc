@@ -19,6 +19,8 @@ type Config interface {
 	evtypes.EventTypeser
 	auth.Auther
 	broadcaster.Broadcasterer
+
+	PointPrice() int32
 }
 
 type config struct {
@@ -30,7 +32,8 @@ type config struct {
 	auth.Auther
 	broadcaster.Broadcasterer
 
-	getter kv.Getter
+	pointPrice comfig.Once
+	getter     kv.Getter
 }
 
 func New(getter kv.Getter) Config {

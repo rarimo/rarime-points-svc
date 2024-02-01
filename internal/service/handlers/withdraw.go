@@ -65,7 +65,8 @@ func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) bool 
 	var (
 		from  = cosmos.MustAccAddressFromBech32(Broadcaster(r).Sender())
 		to    = cosmos.MustAccAddressFromBech32(req.Data.Attributes.Address)
-		coins = cosmos.NewCoins(cosmos.NewInt64Coin("urmo", int64(req.Data.Attributes.Amount)))
+		urmo  = req.Data.Attributes.Amount * PointPrice(r)
+		coins = cosmos.NewCoins(cosmos.NewInt64Coin("urmo", int64(urmo)))
 	)
 
 	err := Broadcaster(r).BroadcastTx(r.Context(), bank.NewMsgSend(from, to, coins))
