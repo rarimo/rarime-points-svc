@@ -1,8 +1,10 @@
 package evtypes
 
 import (
+	"database/sql"
 	"time"
 
+	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/resources"
 )
 
@@ -19,6 +21,8 @@ const (
 	Unlimited Frequency = "unlimited"
 	Custom    Frequency = "custom"
 )
+
+const TypeGetPoH = "get_poh"
 
 type Types struct {
 	inner map[string]resources.EventStaticMeta
@@ -37,6 +41,25 @@ func (t Types) Get(name string) *resources.EventStaticMeta {
 	return &v
 }
 
+func (t Types) PrepareOpenEvents(userDID string) []data.Event {
+	evTypes := t.List()
+	events := make([]data.Event, len(evTypes))
+
+	for i, evType := range evTypes {
+		events[i] = data.Event{
+			UserDID: userDID,
+			Type:    evType.Name,
+			Status:  data.EventOpen,
+			PointsAmount: sql.NullInt32{
+				Int32: evType.Reward,
+				Valid: true,
+			},
+		}
+	}
+
+	return events
+}
+
 // List returns non-expired and auto-opening event types
 func (t Types) List() []resources.EventStaticMeta {
 	if t.inner == nil {
@@ -52,6 +75,15 @@ func (t Types) List() []resources.EventStaticMeta {
 	}
 
 	return res
+}
+
+func (t Types) IsExpired(name string) bool {
+	evType := t.Get(name)
+	if evType == nil {
+		return false
+	}
+
+	return isExpiredEvent(*evType)
 }
 
 func isExpiredEvent(ev resources.EventStaticMeta) bool {

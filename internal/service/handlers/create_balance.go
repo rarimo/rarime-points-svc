@@ -1,12 +1,9 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 
-	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
-	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
@@ -38,7 +35,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = EventsQ(r).Insert(prepareOpenEvents(balance.DID, EventTypes(r).List())...)
+	err = EventsQ(r).Insert(EventTypes(r).PrepareOpenEvents(balance.DID)...)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to add open events")
 		ape.RenderErr(w, problems.InternalError())
@@ -46,20 +43,4 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ape.Render(w, newBalanceModel(*balance))
-}
-
-func prepareOpenEvents(did string, evTypes []resources.EventStaticMeta) []data.Event {
-	events := make([]data.Event, len(evTypes))
-	for i, evType := range evTypes {
-		events[i] = data.Event{
-			UserDID: did,
-			Type:    evType.Name,
-			Status:  data.EventOpen,
-			PointsAmount: sql.NullInt32{
-				Int32: evType.Reward,
-				Valid: true,
-			},
-		}
-	}
-	return events
 }
