@@ -35,6 +35,7 @@ type EventsQ interface {
 	FilterByUserDID(string) EventsQ
 	FilterByStatus(...EventStatus) EventsQ
 	FilterByType(...string) EventsQ
+	FilterByUpdatedAtBefore(int64) EventsQ
 }
 
 type BalancesQ interface {

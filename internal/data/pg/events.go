@@ -163,7 +163,11 @@ func (q *events) FilterByType(types ...string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"type": types})
 }
 
-func (q *events) applyCondition(cond squirrel.Eq) data.EventsQ {
+func (q *events) FilterByUpdatedAtBefore(unix int64) data.EventsQ {
+	return q.applyCondition(squirrel.Lt{"updated_at": unix})
+}
+
+func (q *events) applyCondition(cond squirrel.Sqlizer) data.EventsQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
 	q.counter = q.counter.Where(cond)

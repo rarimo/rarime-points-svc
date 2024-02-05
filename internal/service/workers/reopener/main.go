@@ -14,6 +14,8 @@ import (
 	"gitlab.com/distributed_lab/running"
 )
 
+const retryPeriod = 5 * time.Minute
+
 type worker struct {
 	name  string
 	freq  evtypes.Frequency
@@ -23,6 +25,18 @@ type worker struct {
 }
 
 func Run(ctx context.Context, cfg config.Config) {
+	var (
+		atUTC  = gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))
+		daily  = newWorker(cfg, evtypes.Daily)
+		weekly = newWorker(cfg, evtypes.Weekly)
+	)
+	if err := daily.initialRun(); err != nil {
+		panic(fmt.Errorf("failed to do initial run for daily events: %w", err))
+	}
+	if err := weekly.initialRun(); err != nil {
+		panic(fmt.Errorf("failed to do initial run for weekly events: %w", err))
+	}
+
 	scheduler, err := gocron.NewScheduler(
 		gocron.WithLocation(time.UTC),
 		gocron.WithLogger(newLogger(cfg.Log())),
@@ -31,11 +45,6 @@ func Run(ctx context.Context, cfg config.Config) {
 		panic(fmt.Errorf("failed to initialize scheduler: %w", err))
 	}
 
-	var (
-		atUTC  = gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))
-		daily  = newWorker(cfg, evtypes.Daily)
-		weekly = newWorker(cfg, evtypes.Weekly)
-	)
 	_, err = scheduler.NewJob(
 		gocron.DailyJob(1, atUTC),
 		gocron.NewTask(daily.job, ctx),
@@ -72,11 +81,13 @@ func newWorker(cfg config.Config, freq evtypes.Frequency) *worker {
 }
 
 func (w *worker) job(ctx context.Context) {
-	types := w.types.NamesByFrequency(w.freq) // types might expire, that's why we get them right here
+	// types might expire, so it's required to get them before each run
+	types := w.types.NamesByFrequency(w.freq)
 	if len(types) == 0 {
 		w.log.Info("No events to reopen: all types expired or no types with frequency exist")
 		return
 	}
+	w.log.WithField("event_types", types).Debug("Reopening claimed events")
 
 	running.WithThreshold(ctx, w.log, w.name, func(context.Context) (bool, error) {
 		count, err := w.q.New().
@@ -90,5 +101,5 @@ func (w *worker) job(ctx context.Context) {
 
 		w.log.Infof("Reopened %d events", count)
 		return true, nil
-	}, 5*time.Minute, 5*time.Minute, 12)
+	}, retryPeriod, retryPeriod, 12)
 }
