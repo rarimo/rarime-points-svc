@@ -52,11 +52,11 @@ type extConfig interface {
 	SbtChecker
 }
 
-func Run(ctx context.Context, cfg extConfig) error {
+func Run(ctx context.Context, cfg extConfig) {
 	log := cfg.Log().WithField("who", "sbt-checker")
 	if cfg.EventTypes().IsExpired(evtypes.TypeGetPoH) {
 		log.Warn("PoH event is expired, SBT check will not run")
-		return nil
+		return
 	}
 
 	var wg sync.WaitGroup
@@ -86,7 +86,6 @@ func Run(ctx context.Context, cfg extConfig) error {
 
 	wg.Wait()
 	log.Infof("SBT check: all network checkers stopped")
-	return nil
 }
 
 func (r *runner) subscription(ctx context.Context) error {

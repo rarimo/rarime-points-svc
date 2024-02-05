@@ -22,13 +22,13 @@ type worker struct {
 	log   *logan.Entry
 }
 
-func Run(ctx context.Context, cfg config.Config) error {
+func Run(ctx context.Context, cfg config.Config) {
 	scheduler, err := gocron.NewScheduler(
 		gocron.WithLocation(time.UTC),
-		gocron.WithLogger(gocron.NewLogger(getLogLevel(cfg.Log()))),
+		gocron.WithLogger(newLogger(cfg.Log())),
 	)
 	if err != nil {
-		return fmt.Errorf("initialize scheduler: %w", err)
+		panic(fmt.Errorf("failed to initialize scheduler: %w", err))
 	}
 
 	var (
@@ -41,25 +41,23 @@ func Run(ctx context.Context, cfg config.Config) error {
 		gocron.NewTask(daily.job, ctx),
 	)
 	if err != nil {
-		return fmt.Errorf("initialize daily job: %w", err)
+		panic(fmt.Errorf("failed to initialize daily job: %w", err))
 	}
 	_, err = scheduler.NewJob(
 		gocron.WeeklyJob(1, gocron.NewWeekdays(time.Monday), atUTC),
 		gocron.NewTask(weekly.job, ctx),
 	)
 	if err != nil {
-		return fmt.Errorf("initialize weekly job: %w", err)
+		panic(fmt.Errorf("failed to initialize weekly job: %w", err))
 	}
 
 	scheduler.Start()
-	go func() {
-		<-ctx.Done()
-		if err = scheduler.Shutdown(); err != nil {
-			cfg.Log().WithError(err).Error("Scheduler shutdown failed")
-		}
-	}()
-
-	return nil
+	<-ctx.Done()
+	if err = scheduler.Shutdown(); err != nil {
+		cfg.Log().WithError(err).Error("Scheduler shutdown failed")
+		return
+	}
+	cfg.Log().Info("Scheduler shutdown succeeded")
 }
 
 func newWorker(cfg config.Config, freq evtypes.Frequency) *worker {
