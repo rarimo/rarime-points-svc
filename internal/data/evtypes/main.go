@@ -77,6 +77,22 @@ func (t Types) List() []resources.EventStaticMeta {
 	return res
 }
 
+func (t Types) NamesByFrequency(f Frequency) []string {
+	if t.inner == nil {
+		panic("event types are not correctly initialized")
+	}
+
+	res := make([]string, 0, len(t.inner))
+	for _, v := range t.inner {
+		if v.Frequency != f.String() || isExpiredEvent(v) {
+			continue
+		}
+		res = append(res, v.Name)
+	}
+
+	return res
+}
+
 func (t Types) IsExpired(name string) bool {
 	evType := t.Get(name)
 	if evType == nil {

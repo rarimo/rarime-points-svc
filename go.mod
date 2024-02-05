@@ -8,6 +8,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.46.12
 	github.com/ethereum/go-ethereum v1.13.11
 	github.com/go-chi/chi v4.1.2+incompatible
+	github.com/go-co-op/gocron/v2 v2.2.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/iden3/go-iden3-core/v2 v2.0.4
 	github.com/rarimo/rarime-auth-svc v0.0.1-rc9
@@ -93,6 +94,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/jmhodges/levigo v1.0.0 // indirect
 	github.com/jmoiron/sqlx v1.2.0 // indirect
+	github.com/jonboulle/clockwork v0.4.0 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/lann/builder v0.0.0-20180802200727-47ae307949d0 // indirect
 	github.com/lann/ps v0.0.0-20150810152359-62de8c46ede0 // indirect
@@ -117,6 +119,7 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rarimo/broadcaster-svc v1.0.2 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect

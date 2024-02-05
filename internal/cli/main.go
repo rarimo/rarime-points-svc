@@ -5,8 +5,8 @@ import (
 
 	"github.com/alecthomas/kingpin"
 	"github.com/rarimo/rarime-points-svc/internal/config"
-	"github.com/rarimo/rarime-points-svc/internal/sbtcheck"
 	"github.com/rarimo/rarime-points-svc/internal/service"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/logan/v3"
 )

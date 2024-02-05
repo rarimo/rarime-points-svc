@@ -12,7 +12,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
-	"github.com/rarimo/rarime-points-svc/internal/sbtcheck/verifiers"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck/verifiers"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/pgdb"
 	"gitlab.com/distributed_lab/logan/v3"

@@ -59,11 +59,11 @@ func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *i
 	umap := map[string]any{
 		"status": status,
 	}
-	if points != nil {
-		umap["points_amount"] = sql.NullInt32{Int32: *points, Valid: true}
-	}
 	if len(meta) != 0 {
 		umap["meta"] = meta
+	}
+	if points != nil {
+		umap["points_amount"] = sql.NullInt32{Int32: *points, Valid: true}
 	}
 
 	var res data.Event
@@ -74,6 +74,27 @@ func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *i
 	}
 
 	return &res, nil
+}
+
+func (q *events) Reopen() (count uint, err error) {
+	stmt := q.updater.SetMap(map[string]any{"status": data.EventOpen})
+	defer func() {
+		if errors.Is(err, sql.ErrNoRows) {
+			err = nil
+		}
+	}()
+
+	res, err := q.db.ExecWithResult(stmt)
+	if err != nil {
+		return 0, fmt.Errorf("update status to open with result: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("get rows affected: %w", err)
+	}
+
+	return uint(rows), nil
 }
 
 func (q *events) Page(page *pgdb.CursorPageParams) data.EventsQ {

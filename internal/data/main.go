@@ -23,6 +23,7 @@ type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
 	Update(status EventStatus, meta json.RawMessage, points *int32) (*Event, error)
+	Reopen() (count uint, err error)
 	Transaction(func() error) error
 
 	Page(*pgdb.CursorPageParams) EventsQ

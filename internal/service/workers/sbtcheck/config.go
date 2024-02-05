@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/rarimo/rarime-points-svc/internal/sbtcheck/verifiers"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck/verifiers"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
