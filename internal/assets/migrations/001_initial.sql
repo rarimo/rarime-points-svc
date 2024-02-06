@@ -43,7 +43,21 @@ CREATE TRIGGER set_updated_at
     FOR EACH ROW
 EXECUTE FUNCTION trigger_set_updated_at();
 
+CREATE TABLE IF NOT EXISTS withdrawals
+(
+    id         uuid PRIMARY KEY default gen_random_uuid(),
+    user_did   text    not null REFERENCES balances (did),
+    amount     integer not null,
+    address    text    not null,
+    created_at integer not null default EXTRACT('EPOCH' FROM NOW())
+);
+
+CREATE INDEX IF NOT EXISTS withdrawals_user_did_index ON withdrawals using btree (user_did);
+
 -- +migrate Down
+DROP INDEX IF EXISTS withdrawals_user_did_index;
+DROP TABLE IF EXISTS withdrawals;
+
 DROP TRIGGER IF EXISTS set_updated_at ON events;
 DROP INDEX IF EXISTS events_type_index;
 DROP INDEX IF EXISTS events_user_did_index;
