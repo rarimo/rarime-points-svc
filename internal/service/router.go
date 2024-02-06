@@ -17,21 +17,26 @@ func (s *service) router() chi.Router {
 			handlers.CtxLog(s.log),
 			handlers.CtxEventsQ(pg.NewEvents(s.cfg.DB())),
 			handlers.CtxBalancesQ(pg.NewBalances(s.cfg.DB())),
+			handlers.CtxWithdrawalsQ(pg.NewWithdrawals(s.cfg.DB())),
 			handlers.CtxEventTypes(s.cfg.EventTypes()),
 			handlers.CtxBroadcaster(s.cfg.Broadcaster()),
 			handlers.CtxPointPrice(s.cfg.PointPrice()),
 		),
 	)
 	r.Route("/integrations/rarime-points-svc/v1", func(r chi.Router) {
-		r.Group(func(r chi.Router) {
+		r.Route("/balances", func(r chi.Router) {
 			r.Use(handlers.AuthMiddleware(s.cfg.Auth(), s.log))
-			r.Route("/balances", func(r chi.Router) {
-				r.Post("/", handlers.CreateBalance)
-				r.Get("/{did}", handlers.GetBalance)
-				r.Patch("/{did}", handlers.Withdraw)
+			r.Post("/", handlers.CreateBalance)
+			r.Route("/{did}", func(r chi.Router) {
+				r.Get("/", handlers.GetBalance)
+				r.Get("/withdrawals", handlers.ListWithdrawals)
+				r.Post("/withdrawals", handlers.Withdraw)
 			})
-			r.Get("/events", handlers.ListEvents)
-			r.Patch("/events/{id}", handlers.ClaimEvent)
+		})
+		r.Route("/events", func(r chi.Router) {
+			r.Use(handlers.AuthMiddleware(s.cfg.Auth(), s.log))
+			r.Get("/", handlers.ListEvents)
+			r.Patch("/{id}", handlers.ClaimEvent)
 		})
 		r.Get("/balances", handlers.Leaderboard)
 	})

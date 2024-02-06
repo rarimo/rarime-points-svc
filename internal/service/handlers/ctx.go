@@ -17,6 +17,7 @@ const (
 	logCtxKey ctxKey = iota
 	eventsQCtxKey
 	balancesQCtxKey
+	withdrawalsQCtxKey
 	eventTypesCtxKey
 	userClaimsCtxKey
 	broadcasterCtxKey
@@ -51,6 +52,16 @@ func CtxBalancesQ(q data.BalancesQ) func(context.Context) context.Context {
 
 func BalancesQ(r *http.Request) data.BalancesQ {
 	return r.Context().Value(balancesQCtxKey).(data.BalancesQ).New()
+}
+
+func CtxWithdrawalsQ(q data.WithdrawalsQ) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, withdrawalsQCtxKey, q)
+	}
+}
+
+func WithdrawalsQ(r *http.Request) data.WithdrawalsQ {
+	return r.Context().Value(withdrawalsQCtxKey).(data.WithdrawalsQ).New()
 }
 
 func CtxEventTypes(types evtypes.Types) func(context.Context) context.Context {
