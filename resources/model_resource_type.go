@@ -13,4 +13,5 @@ const (
 	CREATE_BALANCE ResourceType = "create_balance"
 	EVENT          ResourceType = "event"
 	WITHDRAW       ResourceType = "withdraw"
+	WITHDRAWAL     ResourceType = "withdrawal"
 )

@@ -47,9 +47,9 @@ get:
   description: Returns leaders sorted by points in descending order.
   operationId: getLeaderboard
   parameters:
-    - $ref: '#/components/parameters/pageCursor'
     - $ref: '#/components/parameters/pageLimit'
     - $ref: '#/components/parameters/pageNumber'
+    - $ref: '#/components/parameters/pageOrder'
   responses:
     200:
       description: Success
