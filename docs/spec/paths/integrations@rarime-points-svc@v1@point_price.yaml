@@ -1,0 +1,20 @@
+get:
+  tags:
+    - Points balance
+  summary: Get point price
+  description: How many `urmo` tokens cost one point.
+  operationId: getPointPrice
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/PointPrice'
+    500:
+      $ref: '#/components/responses/internalError'

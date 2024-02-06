@@ -39,6 +39,7 @@ func (s *service) router() chi.Router {
 			r.Patch("/{id}", handlers.ClaimEvent)
 		})
 		r.Get("/balances", handlers.Leaderboard)
+		r.Get("/point_price", handlers.GetPointPrice)
 	})
 
 	return r
