@@ -34,7 +34,9 @@ post:
   tags:
     - Points balance
   summary: Withdraw points
-  description: Convert points to RMO by exchange rate and withdraw to user wallet
+  description: |
+    Convert points to RMO by exchange rate and withdraw to user wallet.
+    Updated balance with new rank is returned.
   operationId: withdrawPoints
   parameters:
     - $ref: '#/components/parameters/pathDID'

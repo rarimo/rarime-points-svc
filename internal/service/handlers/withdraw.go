@@ -7,6 +7,7 @@ import (
 	cosmos "github.com/cosmos/cosmos-sdk/types"
 	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
@@ -24,11 +25,22 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var withdrawal *data.Withdrawal
 	err = EventsQ(r).Transaction(func() error {
 		err = BalancesQ(r).FilterByDID(req.Data.ID).UpdateAmountBy(-req.Data.Attributes.Amount)
 		if err != nil {
 			return fmt.Errorf("decrease points amount: %w", err)
 		}
+
+		withdrawal, err = WithdrawalsQ(r).Insert(data.Withdrawal{
+			UserDID: req.Data.ID,
+			Amount:  req.Data.Attributes.Amount,
+			Address: req.Data.Attributes.Address,
+		})
+		if err != nil {
+			return fmt.Errorf("add withdrawal entry: %w", err)
+		}
+
 		if err = broadcastWithdrawalTx(req, r); err != nil {
 			return fmt.Errorf("broadcast transfer tx: %w", err)
 		}
@@ -36,7 +48,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to decrease balance and broadcast tx")
+		Log(r).WithError(err).Error("Failed to perform withdrawal")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -47,7 +59,25 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, newBalanceModel(*balance))
+	ape.Render(w, newWithdrawResponse(*withdrawal, *balance))
+}
+
+func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.WithdrawalResponse {
+	wm := newWithdrawalModel(w)
+	wm.Relationships = &resources.WithdrawalRelationships{
+		Balance: resources.Relation{
+			Data: &resources.Key{
+				ID:   balance.DID,
+				Type: resources.BALANCE,
+			},
+		},
+	}
+
+	resp := resources.WithdrawalResponse{Data: wm}
+	bm := newBalanceModel(balance)
+	resp.Included.Add(&bm)
+
+	return &resp
 }
 
 func isEnoughPoints(req resources.WithdrawRequest, w http.ResponseWriter, r *http.Request) bool {

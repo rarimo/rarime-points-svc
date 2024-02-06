@@ -19,6 +19,17 @@ func (s EventStatus) String() string {
 	return string(s)
 }
 
+type Event struct {
+	ID           string        `db:"id"`
+	UserDID      string        `db:"user_did"`
+	Type         string        `db:"type"`
+	Status       EventStatus   `db:"status"`
+	CreatedAt    int32         `db:"created_at"`
+	UpdatedAt    int32         `db:"updated_at"`
+	Meta         Jsonb         `db:"meta"`
+	PointsAmount sql.NullInt32 `db:"points_amount"`
+}
+
 type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
@@ -36,36 +47,4 @@ type EventsQ interface {
 	FilterByStatus(...EventStatus) EventsQ
 	FilterByType(...string) EventsQ
 	FilterByUpdatedAtBefore(int64) EventsQ
-}
-
-type BalancesQ interface {
-	New() BalancesQ
-	Insert(did string) error
-	UpdateAmountBy(points int32) error
-
-	Page(*pgdb.OffsetPageParams) BalancesQ
-	Select() ([]Balance, error)
-	Get() (*Balance, error)
-	WithRank() BalancesQ
-
-	FilterByDID(string) BalancesQ
-}
-
-type Event struct {
-	ID           string        `db:"id"`
-	UserDID      string        `db:"user_did"`
-	Type         string        `db:"type"`
-	Status       EventStatus   `db:"status"`
-	CreatedAt    int32         `db:"created_at"`
-	UpdatedAt    int32         `db:"updated_at"`
-	Meta         Jsonb         `db:"meta"`
-	PointsAmount sql.NullInt32 `db:"points_amount"`
-}
-
-type Balance struct {
-	DID       string `db:"did"`
-	Amount    int32  `db:"amount"`
-	CreatedAt int32  `db:"created_at"`
-	UpdatedAt int32  `db:"updated_at"`
-	Rank      *int   `db:"rank"`
 }

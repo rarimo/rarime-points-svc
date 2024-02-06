@@ -23,3 +23,16 @@ allOf:
             type: integer
             description: Unix timestamp of withdrawal creation
             example: 1706531218
+      relationships:
+        type: object
+        required:
+          - balance
+        properties:
+          balance:
+            type: object
+            description: # hack for openapi-go-generator
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BalanceKey'

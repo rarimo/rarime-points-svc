@@ -24,6 +24,9 @@ func NewListEvents(r *http.Request) (req ListEvents, err error) {
 			"query": fmt.Errorf("failed to decode query: %w", err),
 		}
 	}
+	if err = req.CursorParams.Validate(); err != nil {
+		return
+	}
 
 	err = validation.Errors{
 		"filter[did]":    validation.Validate(req.FilterDID, validation.Required),
