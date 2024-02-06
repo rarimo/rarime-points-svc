@@ -1,0 +1,25 @@
+allOf:
+  - $ref: '#/components/schemas/WithdrawalKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - amount
+          - address
+          - created_at
+        properties:
+          amount:
+            type: integer
+            description: Amount of points withdrawn
+            example: 580
+          address:
+            type: string
+            description: Rarimo address which points were withdrawn to. Can be any valid address.
+            example: rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds
+          created_at:
+            type: integer
+            description: Unix timestamp of withdrawal creation
+            example: 1706531218

@@ -1,0 +1,6 @@
+in: path
+name: 'did'
+required: true
+schema:
+  type: string
+  example: "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"

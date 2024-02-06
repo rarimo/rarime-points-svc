@@ -1,0 +1,43 @@
+type: object
+description: |
+  Primary event metadata in plain JSON. This is a template
+  to be filled by `dynamic` when it's present.
+required:
+  - name
+  - reward
+  - title
+  - description
+  - frequency
+  - no_auto_open
+properties:
+  name:
+    type: string
+    description: Unique event code name
+    example: get_poh
+  reward:
+    type: integer
+    description: Reward amount in points
+    example: 50
+  title:
+    type: string
+    example: Get PoH credential
+  description:
+    type: string
+    example: Lorem ipsum dolor sit amet
+  frequency:
+    type: string
+    description: |
+      Event frequency, which means how often you can fulfill
+      certain task and claim the reward.
+    enum: [one-time, daily, weekly, unlimited, custom]
+  no_auto_open:
+    type: boolean
+    description: |
+      If true, the event will not be created with `open` status automatically
+      when user creates the balance.
+    example: true
+  expires_at:
+    type: string
+    format: time.Time
+    description: General event expiration date (UTC RFC3339)
+    example: 2020-01-01T00:00:00Z

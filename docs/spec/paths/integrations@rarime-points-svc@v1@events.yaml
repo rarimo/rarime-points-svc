@@ -1,0 +1,69 @@
+get:
+  tags:
+    - Events
+  summary: List events
+  description: Returns events for a single user.
+  operationId: getEvents
+  parameters:
+    - $ref: '#/components/parameters/filterDID'
+    - in: query
+      name: 'filter[status]'
+      description: |
+        Filter by event status, which is:
+          - `open` - you need to do something on the platform
+          - `fulfilled` - you have done something and are eligible to claim the reward
+          - `claimed` - you have claimed the reward
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum: [open, fulfilled, claimed]
+    - in: query
+      name: 'filter[meta.static.name]'
+      description: Filter by event type name. Possible values should be hard-coded in the client.
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          example: "create_org"
+    - in: query
+      name: count
+      description: Count total number of events for a single user, applying filters.
+      required: false
+      schema:
+        type: boolean
+        example: true
+    - $ref: '#/components/parameters/pageCursor'
+    - $ref: '#/components/parameters/pageLimit'
+    - $ref: '#/components/parameters/pageOrder'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Event'
+              meta:
+                type: object
+                required:
+                  - events_count
+                properties:
+                  events_count:
+                    type: integer
+                    description: Appears when `count=true` is specified
+                    example: 18
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'

@@ -1,0 +1,47 @@
+allOf:
+  - $ref: '#/components/schemas/EventKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - status
+          - created_at
+          - updated_at
+          - meta
+        properties:
+          status:
+            type: string
+            description: See `filter[status]` parameter for explanation
+            enum: [open, fulfilled, claimed]
+          created_at:
+            type: integer
+            description: Unix timestamp of event creation
+            example: 1706531218
+          updated_at:
+            type: integer
+            description: Unix timestamp of the event status change
+            example: 1706531218
+          meta:
+            $ref: '#/components/schemas/EventMeta'
+          points_amount:
+            type: integer
+            description: |
+              How many points were accrued. Required only for `claimed` events.
+              This is necessary, as the reward might change over time, while
+              the certain balance should be left intact.
+            example: 50
+      relationships:
+        type: object
+        required:
+          - balance
+        properties:
+          balance:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/BalanceKey'

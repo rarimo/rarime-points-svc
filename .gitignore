@@ -1,6 +1,7 @@
 .vscode/
 .idea/
 config.*.yaml
+docker-compose.yaml
 docs/node_modules
 docs/web_deploy
 vendor/

@@ -56,12 +56,3 @@ use `docker run ` with `-p 8080:80` to expose port 80 to 8080
 ### Database
 For services, we do use ***PostgresSQL*** database. 
 You can [install it locally](https://www.postgresql.org/download/) or use [docker image](https://hub.docker.com/_/postgres/).
-
-
-### Third-party services
-
-
-## Contact
-
-Responsible 
-The primary contact for this project is  [//]: # (TODO: place link to your telegram and email)

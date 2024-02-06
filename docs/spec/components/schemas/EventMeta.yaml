@@ -1,0 +1,11 @@
+type: object
+required:
+  - static
+properties:
+  static:
+    $ref: '#/components/schemas/EventStaticMeta'
+  dynamic:
+    type: string
+    format: json.RawMessage
+    description: Some events require dynamic data, which can be filled into `static` template.
+    example: { "id": "123" }

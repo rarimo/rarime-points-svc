@@ -1,0 +1,30 @@
+allOf:
+  - $ref: '#/components/schemas/BalanceKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - amount
+          - created_at
+          - updated_at
+        properties:
+          amount:
+            type: integer
+            description: Amount of points
+            example: 580
+          created_at:
+            type: integer
+            description: Unix timestamp of balance creation
+            example: 1706531218
+          updated_at:
+            type: integer
+            description: Unix timestamp of the last points accruing
+            example: 1706531218
+          rank:
+            type: integer
+            format: int
+            description: Rank of the user in the full leaderboard. Returned only for the single user.
+            example: 294

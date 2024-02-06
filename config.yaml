@@ -3,7 +3,7 @@ log:
   disable_sentry: true
 
 db:
-  url: db_url
+  url: postgres://points:points@localhost:5432/points?sslmode=disable
 
 listener:
   addr: :8000
@@ -14,3 +14,52 @@ cop:
   upstream: "http://..."
   service_name: rarime-points-svc
   service_port: 80
+
+event_types:
+  types:
+    - name: get_poh
+      title: Get PoH credential
+      reward: 50
+      description: Lorem ipsum dolor sit amet
+      frequency: one-time
+      expires_at: 2020-01-01T00:00:00Z
+    - name: daily_login
+      title: Daily login
+      reward: 5
+      frequency: daily
+      description: Lorem ipsum dolor sit amet
+    - name: verify_proof
+      title: Verify proof {:id}
+      reward: 10
+      frequency: unlimited
+      description: Lorem ipsum dolor sit amet
+      no_auto_open: true
+
+auth:
+  addr: http://rarime-auth
+
+broadcaster:
+  addr: "http://broadcaster"
+  sender_account: "rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds"
+
+withdrawal:
+  point_price_urmo: 100
+
+sbt_check:
+  networks:
+    - name: polygon
+      rpc: https://your-rpc
+      contract: 0x...
+      request_timeout: 5s
+      start_from_block: 48984542
+      block_window: 3
+      max_blocks_per_request: 5000
+    - name: ethereum
+      rpc: https://your-rpc
+      contract: 0x...
+      request_timeout: 5s
+    - name: disabled_sample
+      disabled: true
+      rpc: https://your-rpc
+      contract: 0x...
+      request_timeout: 5s

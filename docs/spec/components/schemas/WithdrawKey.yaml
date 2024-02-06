@@ -1,0 +1,8 @@
+type: object
+required:
+  - id
+  - type
+properties:
+  type:
+    type: string
+    enum: [ withdraw ]

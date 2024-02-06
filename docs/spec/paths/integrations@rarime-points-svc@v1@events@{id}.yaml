@@ -1,0 +1,51 @@
+patch:
+  tags:
+    - Events
+  summary: Claim points for event
+  description: |
+    Update event status to _claimed_ and accrue points.
+    User must be authorized, and event must be _fulfilled_ by him.
+  operationId: claimEvent
+  parameters:
+    - in: path
+      name: 'id'
+      required: true
+      schema:
+        type: string
+        example: "059c81dd-2a54-44a8-8142-c15ad8f88949"
+  requestBody:
+    required: true
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/ClaimEventKey'
+  responses:
+    200:
+      description: Event claimed, points accrued
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+              - included
+            properties:
+              data:
+                $ref: '#/components/schemas/Event'
+              included:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    404:
+      $ref: '#/components/responses/notFound'
+    500:
+      $ref: '#/components/responses/internalError'

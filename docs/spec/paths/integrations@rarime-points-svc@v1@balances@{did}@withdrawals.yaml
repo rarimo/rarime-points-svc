@@ -1,0 +1,74 @@
+get:
+  tags:
+    - Points balance
+  summary: Withdrawal history
+  description: Points withdrawal history of the user
+  operationId: getWithdrawalHistory
+  parameters:
+    - $ref: '#/components/parameters/pathDID'
+    - $ref: '#/components/parameters/pageCursor'
+    - $ref: '#/components/parameters/pageLimit'
+    - $ref: '#/components/parameters/pageOrder'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Withdrawal'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'
+
+post:
+  tags:
+    - Points balance
+  summary: Withdraw points
+  description: Convert points to RMO by exchange rate and withdraw to user wallet
+  operationId: withdrawPoints
+  parameters:
+    - $ref: '#/components/parameters/pathDID'
+  requestBody:
+    required: true
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/Withdraw'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+              - included
+            properties:
+              data:
+                $ref: '#/components/schemas/Withdrawal'
+              included:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Balance'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'
