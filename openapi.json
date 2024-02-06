@@ -227,7 +227,7 @@
           "Points balance"
         ],
         "summary": "Withdraw points",
-        "description": "Convert points to RMO by exchange rate and withdraw to user wallet",
+        "description": "Convert points to RMO by exchange rate and withdraw to user wallet.\nUpdated balance with new rank is returned.\n",
         "operationId": "withdrawPoints",
         "parameters": [
           {
@@ -470,6 +470,39 @@
           },
           "404": {
             "$ref": "#/components/responses/notFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/internalError"
+          }
+        }
+      }
+    },
+    "/integrations/rarime-points-svc/v1/point_price": {
+      "get": {
+        "tags": [
+          "Points balance"
+        ],
+        "summary": "Get point price",
+        "description": "How many `urmo` tokens cost one point.",
+        "operationId": "getPointPrice",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PointPrice"
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/internalError"
@@ -794,6 +827,54 @@
           }
         }
       },
+      "PointPrice": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PointPriceKey"
+          },
+          {
+            "type": "object",
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "point_price"
+                ]
+              },
+              "attributes": {
+                "type": "object",
+                "required": [
+                  "urmo"
+                ],
+                "properties": {
+                  "urmo": {
+                    "type": "integer",
+                    "description": "Amount of `urmo` tokens for one point",
+                    "example": 1000
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PointPriceKey": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "point_price"
+            ]
+          }
+        }
+      },
       "Withdraw": {
         "allOf": [
           {
@@ -862,6 +943,26 @@
                     "type": "integer",
                     "description": "Unix timestamp of withdrawal creation",
                     "example": 1706531218
+                  }
+                }
+              },
+              "relationships": {
+                "type": "object",
+                "required": [
+                  "balance"
+                ],
+                "properties": {
+                  "balance": {
+                    "type": "object",
+                    "description": null,
+                    "required": [
+                      "data"
+                    ],
+                    "properties": {
+                      "data": {
+                        "$ref": "#/components/schemas/BalanceKey"
+                      }
+                    }
                   }
                 }
               }
