@@ -26,18 +26,19 @@ func (q *withdrawals) New() data.WithdrawalsQ {
 	return NewWithdrawals(q.db.Clone())
 }
 
-func (q *withdrawals) Insert(w data.Withdrawal) error {
+func (q *withdrawals) Insert(w data.Withdrawal) (*data.Withdrawal, error) {
+	var res data.Withdrawal
 	stmt := squirrel.Insert(withdrawalsTable).SetMap(map[string]interface{}{
 		"user_did": w.UserDID,
 		"amount":   w.Amount,
 		"address":  w.Address,
-	})
+	}).Suffix("RETURNING *")
 
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("insert withdrawal [%+v]: %w", w, err)
+	if err := q.db.Get(&res, stmt); err != nil {
+		return nil, fmt.Errorf("insert withdrawal [%+v]: %w", w, err)
 	}
 
-	return nil
+	return &res, nil
 }
 
 func (q *withdrawals) Page(page *pgdb.CursorPageParams) data.WithdrawalsQ {

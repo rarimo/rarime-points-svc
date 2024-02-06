@@ -33,6 +33,11 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		}
 		return nil
 	})
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to add balance with open events")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
 
 	// We can't return inserted balance in a single query, because we can't calculate
 	// rank in transaction: RANK() is a window function allowed on a set of rows,

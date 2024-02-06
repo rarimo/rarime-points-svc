@@ -8,7 +8,8 @@ import "encoding/json"
 
 type Withdrawal struct {
 	Key
-	Attributes WithdrawalAttributes `json:"attributes"`
+	Attributes    WithdrawalAttributes     `json:"attributes"`
+	Relationships *WithdrawalRelationships `json:"relationships,omitempty"`
 }
 type WithdrawalResponse struct {
 	Data     Withdrawal `json:"data"`

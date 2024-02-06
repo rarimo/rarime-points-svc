@@ -14,7 +14,7 @@ type Withdrawal struct {
 
 type WithdrawalsQ interface {
 	New() WithdrawalsQ
-	Insert(Withdrawal) error
+	Insert(Withdrawal) (*Withdrawal, error)
 
 	Page(*pgdb.CursorPageParams) WithdrawalsQ
 	Select() ([]Withdrawal, error)
