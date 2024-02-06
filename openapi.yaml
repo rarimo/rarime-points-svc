@@ -1,0 +1,691 @@
+openapi: 3.0.0
+info:
+  version: 1.0.0
+  title: rarime-points-svc
+  description: ''
+servers:
+  - url: 'https://api.demo.tokend.io'
+    description: TokenD Developer Environment
+paths:
+  /integrations/rarime-points-svc/v1/balances:
+    post:
+      tags:
+        - Points balance
+      summary: Create points balance
+      description: |
+        Create an empty balance for authorized user who makes the request. Rank is included.
+        This operation might be time-consuming, because `open` events should be added for
+        the new account synchronously (to display them right after the request).
+      operationId: createPointsBalance
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/CreateBalanceKey'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Balance'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '409':
+          description: Balance already exists for provided DID
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/Errors'
+        '500':
+          $ref: '#/components/responses/internalError'
+    get:
+      tags:
+        - Points balance
+      summary: Get leaderboard
+      description: Returns leaders sorted by points in descending order.
+      operationId: getLeaderboard
+      parameters:
+        - $ref: '#/components/parameters/pageLimit'
+        - $ref: '#/components/parameters/pageNumber'
+        - $ref: '#/components/parameters/pageOrder'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Balance'
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '500':
+          $ref: '#/components/responses/internalError'
+  '/integrations/rarime-points-svc/v1/balances/{did}':
+    get:
+      tags:
+        - Points balance
+      summary: Get points balance
+      description: |
+        Balance of authorized user who makes the request. Rank in leaderboard is included.
+        You should create new balance for the new user by making POST request.
+      operationId: getPointsBalance
+      parameters:
+        - $ref: '#/components/parameters/pathDID'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Balance'
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '500':
+          $ref: '#/components/responses/internalError'
+  '/integrations/rarime-points-svc/v1/balances/{did}/withdrawals':
+    get:
+      tags:
+        - Points balance
+      summary: Withdrawal history
+      description: Points withdrawal history of the user
+      operationId: getWithdrawalHistory
+      parameters:
+        - $ref: '#/components/parameters/pathDID'
+        - $ref: '#/components/parameters/pageCursor'
+        - $ref: '#/components/parameters/pageLimit'
+        - $ref: '#/components/parameters/pageOrder'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Withdrawal'
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '500':
+          $ref: '#/components/responses/internalError'
+    post:
+      tags:
+        - Points balance
+      summary: Withdraw points
+      description: Convert points to RMO by exchange rate and withdraw to user wallet
+      operationId: withdrawPoints
+      parameters:
+        - $ref: '#/components/parameters/pathDID'
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/Withdraw'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - included
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Withdrawal'
+                  included:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Balance'
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '500':
+          $ref: '#/components/responses/internalError'
+  /integrations/rarime-points-svc/v1/events:
+    get:
+      tags:
+        - Events
+      summary: List events
+      description: Returns events for a single user.
+      operationId: getEvents
+      parameters:
+        - $ref: '#/components/parameters/filterDID'
+        - in: query
+          name: 'filter[status]'
+          description: |
+            Filter by event status, which is:
+              - `open` - you need to do something on the platform
+              - `fulfilled` - you have done something and are eligible to claim the reward
+              - `claimed` - you have claimed the reward
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - open
+                - fulfilled
+                - claimed
+        - in: query
+          name: 'filter[meta.static.name]'
+          description: Filter by event type name. Possible values should be hard-coded in the client.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              example: create_org
+        - in: query
+          name: count
+          description: 'Count total number of events for a single user, applying filters.'
+          required: false
+          schema:
+            type: boolean
+            example: true
+        - $ref: '#/components/parameters/pageCursor'
+        - $ref: '#/components/parameters/pageLimit'
+        - $ref: '#/components/parameters/pageOrder'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Event'
+                  meta:
+                    type: object
+                    required:
+                      - events_count
+                    properties:
+                      events_count:
+                        type: integer
+                        description: Appears when `count=true` is specified
+                        example: 18
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '500':
+          $ref: '#/components/responses/internalError'
+  '/integrations/rarime-points-svc/v1/events/{id}':
+    patch:
+      tags:
+        - Events
+      summary: Claim points for event
+      description: |
+        Update event status to _claimed_ and accrue points.
+        User must be authorized, and event must be _fulfilled_ by him.
+      operationId: claimEvent
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            example: 059c81dd-2a54-44a8-8142-c15ad8f88949
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/ClaimEventKey'
+      responses:
+        '200':
+          description: 'Event claimed, points accrued'
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                  - included
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Event'
+                  included:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Balance'
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '404':
+          $ref: '#/components/responses/notFound'
+        '500':
+          $ref: '#/components/responses/internalError'
+components:
+  schemas:
+    Balance:
+      allOf:
+        - $ref: '#/components/schemas/BalanceKey'
+        - type: object
+          required:
+            - attributes
+          properties:
+            attributes:
+              type: object
+              required:
+                - amount
+                - created_at
+                - updated_at
+              properties:
+                amount:
+                  type: integer
+                  description: Amount of points
+                  example: 580
+                created_at:
+                  type: integer
+                  description: Unix timestamp of balance creation
+                  example: 1706531218
+                updated_at:
+                  type: integer
+                  description: Unix timestamp of the last points accruing
+                  example: 1706531218
+                rank:
+                  type: integer
+                  format: int
+                  description: Rank of the user in the full leaderboard. Returned only for the single user.
+                  example: 294
+    BalanceKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          description: DID of the points owner
+          example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+        type:
+          type: string
+          enum:
+            - balance
+    ClaimEventKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          example: 059c81dd-2a54-44a8-8142-c15ad8f88949
+        type:
+          type: string
+          enum:
+            - claim_event
+    CreateBalanceKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          description: DID of the points owner
+          example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+        type:
+          type: string
+          enum:
+            - create_balance
+    Errors:
+      description: 'Standard JSON:API error'
+      type: object
+      required:
+        - errors
+      properties:
+        errors:
+          type: array
+          description: Non empty array of errors occurred during request processing
+          items:
+            type: object
+            required:
+              - title
+              - status
+            properties:
+              title:
+                type: string
+                description: 'Title is a short, human-readable summary of the problem'
+                example: Bad Request
+              detail:
+                type: string
+                description: Detail is a human-readable explanation specific to this occurrence of the problem
+                example: Request body was expected
+              status:
+                type: integer
+                description: Status is the HTTP status code applicable to this problem
+                example: 400
+                enum:
+                  - 400
+                  - 401
+                  - 403
+                  - 404
+                  - 409
+                  - 500
+    Event:
+      allOf:
+        - $ref: '#/components/schemas/EventKey'
+        - type: object
+          required:
+            - attributes
+          properties:
+            attributes:
+              type: object
+              required:
+                - status
+                - created_at
+                - updated_at
+                - meta
+              properties:
+                status:
+                  type: string
+                  description: 'See `filter[status]` parameter for explanation'
+                  enum:
+                    - open
+                    - fulfilled
+                    - claimed
+                created_at:
+                  type: integer
+                  description: Unix timestamp of event creation
+                  example: 1706531218
+                updated_at:
+                  type: integer
+                  description: Unix timestamp of the event status change
+                  example: 1706531218
+                meta:
+                  $ref: '#/components/schemas/EventMeta'
+                points_amount:
+                  type: integer
+                  description: |
+                    How many points were accrued. Required only for `claimed` events.
+                    This is necessary, as the reward might change over time, while
+                    the certain balance should be left intact.
+                  example: 50
+            relationships:
+              type: object
+              required:
+                - balance
+              properties:
+                balance:
+                  type: object
+                  required:
+                    - data
+                  properties:
+                    data:
+                      $ref: '#/components/schemas/BalanceKey'
+    EventKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          example: 059c81dd-2a54-44a8-8142-c15ad8f88949
+        type:
+          type: string
+          enum:
+            - event
+    EventMeta:
+      type: object
+      required:
+        - static
+      properties:
+        static:
+          $ref: '#/components/schemas/EventStaticMeta'
+        dynamic:
+          type: string
+          format: json.RawMessage
+          description: 'Some events require dynamic data, which can be filled into `static` template.'
+          example:
+            id: '123'
+    EventStaticMeta:
+      type: object
+      description: |
+        Primary event metadata in plain JSON. This is a template
+        to be filled by `dynamic` when it's present.
+      required:
+        - name
+        - reward
+        - title
+        - description
+        - frequency
+        - no_auto_open
+      properties:
+        name:
+          type: string
+          description: Unique event code name
+          example: get_poh
+        reward:
+          type: integer
+          description: Reward amount in points
+          example: 50
+        title:
+          type: string
+          example: Get PoH credential
+        description:
+          type: string
+          example: Lorem ipsum dolor sit amet
+        frequency:
+          type: string
+          description: |
+            Event frequency, which means how often you can fulfill
+            certain task and claim the reward.
+          enum:
+            - one-time
+            - daily
+            - weekly
+            - unlimited
+            - custom
+        no_auto_open:
+          type: boolean
+          description: |
+            If true, the event will not be created with `open` status automatically
+            when user creates the balance.
+          example: true
+        expires_at:
+          type: string
+          format: time.Time
+          description: General event expiration date (UTC RFC3339)
+          example: 2020-01-01T00:00:00.000Z
+    Withdraw:
+      allOf:
+        - $ref: '#/components/schemas/WithdrawKey'
+        - type: object
+          x-go-is-request: true
+          required:
+            - attributes
+          properties:
+            attributes:
+              type: object
+              required:
+                - amount
+                - address
+              properties:
+                amount:
+                  type: integer
+                  description: Amount of points to withdraw
+                  example: 580
+                address:
+                  type: string
+                  description: Rarimo address to withdraw to. Can be any valid address.
+                  example: rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds
+    Withdrawal:
+      allOf:
+        - $ref: '#/components/schemas/WithdrawalKey'
+        - type: object
+          required:
+            - attributes
+          properties:
+            attributes:
+              type: object
+              required:
+                - amount
+                - address
+                - created_at
+              properties:
+                amount:
+                  type: integer
+                  description: Amount of points withdrawn
+                  example: 580
+                address:
+                  type: string
+                  description: Rarimo address which points were withdrawn to. Can be any valid address.
+                  example: rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds
+                created_at:
+                  type: integer
+                  description: Unix timestamp of withdrawal creation
+                  example: 1706531218
+    WithdrawalKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          example: 059c81dd-2a54-44a8-8142-c15ad8f88949
+        type:
+          type: string
+          enum:
+            - withdrawal
+    WithdrawKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - withdraw
+  responses:
+    internalError:
+      description: Internal server error
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    invalidAuth:
+      description: You must provide a valid authorization params.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    invalidParameter:
+      description: One of the parameters is invalid. Refer to the response body for details.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    notFound:
+      description: Requested resource does not exist.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+  parameters:
+    filterDID:
+      in: query
+      name: 'filter[did]'
+      required: true
+      description: Filter by single user DID. Auth is required for this filter.
+      schema:
+        type: string
+        example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+    pageCursor:
+      in: query
+      name: 'page[cursor]'
+      required: false
+      schema:
+        type: integer
+        example: 1706531218
+      description: Cursor position
+    pageLimit:
+      in: query
+      name: 'page[limit]'
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 15
+        description: Numbers of items per page to return.
+    pageNumber:
+      in: query
+      name: 'page[number]'
+      description: The number of the page to return.
+      required: false
+      schema:
+        type: integer
+        default: 0
+        example: 3
+    pageOrder:
+      in: query
+      name: 'page[order]'
+      required: false
+      schema:
+        type: string
+        enum:
+          - asc
+          - desc
+        default: desc
+        description: Order of records on the page.
+    pathDID:
+      in: path
+      name: did
+      required: true
+      schema:
+        type: string
+        example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
