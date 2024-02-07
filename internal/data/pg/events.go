@@ -77,7 +77,7 @@ func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *i
 }
 
 func (q *events) Reopen() (count uint, err error) {
-	stmt := q.updater.SetMap(map[string]any{"status": data.EventOpen})
+	stmt := q.updater.Set("status", data.EventOpen)
 	defer func() {
 		if errors.Is(err, sql.ErrNoRows) {
 			err = nil

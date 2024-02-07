@@ -34,6 +34,12 @@ event_types:
       frequency: unlimited
       description: Lorem ipsum dolor sit amet
       no_auto_open: true
+    - name: weekly_points
+      title: Weekly points
+      reward: 100
+      frequency: weekly
+      description: Lorem ipsum dolor sit amet
+      no_auto_open: true
 
 auth:
   addr: http://rarime-auth
