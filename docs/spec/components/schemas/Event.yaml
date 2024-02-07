@@ -15,7 +15,7 @@ allOf:
           status:
             type: string
             description: See `filter[status]` parameter for explanation
-            enum: [open, fulfilled, claimed]
+            enum: [open, fulfilled, claimed, reserved]
           created_at:
             type: integer
             description: Unix timestamp of event creation

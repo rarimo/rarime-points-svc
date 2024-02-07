@@ -1,10 +1,16 @@
 patch:
   tags:
     - Events
-  summary: Claim points for event
+  summary: Claim or reserve points
   description: |
-    Update event status to _claimed_ and accrue points.
-    User must be authorized, and event must be _fulfilled_ by him.
+    - Common case: update event status to _claimed_ and accrue points.
+      Event must be _fulfilled_ by user. Updated balance is included.
+    - Special weekly points:
+      - a) passport verified: _open_ or _reserved_ event can be claimed with accruing points;
+      - b) passport not verified: _open_ event can only be _reserved_.
+    
+    You may check whether the user has verified passport by the `is_verified`
+    attribute in the balance.
   operationId: claimEvent
   parameters:
     - in: path
@@ -33,7 +39,6 @@ patch:
             type: object
             required:
               - data
-              - included
             properties:
               data:
                 $ref: '#/components/schemas/Event'
