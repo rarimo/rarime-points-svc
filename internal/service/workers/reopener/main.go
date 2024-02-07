@@ -87,19 +87,57 @@ func (w *worker) job(ctx context.Context) {
 		w.log.Info("No events to reopen: all types expired or no types with frequency exist")
 		return
 	}
-	w.log.WithField("event_types", types).Debug("Reopening claimed events")
+	w.log.WithField("event_types", types).
+		Debug("Reopening claimed/reserved events")
 
 	running.WithThreshold(ctx, w.log, w.name, func(context.Context) (bool, error) {
-		count, err := w.q.New().
-			FilterByType(types...).
-			FilterByStatus(data.EventClaimed).
-			Reopen()
-
-		if err != nil {
+		if err := w.reopenEvents(types, false); err != nil {
 			return false, fmt.Errorf("reopen events: %w", err)
 		}
-
-		w.log.Infof("Reopened %d events", count)
 		return true, nil
 	}, retryPeriod, retryPeriod, 12)
+}
+
+func (w *worker) reopenEvents(types []string, initRun bool) error {
+	q := w.q.New().
+		FilterByType(types...).
+		FilterByStatus(data.EventClaimed, data.EventReserved)
+
+	if initRun {
+		filter := w.beforeTimeFilter()
+		w.log.WithField("event_types", types).
+			Debugf("Reopening claimed/reserved events before %d", filter)
+		q.FilterByUpdatedAtBefore(filter)
+	}
+
+	events, err := q.SelectReopenable()
+	if err != nil {
+		return fmt.Errorf("select reopenable events [types=%v]: %w", types, err)
+	}
+	if len(events) == 0 {
+		w.log.Info("No events to reopen")
+		return nil
+	}
+
+	err = w.q.New().Insert(prepareForReopening(events)...)
+	if err != nil {
+		return fmt.Errorf("insert events for reopening: %w", err)
+	}
+
+	w.log.Infof("Reopened %d events", len(events))
+	return nil
+}
+
+func prepareForReopening(events []data.ReopenableEvent) []data.Event {
+	res := make([]data.Event, 0, len(events))
+
+	for _, ev := range events {
+		res = append(res, data.Event{
+			UserDID: ev.UserDID,
+			Type:    ev.Type,
+			Status:  data.EventOpen,
+		})
+	}
+
+	return res
 }

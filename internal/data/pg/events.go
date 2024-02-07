@@ -14,18 +14,20 @@ import (
 const eventsTable = "events"
 
 type events struct {
-	db       *pgdb.DB
-	selector squirrel.SelectBuilder
-	updater  squirrel.UpdateBuilder
-	counter  squirrel.SelectBuilder
+	db         *pgdb.DB
+	selector   squirrel.SelectBuilder
+	updater    squirrel.UpdateBuilder
+	counter    squirrel.SelectBuilder
+	reopenable squirrel.SelectBuilder
 }
 
 func NewEvents(db *pgdb.DB) data.EventsQ {
 	return &events{
-		db:       db,
-		selector: squirrel.Select("*").From(eventsTable),
-		updater:  squirrel.Update(eventsTable),
-		counter:  squirrel.Select("count(id) AS count").From(eventsTable),
+		db:         db,
+		selector:   squirrel.Select("*").From(eventsTable),
+		updater:    squirrel.Update(eventsTable),
+		counter:    squirrel.Select("count(id) AS count").From(eventsTable),
+		reopenable: squirrel.Select("user_did", "type").Distinct().From(eventsTable),
 	}
 }
 
@@ -76,34 +78,13 @@ func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *i
 	return &res, nil
 }
 
-func (q *events) Reopen() (count uint, err error) {
-	stmt := q.updater.Set("status", data.EventOpen)
-	defer func() {
-		if errors.Is(err, sql.ErrNoRows) {
-			err = nil
-		}
-	}()
-
-	res, err := q.db.ExecWithResult(stmt)
-	if err != nil {
-		return 0, fmt.Errorf("update status to open with result: %w", err)
-	}
-
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("get rows affected: %w", err)
-	}
-
-	return uint(rows), nil
+func (q *events) Transaction(f func() error) error {
+	return q.db.Transaction(f)
 }
 
 func (q *events) Page(page *pgdb.CursorPageParams) data.EventsQ {
 	q.selector = page.ApplyTo(q.selector, "updated_at")
 	return q
-}
-
-func (q *events) Transaction(f func() error) error {
-	return q.db.Transaction(f)
 }
 
 func (q *events) Select() ([]data.Event, error) {
@@ -141,6 +122,25 @@ func (q *events) Count() (int, error) {
 	return res.Count, nil
 }
 
+// SelectReopenable
+// The choice of reopenable events retrieval is between 3 options:
+// 1. Just `SELECT * ...` and deduplicate in Go. The most efficient SQL, but
+// DB implementation is assumed to be more efficient than custom handling in Go.
+// 2. `SELECT user_did, type ... GROUP BY user_did, type`. A bit worse SQL than 3,
+// in spite of exactly the same plan.
+// 3. `SELECT DISTINCT user_did, type ...`. Average SQL, but the least work for Go.
+// Tests were done with EXPLAIN ANALYZE on 25 records with 6 distinct types.
+// For optimization purposes a further research should be done.
+func (q *events) SelectReopenable() ([]data.ReopenableEvent, error) {
+	var res []data.ReopenableEvent
+
+	if err := q.db.Select(&res, q.reopenable); err != nil {
+		return nil, fmt.Errorf("select reopenable events: %w", err)
+	}
+
+	return res, nil
+}
+
 func (q *events) FilterByID(id string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"id": id})
 }
@@ -171,5 +171,6 @@ func (q *events) applyCondition(cond squirrel.Sqlizer) data.EventsQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
 	q.counter = q.counter.Where(cond)
+	q.reopenable = q.reopenable.Where(cond)
 	return q
 }

@@ -4,33 +4,19 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 )
 
 func (w *worker) initialRun() error {
 	types := w.types.NamesByFrequency(w.freq)
 	if len(types) == 0 {
-		w.log.Info("No events to reopen: all types expired or no types with frequency exist")
+		w.log.Info("Initial run: no events to reopen: all types expired or no types with frequency exist")
 		return nil
 	}
-
-	filter := w.beforeTimeFilter()
 	w.log.WithField("event_types", types).
-		Debugf("Reopening claimed events before %s", time.Unix(filter, 0).UTC())
+		Debug("Initial run: reopening claimed/reserved events")
 
-	count, err := w.q.New().
-		FilterByType(types...).
-		FilterByStatus(data.EventClaimed).
-		FilterByUpdatedAtBefore(filter).
-		Reopen()
-
-	if err != nil {
-		return fmt.Errorf("reopen events: %w", err)
-	}
-
-	w.log.Infof("Reopened %d events on initial run", count)
-	return nil
+	return w.reopenEvents(types, true)
 }
 
 func (w *worker) beforeTimeFilter() int64 {
