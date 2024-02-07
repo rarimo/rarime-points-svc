@@ -5,10 +5,12 @@ AS $$ BEGIN NEW.updated_at = EXTRACT('EPOCH' FROM NOW()); RETURN NEW; END; $$;
 
 CREATE TABLE IF NOT EXISTS balances
 (
-    did        text PRIMARY KEY,
-    amount     integer not null default 0,
-    created_at integer not null default EXTRACT('EPOCH' FROM NOW()),
-    updated_at integer not null default EXTRACT('EPOCH' FROM NOW())
+    did              text PRIMARY KEY,
+    amount           integer not null default 0,
+    created_at       integer not null default EXTRACT('EPOCH' FROM NOW()),
+    updated_at       integer not null default EXTRACT('EPOCH' FROM NOW()),
+    passport_hash    text UNIQUE,
+    passport_expires timestamp without time zone
 );
 
 CREATE INDEX IF NOT EXISTS balances_amount_index ON balances using btree (amount);
@@ -19,7 +21,7 @@ CREATE TRIGGER set_updated_at
     FOR EACH ROW
 EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed');
+CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed', 'reserved');
 
 CREATE TABLE IF NOT EXISTS events
 (

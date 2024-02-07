@@ -13,6 +13,7 @@ const (
 	EventOpen      EventStatus = "open"
 	EventFulfilled EventStatus = "fulfilled"
 	EventClaimed   EventStatus = "claimed"
+	EventReserved  EventStatus = "reserved"
 )
 
 func (s EventStatus) String() string {

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -45,6 +46,18 @@ func (q *balances) UpdateAmountBy(points int32) error {
 
 	if err := q.db.Exec(stmt); err != nil {
 		return fmt.Errorf("update amount by %d points: %w", points, err)
+	}
+
+	return nil
+}
+
+func (q *balances) SetPassport(hash string, exp time.Time) error {
+	stmt := q.updater.
+		Set("passport_hash", hash).
+		Set("passport_expires", exp)
+
+	if err := q.db.Exec(stmt); err != nil {
+		return fmt.Errorf("set passport hash and expires: %w", err)
 	}
 
 	return nil
