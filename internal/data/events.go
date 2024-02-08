@@ -49,7 +49,8 @@ type EventsQ interface {
 	// Count returns the total number of events that match filters. Page is not
 	// applied to this method.
 	Count() (int, error)
-	// SelectReopenable returns claimed and reserved events for all users
+	// SelectReopenable returns events matching criteria: there are no open or
+	// fulfilled events of this type for a specific user.
 	SelectReopenable() ([]ReopenableEvent, error)
 
 	FilterByID(string) EventsQ

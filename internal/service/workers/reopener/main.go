@@ -99,9 +99,7 @@ func (w *worker) job(ctx context.Context) {
 }
 
 func (w *worker) reopenEvents(types []string, initRun bool) error {
-	q := w.q.New().
-		FilterByType(types...).
-		FilterByStatus(data.EventClaimed, data.EventReserved)
+	q := w.q.New().FilterByType(types...)
 
 	if initRun {
 		filter := w.beforeTimeFilter()
