@@ -88,7 +88,7 @@ func (w *worker) job(ctx context.Context) {
 		return
 	}
 	w.log.WithField("event_types", types).
-		Debug("Reopening claimed/reserved events")
+		Debug("Reopening claimed events")
 
 	running.WithThreshold(ctx, w.log, w.name, func(context.Context) (bool, error) {
 		if err := w.reopenEvents(types, false); err != nil {
@@ -104,7 +104,7 @@ func (w *worker) reopenEvents(types []string, initRun bool) error {
 	if initRun {
 		filter := w.beforeTimeFilter()
 		w.log.WithField("event_types", types).
-			Debugf("Reopening claimed/reserved events before %d", filter)
+			Debugf("Reopening claimed events before %d", filter)
 		q.FilterByUpdatedAtBefore(filter)
 	}
 

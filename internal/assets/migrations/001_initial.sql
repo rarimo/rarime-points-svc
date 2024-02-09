@@ -21,7 +21,7 @@ CREATE TRIGGER set_updated_at
     FOR EACH ROW
 EXECUTE FUNCTION trigger_set_updated_at();
 
-CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed', 'reserved');
+CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed');
 
 CREATE TABLE IF NOT EXISTS events
 (

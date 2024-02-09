@@ -13,13 +13,12 @@ get:
           - `open` - you need to do something on the platform
           - `fulfilled` - you have done something and are eligible to claim the reward
           - `claimed` - you have claimed the reward
-          - `reserved` - special status for weekly points, available when user passport is/was not verified
       required: false
       schema:
         type: array
         items:
           type: string
-          enum: [open, fulfilled, claimed, reserved]
+          enum: [open, fulfilled, claimed]
     - in: query
       name: 'filter[meta.static.name]'
       description: Filter by event type name. Possible values should be hard-coded in the client.

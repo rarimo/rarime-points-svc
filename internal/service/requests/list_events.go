@@ -30,7 +30,7 @@ func NewListEvents(r *http.Request) (req ListEvents, err error) {
 
 	err = validation.Errors{
 		"filter[did]":    validation.Validate(req.FilterDID, validation.Required),
-		"filter[status]": validation.Validate(req.FilterStatus, validation.Each(validation.In(data.EventOpen, data.EventFulfilled, data.EventClaimed, data.EventReserved))),
+		"filter[status]": validation.Validate(req.FilterStatus, validation.Each(validation.In(data.EventOpen, data.EventFulfilled, data.EventClaimed))),
 	}.Filter()
 	return
 }
