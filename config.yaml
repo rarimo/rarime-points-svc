@@ -23,6 +23,11 @@ event_types:
       description: Lorem ipsum dolor sit amet
       frequency: one-time
       expires_at: 2020-01-01T00:00:00Z
+    - name: free_weekly
+      title: Free weekly points
+      reward: 100
+      frequency: weekly
+      description: Lorem ipsum dolor sit amet
     - name: daily_login
       title: Daily login
       reward: 5
@@ -32,12 +37,6 @@ event_types:
       title: Verify proof {:id}
       reward: 10
       frequency: unlimited
-      description: Lorem ipsum dolor sit amet
-      no_auto_open: true
-    - name: weekly_points
-      title: Weekly points
-      reward: 100
-      frequency: weekly
       description: Lorem ipsum dolor sit amet
       no_auto_open: true
 

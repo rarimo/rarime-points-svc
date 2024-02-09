@@ -1,7 +1,6 @@
 package evtypes
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -22,7 +21,10 @@ const (
 	Custom    Frequency = "custom"
 )
 
-const TypeGetPoH = "get_poh"
+const (
+	TypeGetPoH     = "get_poh"
+	TypeFreeWeekly = "free_weekly"
+)
 
 type Types struct {
 	inner map[string]resources.EventStaticMeta
@@ -45,15 +47,15 @@ func (t Types) PrepareOpenEvents(userDID string) []data.Event {
 	evTypes := t.List()
 	events := make([]data.Event, len(evTypes))
 
-	for i, evType := range evTypes {
+	for i, et := range evTypes {
 		events[i] = data.Event{
 			UserDID: userDID,
-			Type:    evType.Name,
+			Type:    et.Name,
 			Status:  data.EventOpen,
-			PointsAmount: sql.NullInt32{
-				Int32: evType.Reward,
-				Valid: true,
-			},
+		}
+
+		if et.Name == TypeFreeWeekly {
+			events[i].Status = data.EventFulfilled
 		}
 	}
 

@@ -13,8 +13,6 @@ func (w *worker) initialRun() error {
 		w.log.Info("Initial run: no events to reopen: all types expired or no types with frequency exist")
 		return nil
 	}
-	w.log.WithField("event_types", types).
-		Debug("Initial run: reopening claimed/reserved events")
 
 	return w.reopenEvents(types, true)
 }

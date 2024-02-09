@@ -55,8 +55,8 @@ func Run(args []string) bool {
 	switch cmd {
 	case serviceCmd.FullCommand():
 		run(func(context.Context, config.Config) { sbtcheck.Run(ctx, cfg) })
-		run(reopener.Run)
 		run(service.Run)
+		run(reopener.Run)
 	case migrateUpCmd.FullCommand():
 		err = MigrateUp(cfg)
 	case migrateDownCmd.FullCommand():

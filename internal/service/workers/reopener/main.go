@@ -127,14 +127,18 @@ func (w *worker) reopenEvents(types []string, initRun bool) error {
 }
 
 func prepareForReopening(events []data.ReopenableEvent) []data.Event {
-	res := make([]data.Event, 0, len(events))
+	res := make([]data.Event, len(events))
 
-	for _, ev := range events {
-		res = append(res, data.Event{
+	for i, ev := range events {
+		res[i] = data.Event{
 			UserDID: ev.UserDID,
 			Type:    ev.Type,
 			Status:  data.EventOpen,
-		})
+		}
+
+		if ev.Type == evtypes.TypeFreeWeekly {
+			res[i].Status = data.EventFulfilled
+		}
 	}
 
 	return res

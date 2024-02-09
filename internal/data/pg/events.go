@@ -124,9 +124,9 @@ func (q *events) Count() (int, error) {
 
 func (q *events) SelectReopenable() ([]data.ReopenableEvent, error) {
 	subq := fmt.Sprintf(`NOT EXISTS (
-	SELECT 1 FROM %s e2 
-    WHERE e2.user_did = e1.user_did 
-    AND e2.type = e1.type 
+	SELECT 1 FROM %s e2
+    WHERE e2.user_did = e1.user_did
+    AND e2.type = e1.type
     AND e2.status IN (?, ?))`, eventsTable)
 	stmt := q.reopenable.Where(subq, data.EventOpen, data.EventFulfilled)
 
