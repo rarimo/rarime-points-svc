@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	cosmos "github.com/cosmos/cosmos-sdk/types"
 	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -21,7 +22,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !isEnoughPoints(req, w, r) {
+	if !isEligibleToWithdraw(req, w, r) {
 		return
 	}
 
@@ -80,17 +81,27 @@ func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.Wit
 	return &resp
 }
 
-func isEnoughPoints(req resources.WithdrawRequest, w http.ResponseWriter, r *http.Request) bool {
+func isEligibleToWithdraw(req resources.WithdrawRequest, w http.ResponseWriter, r *http.Request) bool {
 	balance := getBalanceByDID(req.Data.ID, false, w, r)
 	if balance == nil {
 		return false
 	}
 
-	if balance.Amount < req.Data.Attributes.Amount {
+	render := func(field, format string, a ...any) bool {
 		ape.RenderErr(w, problems.BadRequest(validation.Errors{
-			"data/attributes/amount": fmt.Errorf("insufficient balance: %d", balance.Amount),
+			field: fmt.Errorf(format, a...),
 		})...)
 		return false
+	}
+
+	if !balance.PassportHash.Valid {
+		return render("is_verified", "user must have verified passport for withdrawals")
+	}
+	if balance.PassportExpires.Time.Before(time.Now().UTC()) {
+		return render("is_verified", "user passport is expired")
+	}
+	if balance.Amount < req.Data.Attributes.Amount {
+		return render("data/attributes/amount", "insufficient balance: %d", balance.Amount)
 	}
 
 	return true
