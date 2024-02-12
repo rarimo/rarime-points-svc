@@ -51,6 +51,9 @@ type EventsQ interface {
 	// SelectReopenable returns events matching criteria: there are no open or
 	// fulfilled events of this type for a specific user.
 	SelectReopenable() ([]ReopenableEvent, error)
+	// SelectAbsentTypes returns events matching criteria: there are no events of
+	// this type for a specific user. Filters are not applied to this selection.
+	SelectAbsentTypes(allTypes ...string) ([]ReopenableEvent, error)
 
 	FilterByID(string) EventsQ
 	FilterByUserDID(string) EventsQ

@@ -19,22 +19,14 @@ const retryPeriod = 5 * time.Minute
 type worker struct {
 	name  string
 	freq  evtypes.Frequency
-	types evtypes.Types
 	q     data.EventsQ
+	types evtypes.Types
 	log   *logan.Entry
 }
 
 func Run(ctx context.Context, cfg config.Config) {
-	var (
-		atUTC  = gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))
-		daily  = newWorker(cfg, evtypes.Daily)
-		weekly = newWorker(cfg, evtypes.Weekly)
-	)
-	if err := daily.initialRun(); err != nil {
-		panic(fmt.Errorf("failed to do initial run for daily events: %w", err))
-	}
-	if err := weekly.initialRun(); err != nil {
-		panic(fmt.Errorf("failed to do initial run for weekly events: %w", err))
+	if err := initialRun(cfg); err != nil {
+		panic(fmt.Errorf("initial run failed: %w", err))
 	}
 
 	scheduler, err := gocron.NewScheduler(
@@ -45,16 +37,17 @@ func Run(ctx context.Context, cfg config.Config) {
 		panic(fmt.Errorf("failed to initialize scheduler: %w", err))
 	}
 
+	atUTC := gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))
 	_, err = scheduler.NewJob(
 		gocron.DailyJob(1, atUTC),
-		gocron.NewTask(daily.job, ctx),
+		gocron.NewTask(newWorker(cfg, evtypes.Daily).job, ctx),
 	)
 	if err != nil {
 		panic(fmt.Errorf("failed to initialize daily job: %w", err))
 	}
 	_, err = scheduler.NewJob(
 		gocron.WeeklyJob(1, gocron.NewWeekdays(time.Monday), atUTC),
-		gocron.NewTask(weekly.job, ctx),
+		gocron.NewTask(newWorker(cfg, evtypes.Weekly).job, ctx),
 	)
 	if err != nil {
 		panic(fmt.Errorf("failed to initialize weekly job: %w", err))
@@ -74,8 +67,8 @@ func newWorker(cfg config.Config, freq evtypes.Frequency) *worker {
 	return &worker{
 		name:  name,
 		freq:  freq,
-		types: cfg.EventTypes(),
 		q:     pg.NewEvents(cfg.DB().Clone()),
+		types: cfg.EventTypes(),
 		log:   cfg.Log().WithField("who", name),
 	}
 }
@@ -91,31 +84,25 @@ func (w *worker) job(ctx context.Context) {
 		Debug("Reopening claimed events")
 
 	running.WithThreshold(ctx, w.log, w.name, func(context.Context) (bool, error) {
-		if err := w.reopenEvents(types, false); err != nil {
+		if err := w.reopenEvents(types); err != nil {
 			return false, fmt.Errorf("reopen events: %w", err)
 		}
 		return true, nil
 	}, retryPeriod, retryPeriod, 12)
 }
 
-func (w *worker) reopenEvents(types []string, initRun bool) error {
-	q := w.q.New().FilterByType(types...)
+func (w *worker) reopenEvents(types []string) error {
+	log := w.log.WithField("event_types", types)
 
-	if initRun {
-		filter := w.beforeTimeFilter()
-		w.log.WithField("event_types", types).
-			Debugf("Reopening claimed events before %d", filter)
-		q.FilterByUpdatedAtBefore(filter)
-	}
-
-	events, err := q.SelectReopenable()
+	events, err := w.q.New().FilterByType(types...).SelectReopenable()
 	if err != nil {
 		return fmt.Errorf("select reopenable events [types=%v]: %w", types, err)
 	}
 	if len(events) == 0 {
-		w.log.Info("No events to reopen")
+		log.Info("No events to reopen: no claimed events found for provided types")
 		return nil
 	}
+	log.Infof("%d (DID, type) pairs to reopen: %v", len(events), events)
 
 	err = w.q.New().Insert(prepareForReopening(events)...)
 	if err != nil {

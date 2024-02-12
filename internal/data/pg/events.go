@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -133,6 +134,33 @@ func (q *events) SelectReopenable() ([]data.ReopenableEvent, error) {
 	var res []data.ReopenableEvent
 	if err := q.db.Select(&res, stmt); err != nil {
 		return nil, fmt.Errorf("select reopenable events: %w", err)
+	}
+
+	return res, nil
+}
+
+func (q *events) SelectAbsentTypes(allTypes ...string) ([]data.ReopenableEvent, error) {
+	values := make([]string, len(allTypes))
+	for i, t := range allTypes {
+		values[i] = fmt.Sprintf("('%s')", t)
+	}
+
+	query := fmt.Sprintf(`
+		WITH types(type) AS (
+    		VALUES %s
+		)
+		SELECT u.user_did, t.type
+		FROM (
+    		SELECT DISTINCT user_did FROM %s
+		) u
+		CROSS JOIN types t
+		LEFT JOIN %s e ON e.user_did = u.user_did AND e.type = t.type
+		WHERE e.type IS NULL;
+	`, strings.Join(values, ", "), eventsTable, eventsTable)
+
+	var res []data.ReopenableEvent
+	if err := q.db.SelectRaw(&res, query); err != nil {
+		return nil, fmt.Errorf("select absent types for each did: %w", err)
 	}
 
 	return res, nil
