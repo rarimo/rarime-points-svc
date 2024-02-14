@@ -30,17 +30,30 @@ type Event struct {
 	PointsAmount sql.NullInt32 `db:"points_amount"`
 }
 
+// ReopenableEvent is a pair that is sufficient to build a new open event with a specific type for a user
+type ReopenableEvent struct {
+	UserDID string `db:"user_did"`
+	Type    string `db:"type"`
+}
+
 type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
 	Update(status EventStatus, meta json.RawMessage, points *int32) (*Event, error)
-	Reopen() (count uint, err error)
 	Transaction(func() error) error
 
 	Page(*pgdb.CursorPageParams) EventsQ
 	Select() ([]Event, error)
 	Get() (*Event, error)
+	// Count returns the total number of events that match filters. Page is not
+	// applied to this method.
 	Count() (int, error)
+	// SelectReopenable returns events matching criteria: there are no open or
+	// fulfilled events of this type for a specific user.
+	SelectReopenable() ([]ReopenableEvent, error)
+	// SelectAbsentTypes returns events matching criteria: there are no events of
+	// this type for a specific user. Filters are not applied to this selection.
+	SelectAbsentTypes(allTypes ...string) ([]ReopenableEvent, error)
 
 	FilterByID(string) EventsQ
 	FilterByUserDID(string) EventsQ

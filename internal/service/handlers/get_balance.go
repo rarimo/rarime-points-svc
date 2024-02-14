@@ -33,10 +33,11 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 			Type: resources.BALANCE,
 		},
 		Attributes: resources.BalanceAttributes{
-			Amount:    balance.Amount,
-			CreatedAt: balance.CreatedAt,
-			UpdatedAt: balance.UpdatedAt,
-			Rank:      balance.Rank,
+			Amount:     balance.Amount,
+			IsVerified: balance.PassportHash.Valid,
+			CreatedAt:  balance.CreatedAt,
+			UpdatedAt:  balance.UpdatedAt,
+			Rank:       balance.Rank,
 		},
 	}
 }

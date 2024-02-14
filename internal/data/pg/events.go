@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -14,18 +15,20 @@ import (
 const eventsTable = "events"
 
 type events struct {
-	db       *pgdb.DB
-	selector squirrel.SelectBuilder
-	updater  squirrel.UpdateBuilder
-	counter  squirrel.SelectBuilder
+	db         *pgdb.DB
+	selector   squirrel.SelectBuilder
+	updater    squirrel.UpdateBuilder
+	counter    squirrel.SelectBuilder
+	reopenable squirrel.SelectBuilder
 }
 
 func NewEvents(db *pgdb.DB) data.EventsQ {
 	return &events{
-		db:       db,
-		selector: squirrel.Select("*").From(eventsTable),
-		updater:  squirrel.Update(eventsTable),
-		counter:  squirrel.Select("count(id) AS count").From(eventsTable),
+		db:         db,
+		selector:   squirrel.Select("*").From(eventsTable),
+		updater:    squirrel.Update(eventsTable),
+		counter:    squirrel.Select("count(id) AS count").From(eventsTable),
+		reopenable: squirrel.Select("user_did", "type").Distinct().From(eventsTable + " e1"),
 	}
 }
 
@@ -76,34 +79,13 @@ func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *i
 	return &res, nil
 }
 
-func (q *events) Reopen() (count uint, err error) {
-	stmt := q.updater.SetMap(map[string]any{"status": data.EventOpen})
-	defer func() {
-		if errors.Is(err, sql.ErrNoRows) {
-			err = nil
-		}
-	}()
-
-	res, err := q.db.ExecWithResult(stmt)
-	if err != nil {
-		return 0, fmt.Errorf("update status to open with result: %w", err)
-	}
-
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return 0, fmt.Errorf("get rows affected: %w", err)
-	}
-
-	return uint(rows), nil
+func (q *events) Transaction(f func() error) error {
+	return q.db.Transaction(f)
 }
 
 func (q *events) Page(page *pgdb.CursorPageParams) data.EventsQ {
 	q.selector = page.ApplyTo(q.selector, "updated_at")
 	return q
-}
-
-func (q *events) Transaction(f func() error) error {
-	return q.db.Transaction(f)
 }
 
 func (q *events) Select() ([]data.Event, error) {
@@ -141,6 +123,49 @@ func (q *events) Count() (int, error) {
 	return res.Count, nil
 }
 
+func (q *events) SelectReopenable() ([]data.ReopenableEvent, error) {
+	subq := fmt.Sprintf(`NOT EXISTS (
+	SELECT 1 FROM %s e2
+    WHERE e2.user_did = e1.user_did
+    AND e2.type = e1.type
+    AND e2.status IN (?, ?))`, eventsTable)
+	stmt := q.reopenable.Where(subq, data.EventOpen, data.EventFulfilled)
+
+	var res []data.ReopenableEvent
+	if err := q.db.Select(&res, stmt); err != nil {
+		return nil, fmt.Errorf("select reopenable events: %w", err)
+	}
+
+	return res, nil
+}
+
+func (q *events) SelectAbsentTypes(allTypes ...string) ([]data.ReopenableEvent, error) {
+	values := make([]string, len(allTypes))
+	for i, t := range allTypes {
+		values[i] = fmt.Sprintf("('%s')", t)
+	}
+
+	query := fmt.Sprintf(`
+		WITH types(type) AS (
+    		VALUES %s
+		)
+		SELECT u.user_did, t.type
+		FROM (
+    		SELECT DISTINCT user_did FROM %s
+		) u
+		CROSS JOIN types t
+		LEFT JOIN %s e ON e.user_did = u.user_did AND e.type = t.type
+		WHERE e.type IS NULL;
+	`, strings.Join(values, ", "), eventsTable, eventsTable)
+
+	var res []data.ReopenableEvent
+	if err := q.db.SelectRaw(&res, query); err != nil {
+		return nil, fmt.Errorf("select absent types for each did: %w", err)
+	}
+
+	return res, nil
+}
+
 func (q *events) FilterByID(id string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"id": id})
 }
@@ -171,5 +196,6 @@ func (q *events) applyCondition(cond squirrel.Sqlizer) data.EventsQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
 	q.counter = q.counter.Where(cond)
+	q.reopenable = q.reopenable.Where(cond)
 	return q
 }
