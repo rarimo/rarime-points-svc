@@ -1,0 +1,14 @@
+allOf:
+  - $ref: '#/components/schemas/CreateBalanceKey'
+  - type: object
+    x-go-is-request: true
+    properties:
+      attributes:
+        type: object
+        required:
+          - referred_by
+        properties:
+          referred_by:
+            type: string
+            description: ID of the referrer from the link
+            example: "rCx18MZ4"
