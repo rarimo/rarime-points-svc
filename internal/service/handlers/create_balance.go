@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/rarimo/auth-svc/pkg/auth"
+	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -38,15 +40,21 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = EventsQ(r).Transaction(func() error {
-		if err = BalancesQ(r).Insert(did); err != nil {
+		err = BalancesQ(r).Insert(data.Balance{
+			DID:        did,
+			ReferralID: referralid.New(did),
+		})
+		if err != nil {
 			return fmt.Errorf("add balance: %w", err)
 		}
+
 		err = EventsQ(r).Insert(EventTypes(r).PrepareOpenEvents(balance.DID)...)
 		if err != nil {
 			return fmt.Errorf("add open events: %w", err)
 		}
 		return nil
 	})
+
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to add balance with open events")
 		ape.RenderErr(w, problems.InternalError())
