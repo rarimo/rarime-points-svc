@@ -528,6 +528,7 @@
                 "type": "object",
                 "required": [
                   "amount",
+                  "is_verified",
                   "created_at",
                   "updated_at"
                 ],
@@ -536,6 +537,11 @@
                     "type": "integer",
                     "description": "Amount of points",
                     "example": 580
+                  },
+                  "is_verified": {
+                    "type": "boolean",
+                    "description": "Whether the user has scanned passport",
+                    "example": true
                   },
                   "created_at": {
                     "type": "integer",
