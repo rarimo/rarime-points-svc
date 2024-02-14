@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS balances
     created_at       integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     updated_at       integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     referral_id      text UNIQUE NOT NULL,
-    referred_by      text REFERENCES balances (did),
+    referred_by      text REFERENCES balances (referral_id),
     passport_hash    text UNIQUE,
     passport_expires timestamp without time zone
 );
