@@ -24,6 +24,7 @@ const (
 const (
 	TypeGetPoH     = "get_poh"
 	TypeFreeWeekly = "free_weekly"
+	TypeBeReferred = "be_referred"
 )
 
 type Types struct {
@@ -44,19 +45,21 @@ func (t Types) Get(name string) *resources.EventStaticMeta {
 }
 
 func (t Types) PrepareOpenEvents(userDID string) []data.Event {
+	const extraCap = 1 // in case we append to the resulting slice outside the function
 	evTypes := t.List()
-	events := make([]data.Event, len(evTypes))
+	events := make([]data.Event, 0, len(evTypes)+extraCap)
 
-	for i, et := range evTypes {
-		events[i] = data.Event{
+	for _, et := range evTypes {
+		status := data.EventOpen
+		if et.Name == TypeFreeWeekly {
+			status = data.EventFulfilled
+		}
+
+		events = append(events, data.Event{
 			UserDID: userDID,
 			Type:    et.Name,
-			Status:  data.EventOpen,
-		}
-
-		if et.Name == TypeFreeWeekly {
-			events[i].Status = data.EventFulfilled
-		}
+			Status:  status,
+		})
 	}
 
 	return events

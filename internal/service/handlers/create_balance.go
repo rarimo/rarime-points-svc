@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"database/sql"
 	"fmt"
 	"net/http"
 
 	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
@@ -39,17 +41,42 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var referredBy sql.NullString
+	if attr := req.Data.Attributes; attr != nil {
+		referrer, err := BalancesQ(r).FilterByReferralID(attr.ReferredBy).Get()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to check referrer existence")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+		if referrer == nil {
+			Log(r).Debugf("Referrer not found for referral_id=%s", attr.ReferredBy)
+			ape.RenderErr(w, problems.NotFound())
+			return
+		}
+		referredBy = sql.NullString{String: attr.ReferredBy, Valid: true}
+	}
+
 	err = EventsQ(r).Transaction(func() error {
 		err = BalancesQ(r).Insert(data.Balance{
 			DID:        did,
 			ReferralID: referralid.New(did),
+			ReferredBy: referredBy,
 		})
 		if err != nil {
 			return fmt.Errorf("add balance: %w", err)
 		}
 
-		err = EventsQ(r).Insert(EventTypes(r).PrepareOpenEvents(balance.DID)...)
-		if err != nil {
+		events := EventTypes(r).PrepareOpenEvents(did)
+		if referredBy.Valid {
+			events = append(events, data.Event{
+				UserDID: did,
+				Type:    evtypes.TypeBeReferred,
+				Status:  data.EventFulfilled,
+			})
+		}
+
+		if err = EventsQ(r).Insert(events...); err != nil {
 			return fmt.Errorf("add open events: %w", err)
 		}
 		return nil

@@ -33,10 +33,10 @@ event_types:
       reward: 5
       frequency: daily
       description: Lorem ipsum dolor sit amet
-    - name: verify_proof
-      title: Verify proof {:id}
-      reward: 10
-      frequency: unlimited
+    - name: be_referred
+      title: Referral welcome bonus
+      reward: 5
+      frequency: one-time
       description: Lorem ipsum dolor sit amet
       no_auto_open: true
 

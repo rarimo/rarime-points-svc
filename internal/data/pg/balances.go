@@ -102,7 +102,15 @@ func (q *balances) WithRank() data.BalancesQ {
 }
 
 func (q *balances) FilterByDID(did string) data.BalancesQ {
-	q.selector = q.selector.Where(squirrel.Eq{"did": did})
-	q.updater = q.updater.Where(squirrel.Eq{"did": did})
+	return q.applyCondition(squirrel.Eq{"did": did})
+}
+
+func (q *balances) FilterByReferralID(referralID string) data.BalancesQ {
+	return q.applyCondition(squirrel.Eq{"referral_id": referralID})
+}
+
+func (q *balances) applyCondition(cond squirrel.Eq) data.BalancesQ {
+	q.selector = q.selector.Where(cond)
+	q.updater = q.updater.Where(cond)
 	return q
 }

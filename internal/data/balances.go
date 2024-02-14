@@ -28,7 +28,8 @@ type BalancesQ interface {
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
 	Get() (*Balance, error)
-	WithRank() BalancesQ
 
+	WithRank() BalancesQ
 	FilterByDID(string) BalancesQ
+	FilterByReferralID(string) BalancesQ
 }
