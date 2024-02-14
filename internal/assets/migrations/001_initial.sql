@@ -6,9 +6,11 @@ AS $$ BEGIN NEW.updated_at = EXTRACT('EPOCH' FROM NOW()); RETURN NEW; END; $$;
 CREATE TABLE IF NOT EXISTS balances
 (
     did              text PRIMARY KEY,
-    amount           bigint not null default 0,
-    created_at       integer not null default EXTRACT('EPOCH' FROM NOW()),
-    updated_at       integer not null default EXTRACT('EPOCH' FROM NOW()),
+    amount           bigint NOT NULL default 0,
+    created_at       integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
+    updated_at       integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
+    referral_id      text UNIQUE NOT NULL,
+    referred_by      text REFERENCES balances (did),
     passport_hash    text UNIQUE,
     passport_expires timestamp without time zone
 );
@@ -25,12 +27,12 @@ CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed');
 
 CREATE TABLE IF NOT EXISTS events
 (
-    id            uuid PRIMARY KEY not null default gen_random_uuid(),
-    user_did      text             not null REFERENCES balances (did),
-    type          text             not null,
-    status        event_status     not null,
-    created_at    integer          not null default EXTRACT('EPOCH' FROM NOW()),
-    updated_at    integer          not null default EXTRACT('EPOCH' FROM NOW()),
+    id            uuid PRIMARY KEY NOT NULL default gen_random_uuid(),
+    user_did      text             NOT NULL REFERENCES balances (did),
+    type          text             NOT NULL,
+    status        event_status     NOT NULL,
+    created_at    integer          NOT NULL default EXTRACT('EPOCH' FROM NOW()),
+    updated_at    integer          NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     meta          jsonb,
     points_amount integer
 );
@@ -48,10 +50,10 @@ EXECUTE FUNCTION trigger_set_updated_at();
 CREATE TABLE IF NOT EXISTS withdrawals
 (
     id         uuid PRIMARY KEY default gen_random_uuid(),
-    user_did   text    not null REFERENCES balances (did),
-    amount     integer not null,
-    address    text    not null,
-    created_at integer not null default EXTRACT('EPOCH' FROM NOW())
+    user_did   text    NOT NULL REFERENCES balances (did),
+    amount     integer NOT NULL,
+    address    text    NOT NULL,
+    created_at integer NOT NULL default EXTRACT('EPOCH' FROM NOW())
 );
 
 CREATE INDEX IF NOT EXISTS withdrawals_user_did_index ON withdrawals using btree (user_did);
