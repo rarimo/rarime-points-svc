@@ -58,7 +58,7 @@ func (q *events) Insert(events ...data.Event) error {
 	return nil
 }
 
-func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *int32) (*data.Event, error) {
+func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *int64) (*data.Event, error) {
 	umap := map[string]any{
 		"status": status,
 	}
@@ -66,7 +66,7 @@ func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *i
 		umap["meta"] = meta
 	}
 	if points != nil {
-		umap["points_amount"] = sql.NullInt32{Int32: *points, Valid: true}
+		umap["points_amount"] = points
 	}
 
 	var res data.Event

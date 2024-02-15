@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/rarimo/rarime-auth-svc/resources"
+	"github.com/rarimo/auth-svc/resources"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"
@@ -94,12 +94,12 @@ func Broadcaster(r *http.Request) broadcaster.Broadcaster {
 	return r.Context().Value(broadcasterCtxKey).(broadcaster.Broadcaster)
 }
 
-func CtxPointPrice(price int32) func(context.Context) context.Context {
+func CtxPointPrice(price int64) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, pointPriceCtxKey, price)
 	}
 }
 
-func PointPrice(r *http.Request) int32 {
-	return r.Context().Value(pointPriceCtxKey).(int32)
+func PointPrice(r *http.Request) int64 {
+	return r.Context().Value(pointPriceCtxKey).(int64)
 }

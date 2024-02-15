@@ -13,6 +13,7 @@ allOf:
         properties:
           amount:
             type: integer
+            format: int64
             description: Amount of points withdrawn
             example: 580
           address:

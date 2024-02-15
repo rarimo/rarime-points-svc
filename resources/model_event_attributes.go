@@ -9,7 +9,7 @@ type EventAttributes struct {
 	CreatedAt int32     `json:"created_at"`
 	Meta      EventMeta `json:"meta"`
 	// How many points were accrued. Required only for `claimed` events. This is necessary, as the reward might change over time, while the certain balance should be left intact.
-	PointsAmount *int32 `json:"points_amount,omitempty"`
+	PointsAmount *int64 `json:"points_amount,omitempty"`
 	// See `filter[status]` parameter for explanation
 	Status string `json:"status"`
 	// Unix timestamp of the event status change

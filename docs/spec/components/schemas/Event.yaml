@@ -28,6 +28,7 @@ allOf:
             $ref: '#/components/schemas/EventMeta'
           points_amount:
             type: integer
+            format: int64
             description: |
               How many points were accrued. Required only for `claimed` events.
               This is necessary, as the reward might change over time, while

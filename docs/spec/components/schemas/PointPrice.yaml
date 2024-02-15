@@ -14,5 +14,6 @@ allOf:
         properties:
           urmo:
             type: integer
+            format: int64
             description: Amount of `urmo` tokens for one point
             example: 1000

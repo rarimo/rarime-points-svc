@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -18,8 +19,25 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event := getEventToClaim(req.Data.ID, w, r)
+	event, err := EventsQ(r).
+		FilterByID(req.Data.ID).
+		FilterByStatus(data.EventFulfilled).
+		Get()
+
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get event by balance ID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
 	if event == nil {
+		Log(r).Debugf("Event not found for id=%s status=%s", req.Data.ID, data.EventFulfilled)
+		ape.RenderErr(w, problems.NotFound())
+		return
+	}
+
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(event.UserDID)) {
+		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
@@ -30,42 +48,27 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event = claimEventWithPoints(*event, evType.Reward, w, r)
-	if event == nil {
+	event, err = claimEventWithPoints(*event, evType.Reward, r)
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to claim event and accrue points to the balance")
+		ape.RenderErr(w, problems.InternalError())
 		return
 	}
-	// can't return balance with rank on update, see create_balance.go
-	balance := getBalanceByDID(event.UserDID, true, w, r)
-	if balance == nil {
+
+	// balance should exist cause of previous logic
+	balance, err := getBalanceByDID(event.UserDID, true, r)
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get balance by DID")
+		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	ape.Render(w, newClaimEventResponse(*event, *evType, *balance))
 }
 
-func getEventToClaim(id string, w http.ResponseWriter, r *http.Request) *data.Event {
-	event, err := EventsQ(r).
-		FilterByID(id).
-		FilterByStatus(data.EventFulfilled).
-		Get()
-
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to get event by balance ID")
-		ape.RenderErr(w, problems.InternalError())
-		return nil
-	}
-
-	if event == nil {
-		Log(r).Debugf("Event not found for id=%s status=%s", id, data.EventFulfilled)
-		ape.RenderErr(w, problems.NotFound())
-		return nil
-	}
-
-	return event
-}
-
-func claimEventWithPoints(event data.Event, reward int32, w http.ResponseWriter, r *http.Request) (claimed *data.Event) {
-	err := EventsQ(r).Transaction(func() error {
+// requires: event exist
+func claimEventWithPoints(event data.Event, reward int64, r *http.Request) (claimed *data.Event, err error) {
+	err = EventsQ(r).Transaction(func() error {
 		updated, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
 		if err != nil {
 			return fmt.Errorf("update event status: %w", err)
@@ -79,12 +82,6 @@ func claimEventWithPoints(event data.Event, reward int32, w http.ResponseWriter,
 		claimed = updated
 		return nil
 	})
-
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to claim event and accrue points to the balance")
-		ape.RenderErr(w, problems.InternalError())
-	}
-
 	return
 }
 

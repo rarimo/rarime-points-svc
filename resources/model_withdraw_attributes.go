@@ -8,5 +8,5 @@ type WithdrawAttributes struct {
 	// Rarimo address to withdraw to. Can be any valid address.
 	Address string `json:"address"`
 	// Amount of points to withdraw
-	Amount int32 `json:"amount"`
+	Amount int64 `json:"amount"`
 }

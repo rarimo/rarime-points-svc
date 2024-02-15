@@ -1,6 +1,6 @@
 module github.com/rarimo/rarime-points-svc
 
-go 1.21.3
+go 1.22
 
 require (
 	github.com/Masterminds/squirrel v1.4.0
@@ -11,7 +11,7 @@ require (
 	github.com/go-co-op/gocron/v2 v2.2.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/iden3/go-iden3-core/v2 v2.0.4
-	github.com/rarimo/rarime-auth-svc v0.0.1-rc9
+	github.com/rarimo/auth-svc v1.0.0-rc2
 	github.com/rarimo/saver-grpc-lib v1.0.0
 	github.com/rubenv/sql-migrate v1.6.1
 	gitlab.com/distributed_lab/ape v1.7.1

@@ -4,5 +4,5 @@ info:
   title: rarime-points-svc
   description: ''
 servers:
-  - url: 'https://api.demo.tokend.io'
+  - url: 'https://api.stage.rarime.com'
     description: TokenD Developer Environment

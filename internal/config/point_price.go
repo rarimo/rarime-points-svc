@@ -7,10 +7,10 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-func (c *config) PointPrice() int32 {
+func (c *config) PointPrice() int64 {
 	return c.pointPrice.Do(func() interface{} {
 		var cfg struct {
-			PointPriceURMO int32 `fig:"point_price_urmo,required"`
+			PointPriceURMO int64 `fig:"point_price_urmo,required"`
 		}
 
 		err := figure.Out(&cfg).
@@ -21,5 +21,5 @@ func (c *config) PointPrice() int32 {
 		}
 
 		return cfg.PointPriceURMO
-	}).(int32)
+	}).(int64)
 }

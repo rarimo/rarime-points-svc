@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -17,7 +18,20 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	did := req.Data.ID
-	balance := getBalanceByDID(did, false, w, r)
+
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(did)) {
+		ape.RenderErr(w, problems.Unauthorized())
+		return
+	}
+
+	balance, err := getBalanceByDID(did, false, r)
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get balance by DID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	// Balance should not exist
 	if balance != nil {
 		ape.RenderErr(w, problems.Conflict())
 		return
@@ -42,9 +56,14 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	// We can't return inserted balance in a single query, because we can't calculate
 	// rank in transaction: RANK() is a window function allowed on a set of rows,
 	// while with RETURNING we operate a single one.
-	balance = getBalanceByDID(did, true, w, r)
-	if balance == nil {
+
+	// Balance will exist cause of previous logic
+	balance, err = getBalanceByDID(did, true, r)
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get balance by DID")
+		ape.RenderErr(w, problems.InternalError())
 		return
 	}
+
 	ape.Render(w, newBalanceModel(*balance))
 }

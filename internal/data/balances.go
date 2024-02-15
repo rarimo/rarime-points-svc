@@ -9,7 +9,7 @@ import (
 
 type Balance struct {
 	DID             string         `db:"did"`
-	Amount          int32          `db:"amount"`
+	Amount          int64          `db:"amount"`
 	CreatedAt       int32          `db:"created_at"`
 	UpdatedAt       int32          `db:"updated_at"`
 	PassportHash    sql.NullString `db:"passport_hash"`
@@ -20,7 +20,7 @@ type Balance struct {
 type BalancesQ interface {
 	New() BalancesQ
 	Insert(did string) error
-	UpdateAmountBy(points int32) error
+	UpdateAmountBy(points int64) error
 	SetPassport(hash string, exp time.Time) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
