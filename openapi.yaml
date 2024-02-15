@@ -4,7 +4,7 @@ info:
   title: rarime-points-svc
   description: ''
 servers:
-  - url: 'https://api.demo.tokend.io'
+  - url: 'https://api.stage.rarime.com'
     description: TokenD Developer Environment
 paths:
   /integrations/rarime-points-svc/v1/balances:
@@ -347,6 +347,7 @@ components:
               properties:
                 amount:
                   type: integer
+                  format: int64
                   description: Amount of points
                   example: 580
                 is_verified:
@@ -475,6 +476,7 @@ components:
                   $ref: '#/components/schemas/EventMeta'
                 points_amount:
                   type: integer
+                  format: int64
                   description: |
                     How many points were accrued. Required only for `claimed` events.
                     This is necessary, as the reward might change over time, while
@@ -537,6 +539,7 @@ components:
           example: get_poh
         reward:
           type: integer
+          format: int64
           description: Reward amount in points
           example: 50
         title:
@@ -585,6 +588,7 @@ components:
               properties:
                 urmo:
                   type: integer
+                  format: int64
                   description: Amount of `urmo` tokens for one point
                   example: 1000
     PointPriceKey:
@@ -612,6 +616,7 @@ components:
               properties:
                 amount:
                   type: integer
+                  format: int64
                   description: Amount of points to withdraw
                   example: 580
                 address:
@@ -634,6 +639,7 @@ components:
               properties:
                 amount:
                   type: integer
+                  format: int64
                   description: Amount of points withdrawn
                   example: 580
                 address:

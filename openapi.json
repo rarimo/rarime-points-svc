@@ -7,7 +7,7 @@
   },
   "servers": [
     {
-      "url": "https://api.demo.tokend.io",
+      "url": "https://api.stage.rarime.com",
       "description": "TokenD Developer Environment"
     }
   ],
@@ -535,6 +535,7 @@
                 "properties": {
                   "amount": {
                     "type": "integer",
+                    "format": "int64",
                     "description": "Amount of points",
                     "example": 580
                   },
@@ -713,6 +714,7 @@
                   },
                   "points_amount": {
                     "type": "integer",
+                    "format": "int64",
                     "description": "How many points were accrued. Required only for `claimed` events.\nThis is necessary, as the reward might change over time, while\nthe certain balance should be left intact.\n",
                     "example": 50
                   }
@@ -798,6 +800,7 @@
           },
           "reward": {
             "type": "integer",
+            "format": "int64",
             "description": "Reward amount in points",
             "example": 50
           },
@@ -858,6 +861,7 @@
                 "properties": {
                   "urmo": {
                     "type": "integer",
+                    "format": "int64",
                     "description": "Amount of `urmo` tokens for one point",
                     "example": 1000
                   }
@@ -902,6 +906,7 @@
                 "properties": {
                   "amount": {
                     "type": "integer",
+                    "format": "int64",
                     "description": "Amount of points to withdraw",
                     "example": 580
                   },
@@ -937,6 +942,7 @@
                 "properties": {
                   "amount": {
                     "type": "integer",
+                    "format": "int64",
                     "description": "Amount of points withdrawn",
                     "example": 580
                   },
