@@ -58,7 +58,7 @@ func (q *events) Insert(events ...data.Event) error {
 	return nil
 }
 
-func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *uint64) (*data.Event, error) {
+func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *int64) (*data.Event, error) {
 	umap := map[string]any{
 		"status": status,
 	}

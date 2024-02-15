@@ -94,12 +94,12 @@ func Broadcaster(r *http.Request) broadcaster.Broadcaster {
 	return r.Context().Value(broadcasterCtxKey).(broadcaster.Broadcaster)
 }
 
-func CtxPointPrice(price uint64) func(context.Context) context.Context {
+func CtxPointPrice(price int64) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, pointPriceCtxKey, price)
 	}
 }
 
-func PointPrice(r *http.Request) uint64 {
-	return r.Context().Value(pointPriceCtxKey).(uint64)
+func PointPrice(r *http.Request) int64 {
+	return r.Context().Value(pointPriceCtxKey).(int64)
 }

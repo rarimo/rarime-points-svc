@@ -14,7 +14,7 @@ allOf:
         properties:
           amount:
             type: integer
-            format: uint64
+            format: int64
             description: Amount of points
             example: 580
           is_verified:

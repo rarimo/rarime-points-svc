@@ -19,7 +19,11 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := getEventToClaim(req.Data.ID, r)
+	event, err := EventsQ(r).
+		FilterByID(req.Data.ID).
+		FilterByStatus(data.EventFulfilled).
+		Get()
+
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get event by balance ID")
 		ape.RenderErr(w, problems.InternalError())
@@ -62,21 +66,8 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newClaimEventResponse(*event, *evType, *balance))
 }
 
-func getEventToClaim(id string, r *http.Request) (*data.Event, error) {
-	event, err := EventsQ(r).
-		FilterByID(id).
-		FilterByStatus(data.EventFulfilled).
-		Get()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return event, nil
-}
-
 // requires: event exist
-func claimEventWithPoints(event data.Event, reward uint64, r *http.Request) (claimed *data.Event, err error) {
+func claimEventWithPoints(event data.Event, reward int64, r *http.Request) (claimed *data.Event, err error) {
 	err = EventsQ(r).Transaction(func() error {
 		updated, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
 		if err != nil {

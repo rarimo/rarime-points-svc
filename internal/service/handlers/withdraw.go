@@ -102,7 +102,7 @@ func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.Wit
 	return &resp
 }
 
-func isEligibleToWithdraw(balance *data.Balance, amount uint64) validation.Errors {
+func isEligibleToWithdraw(balance *data.Balance, amount int64) validation.Errors {
 	mapValidationErr := func(field, format string, a ...any) validation.Errors {
 		return validation.Errors{
 			field: fmt.Errorf(format, a...),

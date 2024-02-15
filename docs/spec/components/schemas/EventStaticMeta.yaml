@@ -16,7 +16,7 @@ properties:
     example: get_poh
   reward:
     type: integer
-    format: uint64
+    format: int64
     description: Reward amount in points
     example: 50
   title:

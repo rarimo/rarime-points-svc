@@ -22,7 +22,7 @@ type Config interface {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 
-	PointPrice() uint64
+	PointPrice() int64
 }
 
 type config struct {

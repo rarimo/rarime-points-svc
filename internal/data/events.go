@@ -26,7 +26,7 @@ type Event struct {
 	CreatedAt    int32       `db:"created_at"`
 	UpdatedAt    int32       `db:"updated_at"`
 	Meta         Jsonb       `db:"meta"`
-	PointsAmount *uint64     `db:"points_amount"`
+	PointsAmount *int64      `db:"points_amount"`
 }
 
 // ReopenableEvent is a pair that is sufficient to build a new open event with a specific type for a user
@@ -38,7 +38,7 @@ type ReopenableEvent struct {
 type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
-	Update(status EventStatus, meta json.RawMessage, points *uint64) (*Event, error)
+	Update(status EventStatus, meta json.RawMessage, points *int64) (*Event, error)
 	Transaction(func() error) error
 
 	Page(*pgdb.CursorPageParams) EventsQ

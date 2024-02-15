@@ -6,7 +6,7 @@ package resources
 
 type BalanceAttributes struct {
 	// Amount of points
-	Amount uint64 `json:"amount"`
+	Amount int64 `json:"amount"`
 	// Unix timestamp of balance creation
 	CreatedAt int32 `json:"created_at"`
 	// Whether the user has scanned passport

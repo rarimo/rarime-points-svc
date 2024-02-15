@@ -41,7 +41,7 @@ func (q *balances) Insert(did string) error {
 	return nil
 }
 
-func (q *balances) UpdateAmountBy(points uint64) error {
+func (q *balances) UpdateAmountBy(points int64) error {
 	stmt := q.updater.Set("amount", squirrel.Expr("amount + ?", points))
 
 	if err := q.db.Exec(stmt); err != nil {
