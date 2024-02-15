@@ -70,7 +70,7 @@ func (c *initCollector) collect() ([]data.ReopenableEvent, error) {
 }
 
 func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) ([]data.ReopenableEvent, error) {
-	types := c.types.Names(evtypes.FilterByFrequency(freq), evtypes.FilterExpired)
+	types := c.types.Names(evtypes.FilterByFrequency(freq), evtypes.FilterInactive)
 
 	res, err := c.q.New().FilterByType(types...).
 		FilterByUpdatedAtBefore(before).
@@ -95,7 +95,7 @@ func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) (
 }
 
 func (c *initCollector) selectAbsent() ([]data.ReopenableEvent, error) {
-	types := c.types.Names(evtypes.FilterExpired, evtypes.FilterNoAutoOpen)
+	types := c.types.Names(evtypes.FilterNotOpenable)
 
 	res, err := c.q.New().SelectAbsentTypes(types...)
 	if err != nil {

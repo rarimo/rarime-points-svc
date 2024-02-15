@@ -75,7 +75,7 @@ func newWorker(cfg config.Config, freq evtypes.Frequency) *worker {
 
 func (w *worker) job(ctx context.Context) {
 	// types might expire, so it's required to get them before each run
-	types := w.types.Names(evtypes.FilterByFrequency(w.freq), evtypes.FilterExpired)
+	types := w.types.Names(evtypes.FilterByFrequency(w.freq), evtypes.FilterInactive)
 	if len(types) == 0 {
 		w.log.Info("No events to reopen: all types expired or no types with frequency exist")
 		return

@@ -56,7 +56,7 @@ type extConfig interface {
 
 func Run(ctx context.Context, cfg extConfig) {
 	log := cfg.Log().WithField("who", "sbt-checker")
-	if cfg.EventTypes().Get(evtypes.TypeGetPoH, evtypes.FilterExpired) == nil {
+	if cfg.EventTypes().Get(evtypes.TypeGetPoH, evtypes.FilterInactive) == nil {
 		log.Warn("PoH event is disabled or expired, SBT check will not run")
 		return
 	}
@@ -267,7 +267,7 @@ func (r *runner) createBalance(did string) error {
 			return fmt.Errorf("insert balance: %w", err)
 		}
 
-		err = r.eventsQ().Insert(r.types.PrepareEvents(did, evtypes.FilterExpired, evtypes.FilterNoAutoOpen)...)
+		err = r.eventsQ().Insert(r.types.PrepareEvents(did, evtypes.FilterNotOpenable)...)
 		if err != nil {
 			return fmt.Errorf("insert open events: %w", err)
 		}

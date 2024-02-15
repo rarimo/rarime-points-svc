@@ -23,7 +23,6 @@ event_types:
       description: Prove that you are human
       frequency: one-time
       expires_at: 2020-01-01T00:00:00Z
-      disabled: false
     - name: free_weekly
       title: Free weekly points
       reward: 100
@@ -34,6 +33,7 @@ event_types:
       reward: 5
       frequency: daily
       description: Login every day
+      disabled: true
     - name: be_referred
       title: Referral welcome bonus
       reward: 5

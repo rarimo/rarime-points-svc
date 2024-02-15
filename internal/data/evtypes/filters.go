@@ -2,27 +2,29 @@ package evtypes
 
 import (
 	"time"
-
-	"github.com/rarimo/rarime-points-svc/resources"
 )
 
-type filter func(resources.EventStaticMeta) bool
+type filter func(EventConfig) bool
 
-func FilterExpired(ev resources.EventStaticMeta) bool {
+func FilterExpired(ev EventConfig) bool {
 	return ev.ExpiresAt != nil && ev.ExpiresAt.Before(time.Now().UTC())
 }
 
-func FilterNoAutoOpen(ev resources.EventStaticMeta) bool {
-	return ev.NoAutoOpen
+func FilterInactive(ev EventConfig) bool {
+	return ev.Disabled || FilterExpired(ev)
 }
 
-func FilterByFrequency(f Frequency) func(resources.EventStaticMeta) bool {
-	return func(ev resources.EventStaticMeta) bool {
-		return ev.Frequency != f.String()
+func FilterNotOpenable(ev EventConfig) bool {
+	return FilterInactive(ev) || ev.NoAutoOpen
+}
+
+func FilterByFrequency(f Frequency) func(EventConfig) bool {
+	return func(ev EventConfig) bool {
+		return ev.Frequency != f
 	}
 }
 
-func isFiltered(ev resources.EventStaticMeta, filters ...filter) bool {
+func isFiltered(ev EventConfig, filters ...filter) bool {
 	for _, f := range filters {
 		if f(ev) {
 			return true

@@ -1,6 +1,8 @@
 package evtypes
 
 import (
+	"time"
+
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/resources"
 )
@@ -25,12 +27,34 @@ const (
 	TypeReferralSpecific = "referral_specific"
 )
 
-type Types struct {
-	m    map[string]resources.EventStaticMeta
-	list []resources.EventStaticMeta
+type EventConfig struct {
+	Name        string     `fig:"name,required"`
+	Description string     `fig:"description,required"`
+	Reward      int64      `fig:"reward,required"`
+	Title       string     `fig:"title,required"`
+	Frequency   Frequency  `fig:"frequency,required"`
+	ExpiresAt   *time.Time `fig:"expires_at"`
+	NoAutoOpen  bool       `fig:"no_auto_open"`
+	Disabled    bool       `fig:"disabled"`
 }
 
-func (t Types) Get(name string, filters ...filter) *resources.EventStaticMeta {
+func (e EventConfig) Resource() resources.EventStaticMeta {
+	return resources.EventStaticMeta{
+		Name:        e.Name,
+		Description: e.Description,
+		Reward:      e.Reward,
+		Title:       e.Title,
+		Frequency:   e.Frequency.String(),
+		ExpiresAt:   e.ExpiresAt,
+	}
+}
+
+type Types struct {
+	m    map[string]EventConfig
+	list []EventConfig
+}
+
+func (t Types) Get(name string, filters ...filter) *EventConfig {
 	t.ensureInitialized()
 	v, ok := t.m[name]
 	if !ok || isFiltered(v, filters...) {
@@ -40,9 +64,9 @@ func (t Types) Get(name string, filters ...filter) *resources.EventStaticMeta {
 	return &v
 }
 
-func (t Types) List(filters ...filter) []resources.EventStaticMeta {
+func (t Types) List(filters ...filter) []EventConfig {
 	t.ensureInitialized()
-	res := make([]resources.EventStaticMeta, 0, len(t.list))
+	res := make([]EventConfig, 0, len(t.list))
 	for _, v := range t.list {
 		if isFiltered(v, filters...) {
 			continue

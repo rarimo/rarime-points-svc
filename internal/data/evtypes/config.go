@@ -2,9 +2,7 @@ package evtypes
 
 import (
 	"fmt"
-	"time"
 
-	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
@@ -26,16 +24,7 @@ func NewConfig(getter kv.Getter) EventTypeser {
 func (c *config) EventTypes() Types {
 	return c.once.Do(func() interface{} {
 		var raw struct {
-			Types []struct {
-				Name        string     `fig:"name,required"`
-				Description string     `fig:"description,required"`
-				Reward      int64      `fig:"reward,required"`
-				Title       string     `fig:"title,required"`
-				Frequency   Frequency  `fig:"frequency,required"`
-				ExpiresAt   *time.Time `fig:"expires_at"`
-				NoAutoOpen  bool       `fig:"no_auto_open"`
-				Disabled    bool       `fig:"disabled"`
-			} `fig:"types,required"`
+			Types []EventConfig `fig:"types,required"`
 		}
 
 		err := figure.Out(&raw).
@@ -45,31 +34,15 @@ func (c *config) EventTypes() Types {
 			panic(fmt.Errorf("failed to figure out event_types: %s", err))
 		}
 
-		m := make(map[string]resources.EventStaticMeta, len(raw.Types))
-		list := make([]resources.EventStaticMeta, 0, len(raw.Types))
+		m := make(map[string]EventConfig, len(raw.Types))
 		for _, t := range raw.Types {
 			if !checkFreqValue(t.Frequency) {
 				panic(fmt.Errorf("invalid frequency: %s", t.Frequency))
 			}
-			if t.Disabled {
-				continue
-			}
-
-			meta := resources.EventStaticMeta{
-				Name:        t.Name,
-				Description: t.Description,
-				Reward:      t.Reward,
-				Title:       t.Title,
-				Frequency:   t.Frequency.String(),
-				ExpiresAt:   t.ExpiresAt,
-				NoAutoOpen:  t.NoAutoOpen,
-			}
-
-			m[t.Name] = meta
-			list = append(list, meta)
+			m[t.Name] = t
 		}
 
-		return Types{m, list}
+		return Types{m, raw.Types}
 	}).(Types)
 }
 

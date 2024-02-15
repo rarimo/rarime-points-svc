@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/rarimo/auth-svc/pkg/auth"
@@ -10,7 +11,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
-	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
 func ListEvents(w http.ResponseWriter, r *http.Request) {
@@ -77,12 +77,12 @@ func getOrderedEventsMeta(events []data.Event, r *http.Request) ([]resources.Eve
 	res := make([]resources.EventStaticMeta, len(events))
 
 	for i, event := range events {
-		// TODO: what if event type was deleted or disabled later?
+		// even if event type was disabled, we should return it from history
 		evType := EventTypes(r).Get(event.Type)
 		if evType == nil {
 			return nil, errors.New("wrong event type is stored in DB: might be bad event config")
 		}
-		res[i] = *evType
+		res[i] = evType.Resource()
 	}
 
 	return res, nil
