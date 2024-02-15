@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -15,6 +16,11 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.NewClaimEvent(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
+
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Data.ID)) {
+		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 

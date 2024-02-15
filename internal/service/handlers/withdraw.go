@@ -8,6 +8,7 @@ import (
 	cosmos "github.com/cosmos/cosmos-sdk/types"
 	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -19,6 +20,11 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.NewWithdraw(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
+
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Data.ID)) {
+		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 

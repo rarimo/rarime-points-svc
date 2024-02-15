@@ -3,7 +3,7 @@ package handlers
 import (
 	"net/http"
 
-	"github.com/rarimo/rarime-auth-svc/pkg/auth"
+	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -15,6 +15,11 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.NewGetBalance(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
+
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.DID)) {
+		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 

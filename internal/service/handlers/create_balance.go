@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -17,6 +18,12 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	did := req.Data.ID
+
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(did)) {
+		ape.RenderErr(w, problems.Unauthorized())
+		return
+	}
+
 	balance := getBalanceByDID(did, false, w, r)
 	if balance != nil {
 		ape.RenderErr(w, problems.Conflict())
