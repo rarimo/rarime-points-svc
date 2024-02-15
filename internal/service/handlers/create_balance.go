@@ -67,7 +67,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("add balance: %w", err)
 		}
 
-		events := EventTypes(r).PrepareOpenEvents(did)
+		events := EventTypes(r).PrepareEvents(did, evtypes.FilterExpired, evtypes.FilterNoAutoOpen)
 		if referredBy.Valid {
 			events = append(events, data.Event{
 				UserDID: did,

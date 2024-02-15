@@ -34,6 +34,7 @@ func (c *config) EventTypes() Types {
 				Frequency   Frequency  `fig:"frequency,required"`
 				ExpiresAt   *time.Time `fig:"expires_at"`
 				NoAutoOpen  bool       `fig:"no_auto_open"`
+				Disabled    bool       `fig:"disabled"`
 			} `fig:"types,required"`
 		}
 
@@ -44,13 +45,17 @@ func (c *config) EventTypes() Types {
 			panic(fmt.Errorf("failed to figure out event_types: %s", err))
 		}
 
-		inner := make(map[string]resources.EventStaticMeta, len(raw.Types))
+		m := make(map[string]resources.EventStaticMeta, len(raw.Types))
+		list := make([]resources.EventStaticMeta, 0, len(raw.Types))
 		for _, t := range raw.Types {
 			if !checkFreqValue(t.Frequency) {
 				panic(fmt.Errorf("invalid frequency: %s", t.Frequency))
 			}
+			if t.Disabled {
+				continue
+			}
 
-			inner[t.Name] = resources.EventStaticMeta{
+			meta := resources.EventStaticMeta{
 				Name:        t.Name,
 				Description: t.Description,
 				Reward:      t.Reward,
@@ -59,19 +64,18 @@ func (c *config) EventTypes() Types {
 				ExpiresAt:   t.ExpiresAt,
 				NoAutoOpen:  t.NoAutoOpen,
 			}
+
+			m[t.Name] = meta
+			list = append(list, meta)
 		}
 
-		if _, ok := inner[TypeGetPoH]; !ok {
-			panic(fmt.Errorf("event_types: missing %s entry", TypeGetPoH))
-		}
-
-		return Types{inner}
+		return Types{m, list}
 	}).(Types)
 }
 
 func checkFreqValue(f Frequency) bool {
 	switch f {
-	case OneTime, Daily, Weekly, Unlimited, Custom:
+	case OneTime, Daily, Weekly, Unlimited:
 		return true
 	}
 	return false

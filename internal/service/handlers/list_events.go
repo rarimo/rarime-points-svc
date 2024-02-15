@@ -77,6 +77,7 @@ func getOrderedEventsMeta(events []data.Event, r *http.Request) ([]resources.Eve
 	res := make([]resources.EventStaticMeta, len(events))
 
 	for i, event := range events {
+		// TODO: what if event type was deleted or disabled later?
 		evType := EventTypes(r).Get(event.Type)
 		if evType == nil {
 			return nil, errors.New("wrong event type is stored in DB: might be bad event config")

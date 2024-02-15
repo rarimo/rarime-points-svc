@@ -20,24 +20,36 @@ event_types:
     - name: get_poh
       title: Get PoH credential
       reward: 50
-      description: Lorem ipsum dolor sit amet
+      description: Prove that you are human
       frequency: one-time
       expires_at: 2020-01-01T00:00:00Z
+      disabled: false
     - name: free_weekly
       title: Free weekly points
       reward: 100
       frequency: weekly
-      description: Lorem ipsum dolor sit amet
+      description: Get free points every week by visiting the platform and claiming your reward
     - name: daily_login
       title: Daily login
       reward: 5
       frequency: daily
-      description: Lorem ipsum dolor sit amet
+      description: Login every day
     - name: be_referred
       title: Referral welcome bonus
       reward: 5
       frequency: one-time
-      description: Lorem ipsum dolor sit amet
+      description: Be referred by a friend and get a welcome bonus
+      no_auto_open: true
+    - name: referral_common
+      title: Refer new users
+      reward: 25
+      frequency: one-time
+      description: Refer friends and get a reward for each friend who verifies the passport
+    - name: referral_specific
+      title: Refer user {:did}
+      reward: 25
+      frequency: unlimited
+      description: The user {:did} has verified the passport. Claim the reward!
       no_auto_open: true
 
 auth:
