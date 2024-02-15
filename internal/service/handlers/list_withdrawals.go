@@ -37,6 +37,7 @@ func ListWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	resp := newWithdrawalsResponse(withdrawals)
 	resp.Links = req.CursorParams.GetLinks(r, last)
+	ape.Render(w, resp)
 }
 
 func newWithdrawalsResponse(withdrawals []data.Withdrawal) resources.WithdrawalListResponse {

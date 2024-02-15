@@ -29,7 +29,7 @@ func (c *config) EventTypes() Types {
 			Types []struct {
 				Name        string     `fig:"name,required"`
 				Description string     `fig:"description,required"`
-				Reward      int32      `fig:"reward,required"`
+				Reward      uint64     `fig:"reward,required"`
 				Title       string     `fig:"title,required"`
 				Frequency   Frequency  `fig:"frequency,required"`
 				ExpiresAt   *time.Time `fig:"expires_at"`

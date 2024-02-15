@@ -7,7 +7,7 @@ import (
 type Withdrawal struct {
 	ID        string `db:"id"`
 	UserDID   string `db:"user_did"`
-	Amount    int32  `db:"amount"`
+	Amount    uint64 `db:"amount"`
 	Address   string `db:"address"`
 	CreatedAt int32  `db:"created_at"`
 }

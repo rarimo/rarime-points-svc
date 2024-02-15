@@ -23,8 +23,15 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance := getBalanceByDID(req.DID, true, w, r)
+	balance, err := getBalanceByDID(req.DID, true, r)
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get balance by DID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
 	if balance == nil {
+		ape.RenderErr(w, problems.NotFound())
 		return
 	}
 
@@ -47,29 +54,11 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 	}
 }
 
-func getBalanceByDID(did string, withRank bool, w http.ResponseWriter, r *http.Request) *data.Balance {
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(did)) {
-		ape.RenderErr(w, problems.Unauthorized())
-		return nil
-	}
-
+func getBalanceByDID(did string, withRank bool, r *http.Request) (*data.Balance, error) {
 	q := BalancesQ(r).FilterByDID(did)
 	if withRank {
 		q.WithRank()
 	}
 
-	balance, err := q.Get()
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
-		ape.RenderErr(w, problems.InternalError())
-		return nil
-	}
-
-	if balance == nil {
-		Log(r).Debugf("Balance not found for DID %s", did)
-		ape.RenderErr(w, problems.NotFound())
-		return nil
-	}
-
-	return balance
+	return q.Get()
 }

@@ -18,6 +18,6 @@ type EventStaticMeta struct {
 	// If true, the event will not be created with `open` status automatically when user creates the balance.
 	NoAutoOpen bool `json:"no_auto_open"`
 	// Reward amount in points
-	Reward int32  `json:"reward"`
+	Reward uint64 `json:"reward"`
 	Title  string `json:"title"`
 }

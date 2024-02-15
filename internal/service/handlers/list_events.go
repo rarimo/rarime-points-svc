@@ -10,6 +10,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
+	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
 func ListEvents(w http.ResponseWriter, r *http.Request) {
@@ -50,8 +51,10 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	meta, ok := getOrderedEventsMeta(events, w, r)
-	if !ok {
+	meta, err := getOrderedEventsMeta(events, r)
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get ordered events metadata")
+		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
@@ -70,28 +73,21 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, resp)
 }
 
-func getOrderedEventsMeta(events []data.Event, w http.ResponseWriter, r *http.Request) ([]resources.EventStaticMeta, bool) {
+func getOrderedEventsMeta(events []data.Event, r *http.Request) ([]resources.EventStaticMeta, error) {
 	res := make([]resources.EventStaticMeta, len(events))
 
 	for i, event := range events {
 		evType := EventTypes(r).Get(event.Type)
 		if evType == nil {
-			Log(r).Error("Wrong event type is stored in DB: might be bad event config")
-			ape.RenderErr(w, problems.InternalError())
-			return nil, false
+			return nil, errors.New("wrong event type is stored in DB: might be bad event config")
 		}
 		res[i] = *evType
 	}
 
-	return res, true
+	return res, nil
 }
 
 func newEventModel(event data.Event, meta resources.EventStaticMeta) resources.Event {
-	var points *int32
-	if event.PointsAmount.Valid {
-		points = &event.PointsAmount.Int32
-	}
-
 	return resources.Event{
 		Key: resources.Key{
 			ID:   event.ID,
@@ -105,7 +101,7 @@ func newEventModel(event data.Event, meta resources.EventStaticMeta) resources.E
 				Dynamic: (*json.RawMessage)(&event.Meta),
 			},
 			Status:       event.Status.String(),
-			PointsAmount: points,
+			PointsAmount: event.PointsAmount,
 		},
 	}
 }

@@ -6,5 +6,5 @@ package resources
 
 type PointPriceAttributes struct {
 	// Amount of `urmo` tokens for one point
-	Urmo int32 `json:"urmo"`
+	Urmo uint64 `json:"urmo"`
 }
