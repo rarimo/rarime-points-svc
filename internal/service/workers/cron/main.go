@@ -75,7 +75,7 @@ func Start(ctx context.Context) {
 
 	sin.scheduler.Start()
 	logJobs()
-	<-ctx.Done() // all cron jobs will we shut down when ctx is canceled
+	<-ctx.Done() // all cron jobs are shut down when ctx is canceled
 
 	if err := sin.scheduler.Shutdown(); err != nil {
 		sin.log.WithError(err).Error("Scheduler shutdown failed")

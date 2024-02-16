@@ -57,6 +57,20 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		referredBy = sql.NullString{String: attr.ReferredBy, Valid: true}
 	}
 
+	events := EventTypes(r).PrepareEvents(did, evtypes.FilterNotOpenable)
+	if referredBy.Valid {
+		evType := EventTypes(r).Get(evtypes.TypeBeReferred, evtypes.FilterInactive)
+		if evType != nil {
+			events = append(events, data.Event{
+				UserDID: did,
+				Type:    evtypes.TypeBeReferred,
+				Status:  data.EventFulfilled,
+			})
+		} else {
+			Log(r).Debug("Referral event is disabled or expired, skipping it")
+		}
+	}
+
 	err = EventsQ(r).Transaction(func() error {
 		err = BalancesQ(r).Insert(data.Balance{
 			DID:        did,
@@ -65,15 +79,6 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		})
 		if err != nil {
 			return fmt.Errorf("add balance: %w", err)
-		}
-
-		events := EventTypes(r).PrepareEvents(did, evtypes.FilterNotOpenable)
-		if referredBy.Valid {
-			events = append(events, data.Event{
-				UserDID: did,
-				Type:    evtypes.TypeBeReferred,
-				Status:  data.EventFulfilled,
-			})
 		}
 
 		if err = EventsQ(r).Insert(events...); err != nil {

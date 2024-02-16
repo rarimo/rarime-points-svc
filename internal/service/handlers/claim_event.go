@@ -47,6 +47,11 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
+	if evType.Disabled {
+		Log(r).Infof("Event type %s is disabled, while user has tried to claim", evType.Name)
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
 
 	event, err = claimEventWithPoints(*event, evType.Reward, r)
 	if err != nil {
