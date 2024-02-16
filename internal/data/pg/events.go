@@ -18,6 +18,7 @@ type events struct {
 	db         *pgdb.DB
 	selector   squirrel.SelectBuilder
 	updater    squirrel.UpdateBuilder
+	deleter    squirrel.DeleteBuilder
 	counter    squirrel.SelectBuilder
 	reopenable squirrel.SelectBuilder
 }
@@ -27,6 +28,7 @@ func NewEvents(db *pgdb.DB) data.EventsQ {
 		db:         db,
 		selector:   squirrel.Select("*").From(eventsTable),
 		updater:    squirrel.Update(eventsTable),
+		deleter:    squirrel.Delete(eventsTable),
 		counter:    squirrel.Select("count(id) AS count").From(eventsTable),
 		reopenable: squirrel.Select("user_did", "type").Distinct().From(eventsTable + " e1"),
 	}
@@ -77,6 +79,20 @@ func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *i
 	}
 
 	return &res, nil
+}
+
+func (q *events) Delete() (int64, error) {
+	res, err := q.db.ExecWithResult(q.deleter)
+	if err != nil {
+		return 0, fmt.Errorf("delete events: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("count rows affected: %w", err)
+	}
+
+	return rows, nil
 }
 
 func (q *events) Transaction(f func() error) error {
@@ -195,6 +211,7 @@ func (q *events) FilterByUpdatedAtBefore(unix int64) data.EventsQ {
 func (q *events) applyCondition(cond squirrel.Sqlizer) data.EventsQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
+	q.deleter = q.deleter.Where(cond)
 	q.counter = q.counter.Where(cond)
 	q.reopenable = q.reopenable.Where(cond)
 	return q

@@ -1,4 +1,4 @@
-package reopener
+package cron
 
 import (
 	"gitlab.com/distributed_lab/logan/v3"
