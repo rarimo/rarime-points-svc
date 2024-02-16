@@ -13,6 +13,8 @@ type BalanceAttributes struct {
 	IsVerified bool `json:"is_verified"`
 	// Rank of the user in the full leaderboard. Returned only for the single user.
 	Rank *int `json:"rank,omitempty"`
+	// Referral ID used to build a referral link and send it to friends
+	ReferralId string `json:"referral_id"`
 	// Unix timestamp of the last points accruing
 	UpdatedAt int32 `json:"updated_at"`
 }
