@@ -30,13 +30,7 @@ properties:
     description: |
       Event frequency, which means how often you can fulfill
       certain task and claim the reward.
-    enum: [one-time, daily, weekly, unlimited, custom]
-  no_auto_open:
-    type: boolean
-    description: |
-      If true, the event will not be created with `open` status automatically
-      when user creates the balance.
-    example: true
+    enum: [one-time, daily, weekly, unlimited]
   expires_at:
     type: string
     format: time.Time

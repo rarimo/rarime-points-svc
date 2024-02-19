@@ -16,7 +16,7 @@ post:
             - data
           properties:
             data:
-              $ref: '#/components/schemas/CreateBalanceKey'
+              $ref: '#/components/schemas/CreateBalance'
   responses:
     201:
       description: Created
@@ -31,6 +31,8 @@ post:
                 $ref: '#/components/schemas/Balance'
     401:
       $ref: '#/components/responses/invalidAuth'
+    404:
+      $ref: '#/components/responses/notFound'
     409:
       description: Balance already exists for provided DID
       content:

@@ -15,8 +15,6 @@ type EventStaticMeta struct {
 	Frequency string `json:"frequency"`
 	// Unique event code name
 	Name string `json:"name"`
-	// If true, the event will not be created with `open` status automatically when user creates the balance.
-	NoAutoOpen bool `json:"no_auto_open"`
 	// Reward amount in points
 	Reward int64  `json:"reward"`
 	Title  string `json:"title"`

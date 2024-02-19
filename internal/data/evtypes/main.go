@@ -18,92 +18,103 @@ const (
 	Daily     Frequency = "daily"
 	Weekly    Frequency = "weekly"
 	Unlimited Frequency = "unlimited"
-	Custom    Frequency = "custom"
 )
 
 const (
-	TypeGetPoH     = "get_poh"
-	TypeFreeWeekly = "free_weekly"
+	TypeGetPoH           = "get_poh"
+	TypeFreeWeekly       = "free_weekly"
+	TypeBeReferred       = "be_referred"
+	TypeReferralSpecific = "referral_specific"
 )
 
-type Types struct {
-	inner map[string]resources.EventStaticMeta
+type EventConfig struct {
+	Name        string     `fig:"name,required"`
+	Description string     `fig:"description,required"`
+	Reward      int64      `fig:"reward,required"`
+	Title       string     `fig:"title,required"`
+	Frequency   Frequency  `fig:"frequency,required"`
+	ExpiresAt   *time.Time `fig:"expires_at"`
+	NoAutoOpen  bool       `fig:"no_auto_open"`
+	Disabled    bool       `fig:"disabled"`
 }
 
-func (t Types) Get(name string) *resources.EventStaticMeta {
-	if t.inner == nil {
-		panic("event types are not correctly initialized")
+func (e EventConfig) Resource() resources.EventStaticMeta {
+	return resources.EventStaticMeta{
+		Name:        e.Name,
+		Description: e.Description,
+		Reward:      e.Reward,
+		Title:       e.Title,
+		Frequency:   e.Frequency.String(),
+		ExpiresAt:   e.ExpiresAt,
 	}
+}
 
-	v, ok := t.inner[name]
-	if !ok {
+type Types struct {
+	m    map[string]EventConfig
+	list []EventConfig
+}
+
+func (t Types) Get(name string, filters ...filter) *EventConfig {
+	t.ensureInitialized()
+	v, ok := t.m[name]
+	if !ok || isFiltered(v, filters...) {
 		return nil
 	}
 
 	return &v
 }
 
-func (t Types) PrepareOpenEvents(userDID string) []data.Event {
-	evTypes := t.List()
-	events := make([]data.Event, len(evTypes))
+func (t Types) List(filters ...filter) []EventConfig {
+	t.ensureInitialized()
+	res := make([]EventConfig, 0, len(t.list))
+	for _, v := range t.list {
+		if isFiltered(v, filters...) {
+			continue
+		}
+		res = append(res, v)
+	}
+	return res
+}
 
-	for i, et := range evTypes {
-		events[i] = data.Event{
+func (t Types) Names(filters ...filter) []string {
+	t.ensureInitialized()
+	res := make([]string, 0, len(t.list))
+	for _, v := range t.list {
+		if isFiltered(v, filters...) {
+			continue
+		}
+		res = append(res, v.Name)
+	}
+	return res
+}
+
+func (t Types) PrepareEvents(userDID string, filters ...filter) []data.Event {
+	t.ensureInitialized()
+	const extraCap = 1 // in case we append to the resulting slice outside the function
+	events := make([]data.Event, 0, len(t.list)+extraCap)
+
+	for _, et := range t.list {
+		if isFiltered(et, filters...) {
+			continue
+		}
+
+		status := data.EventOpen
+		if et.Name == TypeFreeWeekly {
+			status = data.EventFulfilled
+		}
+
+		events = append(events, data.Event{
 			UserDID: userDID,
 			Type:    et.Name,
-			Status:  data.EventOpen,
-		}
-
-		if et.Name == TypeFreeWeekly {
-			events[i].Status = data.EventFulfilled
-		}
+			Status:  status,
+		})
 	}
 
 	return events
 }
 
-// List returns non-expired and auto-opening event types
-func (t Types) List() []resources.EventStaticMeta {
-	if t.inner == nil {
+func (t Types) ensureInitialized() {
+	if t.m == nil || t.list == nil {
 		panic("event types are not correctly initialized")
 	}
-
-	res := make([]resources.EventStaticMeta, 0, len(t.inner))
-	for _, v := range t.inner {
-		if v.NoAutoOpen || isExpiredEvent(v) {
-			continue
-		}
-		res = append(res, v)
-	}
-
-	return res
-}
-
-func (t Types) NamesByFrequency(f Frequency) []string {
-	if t.inner == nil {
-		panic("event types are not correctly initialized")
-	}
-
-	res := make([]string, 0, len(t.inner))
-	for _, v := range t.inner {
-		if v.Frequency != f.String() || isExpiredEvent(v) {
-			continue
-		}
-		res = append(res, v.Name)
-	}
-
-	return res
-}
-
-func (t Types) IsExpired(name string) bool {
-	evType := t.Get(name)
-	if evType == nil {
-		return false
-	}
-
-	return isExpiredEvent(*evType)
-}
-
-func isExpiredEvent(ev resources.EventStaticMeta) bool {
-	return ev.ExpiresAt != nil && ev.ExpiresAt.Before(time.Now().UTC())
 }

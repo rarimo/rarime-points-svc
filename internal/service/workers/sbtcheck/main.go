@@ -12,6 +12,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck/verifiers"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/pgdb"
@@ -21,9 +22,10 @@ import (
 
 type runner struct {
 	network
-	db    *pgdb.DB
-	types evtypes.Types
-	log   *logan.Entry
+	db     *pgdb.DB
+	types  evtypes.Types
+	log    *logan.Entry
+	cancel context.CancelFunc
 }
 
 type network struct {
@@ -54,10 +56,13 @@ type extConfig interface {
 
 func Run(ctx context.Context, cfg extConfig) {
 	log := cfg.Log().WithField("who", "sbt-checker")
-	if cfg.EventTypes().IsExpired(evtypes.TypeGetPoH) {
-		log.Warn("PoH event is expired, SBT check will not run")
+	if cfg.EventTypes().Get(evtypes.TypeGetPoH, evtypes.FilterInactive) == nil {
+		log.Warn("PoH event is disabled or expired, SBT check will not run")
 		return
 	}
+
+	ctx2, cancel := context.WithCancel(ctx)
+	defer cancel()
 
 	var wg sync.WaitGroup
 	for name, net := range cfg.SbtCheck().networks {
@@ -74,11 +79,12 @@ func Run(ctx context.Context, cfg extConfig) {
 			db:      cfg.DB(),
 			types:   cfg.EventTypes(),
 			log:     log.WithField("network", name),
+			cancel:  cancel,
 		}
 
 		runnerName := fmt.Sprintf("sbt-checker[%s]", net.name)
 		go func() {
-			running.WithBackOff(ctx, r.log, runnerName, r.subscription,
+			running.WithBackOff(ctx2, r.log, runnerName, r.subscription,
 				30*time.Second, 5*time.Second, 30*time.Second)
 			wg.Done()
 		}()
@@ -236,9 +242,11 @@ func (r *runner) findPohEvent(did string) (*data.Event, error) {
 }
 
 func (r *runner) fulfillPohEvent(poh data.Event) error {
-	getPoh := r.types.Get(evtypes.TypeGetPoH)
+	getPoh := r.types.Get(evtypes.TypeGetPoH, evtypes.FilterExpired)
 	if getPoh == nil {
-		return fmt.Errorf("event types were not correctly initialized: missing %s", evtypes.TypeGetPoH)
+		r.log.Warn("PoH event type has expired: stopping SBT checkers for all networks")
+		r.cancel() // detected by running.WithBackOff
+		return nil
 	}
 
 	_, err := r.eventsQ().FilterByID(poh.ID).Update(data.EventFulfilled, nil, &getPoh.Reward)
@@ -251,12 +259,15 @@ func (r *runner) fulfillPohEvent(poh data.Event) error {
 
 func (r *runner) createBalance(did string) error {
 	return r.eventsQ().Transaction(func() error {
-
-		if err := r.balancesQ().Insert(did); err != nil {
+		err := r.balancesQ().Insert(data.Balance{
+			DID:        did,
+			ReferralID: referralid.New(did),
+		})
+		if err != nil {
 			return fmt.Errorf("insert balance: %w", err)
 		}
 
-		err := r.eventsQ().Insert(r.types.PrepareOpenEvents(did)...)
+		err = r.eventsQ().Insert(r.types.PrepareEvents(did, evtypes.FilterNotOpenable)...)
 		if err != nil {
 			return fmt.Errorf("insert open events: %w", err)
 		}

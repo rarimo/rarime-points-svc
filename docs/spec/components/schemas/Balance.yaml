@@ -8,6 +8,7 @@ allOf:
         type: object
         required:
           - amount
+          - referral_id
           - is_verified
           - created_at
           - updated_at
@@ -17,6 +18,10 @@ allOf:
             format: int64
             description: Amount of points
             example: 580
+          referral_id:
+            type: string
+            description: Referral ID used to build a referral link and send it to friends
+            example: "zgsScguZ"
           is_verified:
             type: boolean
             description: Whether the user has scanned passport

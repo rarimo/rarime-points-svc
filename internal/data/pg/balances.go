@@ -31,11 +31,16 @@ func (q *balances) New() data.BalancesQ {
 	return NewBalances(q.db.Clone())
 }
 
-func (q *balances) Insert(did string) error {
-	stmt := squirrel.Insert(balancesTable).Columns("did").Values(did)
+func (q *balances) Insert(bal data.Balance) error {
+	stmt := squirrel.Insert(balancesTable).SetMap(map[string]interface{}{
+		"did":         bal.DID,
+		"amount":      bal.Amount,
+		"referral_id": bal.ReferralID,
+		"referred_by": bal.ReferredBy,
+	})
 
 	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("insert balance for did %s: %w", did, err)
+		return fmt.Errorf("insert balance %+v: %w", bal, err)
 	}
 
 	return nil
@@ -97,7 +102,15 @@ func (q *balances) WithRank() data.BalancesQ {
 }
 
 func (q *balances) FilterByDID(did string) data.BalancesQ {
-	q.selector = q.selector.Where(squirrel.Eq{"did": did})
-	q.updater = q.updater.Where(squirrel.Eq{"did": did})
+	return q.applyCondition(squirrel.Eq{"did": did})
+}
+
+func (q *balances) FilterByReferralID(referralID string) data.BalancesQ {
+	return q.applyCondition(squirrel.Eq{"referral_id": referralID})
+}
+
+func (q *balances) applyCondition(cond squirrel.Eq) data.BalancesQ {
+	q.selector = q.selector.Where(cond)
+	q.updater = q.updater.Where(cond)
 	return q
 }

@@ -41,10 +41,15 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	evType := EventTypes(r).Get(event.Type)
+	evType := EventTypes(r).Get(event.Type) // expired events can be claimed
 	if evType == nil {
 		Log(r).Error("Wrong event type is stored in DB: might be bad event config")
 		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if evType.Disabled {
+		Log(r).Infof("Event type %s is disabled, while user has tried to claim", evType.Name)
+		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
@@ -63,7 +68,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, newClaimEventResponse(*event, *evType, *balance))
+	ape.Render(w, newClaimEventResponse(*event, evType.Resource(), *balance))
 }
 
 // requires: event exist

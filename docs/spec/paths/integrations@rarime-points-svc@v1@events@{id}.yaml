@@ -45,6 +45,12 @@ patch:
       $ref: '#/components/responses/invalidParameter'
     401:
       $ref: '#/components/responses/invalidAuth'
+    403:
+      description: This event type was disabled and cannot be claimed
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
     404:
       $ref: '#/components/responses/notFound'
     500:

@@ -46,6 +46,7 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 		},
 		Attributes: resources.BalanceAttributes{
 			Amount:     balance.Amount,
+			ReferralId: balance.ReferralID,
 			IsVerified: balance.PassportHash.Valid,
 			CreatedAt:  balance.CreatedAt,
 			UpdatedAt:  balance.UpdatedAt,

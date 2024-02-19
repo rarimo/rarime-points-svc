@@ -70,7 +70,7 @@ func (c *initCollector) collect() ([]data.ReopenableEvent, error) {
 }
 
 func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) ([]data.ReopenableEvent, error) {
-	types := c.types.NamesByFrequency(freq)
+	types := c.types.Names(evtypes.FilterByFrequency(freq), evtypes.FilterInactive)
 
 	res, err := c.q.New().FilterByType(types...).
 		FilterByUpdatedAtBefore(before).
@@ -95,22 +95,14 @@ func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) (
 }
 
 func (c *initCollector) selectAbsent() ([]data.ReopenableEvent, error) {
-	typesAll := c.types.List()
-	typeNames := make([]string, len(typesAll))
+	types := c.types.Names(evtypes.FilterNotOpenable)
 
-	for i, t := range typesAll {
-		if t.NoAutoOpen {
-			continue
-		}
-		typeNames[i] = t.Name
-	}
-
-	res, err := c.q.New().SelectAbsentTypes(typeNames...)
+	res, err := c.q.New().SelectAbsentTypes(types...)
 	if err != nil {
-		return nil, fmt.Errorf("select events with absent types [types=%v]: %w", typeNames, err)
+		return nil, fmt.Errorf("select events with absent types [types=%v]: %w", types, err)
 	}
 
-	log := c.log.WithField("types", typeNames)
+	log := c.log.WithField("types", types)
 	if len(res) == 0 {
 		log.Debug("No new event types found to open for new users")
 		return nil, nil
