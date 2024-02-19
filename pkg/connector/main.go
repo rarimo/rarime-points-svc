@@ -21,10 +21,10 @@ func NewClient(cli iface.Client) *Client {
 
 func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) error {
 	u, _ := url.Parse(FulfillEventEndpoint)
-	return c.conn.PostJSON(u, req, ctx, nil)
+	return c.conn.PatchJSON(u, req, ctx, nil)
 }
 
 func (c *Client) VerifyPassport(ctx context.Context, req VerifyPassportRequest) error {
 	u, _ := url.Parse(VerifyPassportEndpoint)
-	return c.conn.PostJSON(u, req, ctx, nil)
+	return c.conn.PatchJSON(u, req, ctx, nil)
 }

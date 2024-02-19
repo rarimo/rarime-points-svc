@@ -40,6 +40,10 @@ func (s *service) router() chi.Router {
 		})
 		r.Get("/balances", handlers.Leaderboard)
 		r.Get("/point_price", handlers.GetPointPrice)
+		// must be accessible only within the cluster
+		r.Route("/private", func(r chi.Router) {
+			r.Patch("/balances", handlers.VerifyPassport)
+		})
 	})
 
 	return r
