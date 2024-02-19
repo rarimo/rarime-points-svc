@@ -26,7 +26,7 @@ paths:
                 - data
               properties:
                 data:
-                  $ref: '#/components/schemas/CreateBalanceKey'
+                  $ref: '#/components/schemas/CreateBalance'
       responses:
         '201':
           description: Created
@@ -41,6 +41,8 @@ paths:
                     $ref: '#/components/schemas/Balance'
         '401':
           $ref: '#/components/responses/invalidAuth'
+        '404':
+          $ref: '#/components/responses/notFound'
         '409':
           description: Balance already exists for provided DID
           content:
@@ -303,6 +305,12 @@ paths:
           $ref: '#/components/responses/invalidParameter'
         '401':
           $ref: '#/components/responses/invalidAuth'
+        '403':
+          description: This event type was disabled and cannot be claimed
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/Errors'
         '404':
           $ref: '#/components/responses/notFound'
         '500':
@@ -341,6 +349,7 @@ components:
               type: object
               required:
                 - amount
+                - referral_id
                 - is_verified
                 - created_at
                 - updated_at
@@ -350,6 +359,10 @@ components:
                   format: int64
                   description: Amount of points
                   example: 580
+                referral_id:
+                  type: string
+                  description: Referral ID used to build a referral link and send it to friends
+                  example: zgsScguZ
                 is_verified:
                   type: boolean
                   description: Whether the user has scanned passport
@@ -394,6 +407,21 @@ components:
           type: string
           enum:
             - claim_event
+    CreateBalance:
+      allOf:
+        - $ref: '#/components/schemas/CreateBalanceKey'
+        - type: object
+          x-go-is-request: true
+          properties:
+            attributes:
+              type: object
+              required:
+                - referred_by
+              properties:
+                referred_by:
+                  type: string
+                  description: ID of the referrer from the link
+                  example: rCx18MZ4
     CreateBalanceKey:
       type: object
       required:
@@ -558,13 +586,6 @@ components:
             - daily
             - weekly
             - unlimited
-            - custom
-        no_auto_open:
-          type: boolean
-          description: |
-            If true, the event will not be created with `open` status automatically
-            when user creates the balance.
-          example: true
         expires_at:
           type: string
           format: time.Time
