@@ -8,8 +8,7 @@ import (
 	iface "gitlab.com/distributed_lab/json-api-connector/client"
 )
 
-const FulfillEventEndpoint = "/integrations/rarime-points-svc/v1/private/events"
-const VerifyPassportEndpoint = "/integrations/rarime-points-svc/v1/private/balances"
+const privatePrefix = "/integrations/rarime-points-svc/v1/private"
 
 type Client struct {
 	conn *conn.Connector
@@ -20,11 +19,11 @@ func NewClient(cli iface.Client) *Client {
 }
 
 func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) error {
-	u, _ := url.Parse(FulfillEventEndpoint)
+	u, _ := url.Parse(privatePrefix + "/events")
 	return c.conn.PatchJSON(u, req, ctx, nil)
 }
 
 func (c *Client) VerifyPassport(ctx context.Context, req VerifyPassportRequest) error {
-	u, _ := url.Parse(VerifyPassportEndpoint)
+	u, _ := url.Parse(privatePrefix + "/balances")
 	return c.conn.PatchJSON(u, req, ctx, nil)
 }

@@ -1,31 +1,34 @@
 package service
 
 import (
+	"context"
+
 	"github.com/go-chi/chi"
+	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"gitlab.com/distributed_lab/ape"
 )
 
-func (s *service) router() chi.Router {
+func Run(ctx context.Context, cfg config.Config) {
 	r := chi.NewRouter()
 
 	r.Use(
-		ape.RecoverMiddleware(s.log),
-		ape.LoganMiddleware(s.log),
+		ape.RecoverMiddleware(cfg.Log()),
+		ape.LoganMiddleware(cfg.Log()),
 		ape.CtxMiddleware(
-			handlers.CtxLog(s.log),
-			handlers.CtxEventsQ(pg.NewEvents(s.cfg.DB())),
-			handlers.CtxBalancesQ(pg.NewBalances(s.cfg.DB())),
-			handlers.CtxWithdrawalsQ(pg.NewWithdrawals(s.cfg.DB())),
-			handlers.CtxEventTypes(s.cfg.EventTypes()),
-			handlers.CtxBroadcaster(s.cfg.Broadcaster()),
-			handlers.CtxPointPrice(s.cfg.PointPrice()),
+			handlers.CtxLog(cfg.Log()),
+			handlers.CtxEventsQ(pg.NewEvents(cfg.DB())),
+			handlers.CtxBalancesQ(pg.NewBalances(cfg.DB())),
+			handlers.CtxWithdrawalsQ(pg.NewWithdrawals(cfg.DB())),
+			handlers.CtxEventTypes(cfg.EventTypes()),
+			handlers.CtxBroadcaster(cfg.Broadcaster()),
+			handlers.CtxPointPrice(cfg.PointPrice()),
 		),
 	)
 	r.Route("/integrations/rarime-points-svc/v1", func(r chi.Router) {
 		r.Route("/balances", func(r chi.Router) {
-			r.Use(handlers.AuthMiddleware(s.cfg.Auth(), s.log))
+			r.Use(handlers.AuthMiddleware(cfg.Auth(), cfg.Log()))
 			r.Post("/", handlers.CreateBalance)
 			r.Route("/{did}", func(r chi.Router) {
 				r.Get("/", handlers.GetBalance)
@@ -34,7 +37,7 @@ func (s *service) router() chi.Router {
 			})
 		})
 		r.Route("/events", func(r chi.Router) {
-			r.Use(handlers.AuthMiddleware(s.cfg.Auth(), s.log))
+			r.Use(handlers.AuthMiddleware(cfg.Auth(), cfg.Log()))
 			r.Get("/", handlers.ListEvents)
 			r.Patch("/{id}", handlers.ClaimEvent)
 		})
@@ -46,5 +49,6 @@ func (s *service) router() chi.Router {
 		})
 	})
 
-	return r
+	cfg.Log().Info("Service started")
+	ape.Serve(ctx, r, cfg, ape.ServeOpts{})
 }
