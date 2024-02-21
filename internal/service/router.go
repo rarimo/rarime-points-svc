@@ -43,6 +43,7 @@ func Run(ctx context.Context, cfg config.Config) {
 		// must be accessible only within the cluster
 		r.Route("/private", func(r chi.Router) {
 			r.Patch("/balances", handlers.VerifyPassport)
+			r.Patch("/events", handlers.FulfillEvent)
 		})
 	})
 

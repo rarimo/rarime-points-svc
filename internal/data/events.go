@@ -1,6 +1,7 @@
 package data
 
 import (
+	"database/sql"
 	"encoding/json"
 
 	"gitlab.com/distributed_lab/kit/pgdb"
@@ -19,14 +20,15 @@ func (s EventStatus) String() string {
 }
 
 type Event struct {
-	ID           string      `db:"id"`
-	UserDID      string      `db:"user_did"`
-	Type         string      `db:"type"`
-	Status       EventStatus `db:"status"`
-	CreatedAt    int32       `db:"created_at"`
-	UpdatedAt    int32       `db:"updated_at"`
-	Meta         Jsonb       `db:"meta"`
-	PointsAmount *int64      `db:"points_amount"`
+	ID           string         `db:"id"`
+	UserDID      string         `db:"user_did"`
+	Type         string         `db:"type"`
+	Status       EventStatus    `db:"status"`
+	CreatedAt    int32          `db:"created_at"`
+	UpdatedAt    int32          `db:"updated_at"`
+	Meta         Jsonb          `db:"meta"`
+	PointsAmount *int64         `db:"points_amount"`
+	ExternalID   sql.NullString `db:"external_id"` // hidden from client
 }
 
 // ReopenableEvent is a pair that is sufficient to build a new open event with a specific type for a user
@@ -60,4 +62,5 @@ type EventsQ interface {
 	FilterByStatus(...EventStatus) EventsQ
 	FilterByType(...string) EventsQ
 	FilterByUpdatedAtBefore(int64) EventsQ
+	FilterByExternalID(string) EventsQ
 }

@@ -204,6 +204,10 @@ func (q *events) FilterByType(types ...string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"type": types})
 }
 
+func (q *events) FilterByExternalID(id string) data.EventsQ {
+	return q.applyCondition(squirrel.Eq{"external_id": id})
+}
+
 func (q *events) FilterByUpdatedAtBefore(unix int64) data.EventsQ {
 	return q.applyCondition(squirrel.Lt{"updated_at": unix})
 }
