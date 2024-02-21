@@ -1,11 +1,9 @@
 package requests
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/rarimo/rarime-points-svc/internal/service/page"
 	"gitlab.com/distributed_lab/urlval/v4"
 )
@@ -17,9 +15,8 @@ type ListWithdrawals struct {
 
 func NewListWithdrawals(r *http.Request) (req ListWithdrawals, err error) {
 	if err = urlval.Decode(r.URL.Query(), &req); err != nil {
-		return req, validation.Errors{
-			"query": fmt.Errorf("failed to decode query: %w", err),
-		}
+		err = newDecodeError("query", err)
+		return
 	}
 
 	req.DID = chi.URLParam(r, "did")

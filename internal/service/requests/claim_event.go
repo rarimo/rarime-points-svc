@@ -13,7 +13,7 @@ import (
 func NewClaimEvent(r *http.Request) (req resources.Relation, err error) {
 	id := chi.URLParam(r, "id")
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		err = fmt.Errorf("decode request body: %w", err)
+		err = newDecodeError("body", err)
 		return
 	}
 
@@ -26,4 +26,10 @@ func NewClaimEvent(r *http.Request) (req resources.Relation, err error) {
 		"data/id":   validation.Validate(req.Data.ID, validation.Required, validation.In(id)),
 		"data/type": validation.Validate(req.Data.Type, validation.Required, validation.In(resources.CLAIM_EVENT)),
 	}.Filter()
+}
+
+func newDecodeError(what string, err error) error {
+	return validation.Errors{
+		what: fmt.Errorf("decode request %s: %w", what, err),
+	}
 }

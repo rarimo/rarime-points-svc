@@ -2,7 +2,6 @@ package requests
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -11,7 +10,7 @@ import (
 
 func NewCreateBalance(r *http.Request) (req resources.CreateBalanceRequest, err error) {
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		err = fmt.Errorf("decode request body: %w", err)
+		err = newDecodeError("body", err)
 		return
 	}
 

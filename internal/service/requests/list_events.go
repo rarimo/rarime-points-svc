@@ -1,7 +1,6 @@
 package requests
 
 import (
-	"fmt"
 	"net/http"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -20,9 +19,8 @@ type ListEvents struct {
 
 func NewListEvents(r *http.Request) (req ListEvents, err error) {
 	if err = urlval.Decode(r.URL.Query(), &req); err != nil {
-		return req, validation.Errors{
-			"query": fmt.Errorf("failed to decode query: %w", err),
-		}
+		err = newDecodeError("query", err)
+		return
 	}
 	if err = req.CursorParams.Validate(); err != nil {
 		return

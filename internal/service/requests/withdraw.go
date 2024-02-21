@@ -2,7 +2,6 @@ package requests
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -14,7 +13,7 @@ func NewWithdraw(r *http.Request) (req resources.WithdrawRequest, err error) {
 	did := chi.URLParam(r, "did")
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		err = fmt.Errorf("decode request body: %w", err)
+		err = newDecodeError("body", err)
 		return
 	}
 

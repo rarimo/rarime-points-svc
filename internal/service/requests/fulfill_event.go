@@ -10,6 +10,7 @@ import (
 
 func NewFulfillEvent(r *http.Request) (req connector.FulfillEventRequest, err error) {
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		err = newDecodeError("body", err)
 		return
 	}
 

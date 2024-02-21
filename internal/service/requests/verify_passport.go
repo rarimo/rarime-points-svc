@@ -12,6 +12,7 @@ import (
 
 func NewVerifyPassport(r *http.Request) (req connector.VerifyPassportRequest, err error) {
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		err = newDecodeError("body", err)
 		return
 	}
 
