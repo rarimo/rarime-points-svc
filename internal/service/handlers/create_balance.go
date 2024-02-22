@@ -57,7 +57,8 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		referredBy = attr.ReferredBy
 	}
 
-	if err = createBalanceWithEvents(did, referredBy, r); err != nil {
+	events := prepareEventsWithRef(did, referredBy, r)
+	if err = createBalanceWithEvents(did, referredBy, events, r); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance with events")
 		ape.RenderErr(w, problems.InternalError())
 		return
@@ -75,29 +76,6 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ape.Render(w, newBalanceModel(*balance))
-}
-
-func createBalanceWithEvents(did, refBy string, r *http.Request) error {
-	return EventsQ(r).Transaction(func() error {
-		err := BalancesQ(r).Insert(data.Balance{
-			DID:        did,
-			ReferralID: referralid.New(did),
-			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
-		})
-
-		if err != nil {
-			return fmt.Errorf("add balance: %w", err)
-		}
-
-		events := prepareEventsWithRef(did, refBy, r)
-		Log(r).Debugf("%d events will be added for user_did=%s", len(events), did)
-
-		if err = EventsQ(r).Insert(events...); err != nil {
-			return fmt.Errorf("add open events: %w", err)
-		}
-
-		return nil
-	})
 }
 
 func prepareEventsWithRef(did, refBy string, r *http.Request) []data.Event {
@@ -119,5 +97,26 @@ func prepareEventsWithRef(did, refBy string, r *http.Request) []data.Event {
 		UserDID: did,
 		Type:    evtypes.TypeBeReferred,
 		Status:  data.EventFulfilled,
+	})
+}
+
+func createBalanceWithEvents(did, refBy string, events []data.Event, r *http.Request) error {
+	return EventsQ(r).Transaction(func() error {
+		err := BalancesQ(r).Insert(data.Balance{
+			DID:        did,
+			ReferralID: referralid.New(did),
+			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
+		})
+
+		if err != nil {
+			return fmt.Errorf("add balance: %w", err)
+		}
+
+		Log(r).Debugf("%d events will be added for user_did=%s", len(events), did)
+		if err = EventsQ(r).Insert(events...); err != nil {
+			return fmt.Errorf("add open events: %w", err)
+		}
+
+		return nil
 	})
 }

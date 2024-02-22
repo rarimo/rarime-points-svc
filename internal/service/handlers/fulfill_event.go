@@ -16,11 +16,19 @@ import (
 func FulfillEvent(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.NewFulfillEvent(r)
 	if err != nil {
+		Log(r).WithError(err).Debug("Bad request")
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
 
+	log := Log(r).WithFields(map[string]any{
+		"user_did":    req.UserDID,
+		"event_type":  req.EventType,
+		"external_id": req.ExternalID,
+	})
+
 	if apiErr := validateEventType(req.EventType, r); apiErr != nil {
+		log.WithError(apiErr).Debug("Invalid event type")
 		ape.RenderErr(w, apiErr)
 		return
 	}
@@ -28,27 +36,47 @@ func FulfillEvent(w http.ResponseWriter, r *http.Request) {
 	internalErr := api.CodeInternalError.JSONAPIError()
 	balance, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, internalErr)
 		return
 	}
 
 	if balance == nil {
 		if req.ExternalID != nil {
+			log.Debug("User DID is unknown, while external_id was provided")
 			ape.RenderErr(w, api.CodeDidUnknown.JSONAPIError())
 			return
 		}
-		// it would be more efficient to insert already fulfilled event with the specific type
-		if err = createBalanceWithEvents(req.UserDID, "", r); err != nil {
-			Log(r).WithError(err).Error("Failed to create balance with events")
+
+		events := EventTypes(r).PrepareEvents(req.UserDID, evtypes.FilterNotOpenable)
+		typeExists := false
+		for i, ev := range events {
+			if ev.Type == req.EventType {
+				events[i].Status = data.EventFulfilled
+				typeExists = true
+				break
+			}
+		}
+
+		if !typeExists {
+			log.Debug("Event type is not openable")
+			ape.RenderErr(w, api.CodeEventNotFound.JSONAPIError())
+			return
+		}
+
+		if err = createBalanceWithEvents(req.UserDID, "", events, r); err != nil {
+			log.WithError(err).Error("Failed to create balance with events")
 			ape.RenderErr(w, internalErr)
 			return
 		}
+
+		w.WriteHeader(http.StatusNoContent)
+		return
 	}
 
 	eventID, err := getEventToFulfill(req, r)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get event to fulfill")
+		log.WithError(err).Error("Failed to get event to fulfill")
 		ape.RenderErr(w, internalErr)
 		return
 	}
@@ -59,7 +87,7 @@ func FulfillEvent(w http.ResponseWriter, r *http.Request) {
 
 	_, err = EventsQ(r).FilterByID(eventID).Update(data.EventFulfilled, nil, nil)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to update event")
+		log.WithError(err).Error("Failed to update event")
 		ape.RenderErr(w, internalErr)
 		return
 	}
