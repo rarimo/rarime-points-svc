@@ -12,15 +12,16 @@ import (
 
 func Run(ctx context.Context, cfg config.Config) {
 	r := chi.NewRouter()
+	db := cfg.DB().Clone()
 
 	r.Use(
 		ape.RecoverMiddleware(cfg.Log()),
 		ape.LoganMiddleware(cfg.Log()),
 		ape.CtxMiddleware(
 			handlers.CtxLog(cfg.Log()),
-			handlers.CtxEventsQ(pg.NewEvents(cfg.DB())),
-			handlers.CtxBalancesQ(pg.NewBalances(cfg.DB())),
-			handlers.CtxWithdrawalsQ(pg.NewWithdrawals(cfg.DB())),
+			handlers.CtxEventsQ(pg.NewEvents(db)),
+			handlers.CtxBalancesQ(pg.NewBalances(db)),
+			handlers.CtxWithdrawalsQ(pg.NewWithdrawals(db)),
 			handlers.CtxEventTypes(cfg.EventTypes()),
 			handlers.CtxBroadcaster(cfg.Broadcaster()),
 			handlers.CtxPointPrice(cfg.PointPrice()),

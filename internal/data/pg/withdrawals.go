@@ -23,7 +23,7 @@ func NewWithdrawals(db *pgdb.DB) data.WithdrawalsQ {
 }
 
 func (q *withdrawals) New() data.WithdrawalsQ {
-	return NewWithdrawals(q.db.Clone())
+	return NewWithdrawals(q.db)
 }
 
 func (q *withdrawals) Insert(w data.Withdrawal) (*data.Withdrawal, error) {
