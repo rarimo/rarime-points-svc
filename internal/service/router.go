@@ -5,27 +5,23 @@ import (
 
 	"github.com/go-chi/chi"
 	"github.com/rarimo/rarime-points-svc/internal/config"
-	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"gitlab.com/distributed_lab/ape"
 )
 
 func Run(ctx context.Context, cfg config.Config) {
 	r := chi.NewRouter()
-	db := cfg.DB().Clone()
 
 	r.Use(
 		ape.RecoverMiddleware(cfg.Log()),
 		ape.LoganMiddleware(cfg.Log()),
 		ape.CtxMiddleware(
 			handlers.CtxLog(cfg.Log()),
-			handlers.CtxEventsQ(pg.NewEvents(db)),
-			handlers.CtxBalancesQ(pg.NewBalances(db)),
-			handlers.CtxWithdrawalsQ(pg.NewWithdrawals(db)),
 			handlers.CtxEventTypes(cfg.EventTypes()),
 			handlers.CtxBroadcaster(cfg.Broadcaster()),
 			handlers.CtxPointPrice(cfg.PointPrice()),
 		),
+		handlers.DBCloneMiddleware(cfg.DB()),
 	)
 	r.Route("/integrations/rarime-points-svc/v1", func(r chi.Router) {
 		r.Route("/balances", func(r chi.Router) {
