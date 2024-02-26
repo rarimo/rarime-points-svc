@@ -28,8 +28,9 @@ type BalancesQ interface {
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
 	Get() (*Balance, error)
+	// GetWithRank returns balance with rank, filtered by DID. No other filters can be applied.
+	GetWithRank(did string) (*Balance, error)
 
-	WithRank() BalancesQ
 	FilterByDID(string) BalancesQ
 	FilterByReferralID(string) BalancesQ
 }

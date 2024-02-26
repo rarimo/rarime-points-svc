@@ -12,6 +12,7 @@ import (
 )
 
 const balancesTable = "balances"
+const balancesRankColumns = "did, MAX(amount) as amount, created_at, updated_at, referral_id, referred_by, passport_hash, passport_expires"
 
 type balances struct {
 	db       *pgdb.DB
@@ -98,9 +99,24 @@ func (q *balances) Get() (*data.Balance, error) {
 	return &res, nil
 }
 
-func (q *balances) WithRank() data.BalancesQ {
-	q.selector = q.selector.Column("RANK() OVER (ORDER BY amount DESC, updated_at ASC) AS rank")
-	return q
+func (q *balances) GetWithRank(did string) (*data.Balance, error) {
+	var res data.Balance
+	stmt := fmt.Sprintf(`
+		SELECT * FROM (
+			SELECT *, RANK() OVER (ORDER BY amount DESC, created_at ASC) AS rank FROM (
+				SELECT %s FROM %s GROUP BY did
+			) AS t
+		) AS ranked WHERE did = ?
+	`, balancesRankColumns, balancesTable)
+
+	if err := q.db.GetRaw(&res, stmt, did); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get balance with rank: %w", err)
+	}
+
+	return &res, nil
 }
 
 func (q *balances) FilterByDID(did string) data.BalancesQ {

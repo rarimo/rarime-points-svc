@@ -28,7 +28,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := getBalanceByDID(req.Data.ID, true, r)
+	balance, err := BalancesQ(r).FilterByDID(req.Data.ID).Get()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
@@ -40,7 +40,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := isEligibleToWithdraw(balance, req.Data.Attributes.Amount); err != nil {
+	if err = isEligibleToWithdraw(balance, req.Data.Attributes.Amount); err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
@@ -74,7 +74,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// balance should exist cause of previous logic
-	balance, err = getBalanceByDID(req.Data.ID, true, r)
+	balance, err = BalancesQ(r).GetWithRank(req.Data.ID)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())

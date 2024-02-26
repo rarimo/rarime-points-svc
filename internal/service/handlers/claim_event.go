@@ -61,7 +61,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// balance should exist cause of previous logic
-	balance, err := getBalanceByDID(event.UserDID, true, r)
+	balance, err := BalancesQ(r).GetWithRank(event.UserDID)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())

@@ -23,7 +23,7 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := getBalanceByDID(req.DID, true, r)
+	balance, err := BalancesQ(r).GetWithRank(req.DID)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
@@ -53,13 +53,4 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 			Rank:       balance.Rank,
 		},
 	}
-}
-
-func getBalanceByDID(did string, withRank bool, r *http.Request) (*data.Balance, error) {
-	q := BalancesQ(r).FilterByDID(did)
-	if withRank {
-		q.WithRank()
-	}
-
-	return q.Get()
 }

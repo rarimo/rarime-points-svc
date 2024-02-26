@@ -28,7 +28,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := getBalanceByDID(did, false, r)
+	balance, err := BalancesQ(r).FilterByDID(did).Get()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
@@ -68,7 +68,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	// rank in transaction: RANK() is a window function allowed on a set of rows,
 	// while with RETURNING we operate a single one.
 	// Balance will exist cause of previous logic.
-	balance, err = getBalanceByDID(did, true, r)
+	balance, err = BalancesQ(r).GetWithRank(did)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
