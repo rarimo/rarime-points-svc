@@ -123,14 +123,14 @@ func isEligibleToWithdraw(balance *data.Balance, amount int64) validation.Errors
 }
 
 func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
-	var (
-		from  = cosmos.MustAccAddressFromBech32(Broadcaster(r).Sender())
-		to    = cosmos.MustAccAddressFromBech32(req.Data.Attributes.Address)
-		urmo  = req.Data.Attributes.Amount * PointPrice(r)
-		coins = cosmos.NewCoins(cosmos.NewInt64Coin("urmo", int64(urmo)))
-	)
+	urmo := req.Data.Attributes.Amount * PointPrice(r)
+	tx := &bank.MsgSend{
+		FromAddress: Broadcaster(r).Sender(),
+		ToAddress:   req.Data.Attributes.Address,
+		Amount:      cosmos.NewCoins(cosmos.NewInt64Coin("urmo", urmo)),
+	}
 
-	err := Broadcaster(r).BroadcastTx(r.Context(), bank.NewMsgSend(from, to, coins))
+	err := Broadcaster(r).BroadcastTx(r.Context(), tx)
 	if err != nil {
 		return fmt.Errorf("broadcast withdrawal tx: %w", err)
 	}

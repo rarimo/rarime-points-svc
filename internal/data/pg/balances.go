@@ -33,10 +33,12 @@ func (q *balances) New() data.BalancesQ {
 
 func (q *balances) Insert(bal data.Balance) error {
 	stmt := squirrel.Insert(balancesTable).SetMap(map[string]interface{}{
-		"did":         bal.DID,
-		"amount":      bal.Amount,
-		"referral_id": bal.ReferralID,
-		"referred_by": bal.ReferredBy,
+		"did":              bal.DID,
+		"amount":           bal.Amount,
+		"referral_id":      bal.ReferralID,
+		"referred_by":      bal.ReferredBy,
+		"passport_hash":    bal.PassportHash,
+		"passport_expires": bal.PassportExpires,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {

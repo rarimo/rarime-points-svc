@@ -11,7 +11,7 @@ import (
 
 type ListEvents struct {
 	page.CursorParams
-	FilterDID    string             `filter:"did"`
+	FilterDID    *string            `filter:"did"`
 	FilterStatus []data.EventStatus `filter:"status"`
 	FilterType   []string           `filter:"meta.static.name"`
 	Count        bool               `url:"count"`

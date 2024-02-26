@@ -96,6 +96,10 @@ func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) (
 
 func (c *initCollector) selectAbsent() ([]data.ReopenableEvent, error) {
 	types := c.types.Names(evtypes.FilterNotOpenable)
+	if len(types) == 0 {
+		c.log.Debug("No openable event types are active, skip absent types selection")
+		return nil, nil
+	}
 
 	res, err := c.q.New().SelectAbsentTypes(types...)
 	if err != nil {

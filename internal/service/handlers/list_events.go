@@ -20,13 +20,13 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.FilterDID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(*req.FilterDID)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
 	events, err := EventsQ(r).
-		FilterByUserDID(req.FilterDID).
+		FilterByUserDID(*req.FilterDID).
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
 		Page(&req.CursorPageParams).
@@ -40,7 +40,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	var eventsCount int
 	if req.Count {
 		eventsCount, err = EventsQ(r).
-			FilterByUserDID(req.FilterDID).
+			FilterByUserDID(*req.FilterDID).
 			FilterByStatus(req.FilterStatus...).
 			FilterByType(req.FilterType...).
 			Count()

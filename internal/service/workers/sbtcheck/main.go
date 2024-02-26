@@ -103,7 +103,7 @@ func (r *runner) subscription(ctx context.Context) error {
 		return nil
 	}
 
-	r.log.Debugf("Starting subscription from %d to %d", r.fromBlock, toBlock)
+	r.log.Debugf("Starting subscription from %d to %d", r.fromBlock, *toBlock)
 	defer r.log.Debugf("Subscription finished")
 
 	ctx2, cancel := context.WithTimeout(ctx, r.timeout)

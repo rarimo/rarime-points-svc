@@ -40,7 +40,7 @@ func (w *watcher) initialRun() error {
 }
 
 func (w *watcher) cleanOpen(types ...string) error {
-	deleted, err := w.q.FilterByType(types...).FilterByStatus(data.EventOpen).Delete()
+	deleted, err := w.q.New().FilterByType(types...).FilterByStatus(data.EventOpen).Delete()
 	if err != nil {
 		return fmt.Errorf("clean expired open events [expired=%v]: %w", types, err)
 	}
