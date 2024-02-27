@@ -30,9 +30,9 @@ func ListWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var last string
+	var last int32
 	if len(withdrawals) > 0 {
-		last = withdrawals[len(withdrawals)-1].ID
+		last = withdrawals[len(withdrawals)-1].CreatedAt
 	}
 
 	resp := newWithdrawalsResponse(withdrawals)

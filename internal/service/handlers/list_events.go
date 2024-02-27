@@ -58,9 +58,9 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var last string
+	var last int32
 	if len(events) > 0 {
-		last = events[len(events)-1].ID
+		last = events[len(events)-1].UpdatedAt
 	}
 
 	resp := newEventsResponse(events, meta)
