@@ -32,7 +32,8 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		Page(&req.CursorPageParams).
 		Select()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get event list")
+		Log(r).WithError(err).Errorf("Failed to get filtered paginated event list: did=%s status=%v type=%v",
+			*req.FilterDID, req.FilterStatus, req.FilterType)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -45,7 +46,8 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 			FilterByType(req.FilterType...).
 			Count()
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to count events")
+			Log(r).WithError(err).Error("Failed to count filtered events: did=%s status=%v type=%v",
+				*req.FilterDID, req.FilterStatus, req.FilterType)
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}

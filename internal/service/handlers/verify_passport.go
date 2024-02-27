@@ -20,7 +20,11 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
-	log := Log(r).WithFields(map[string]any{"user_did": req.UserDID, "hash": req.Hash})
+	log := Log(r).WithFields(map[string]any{
+		"user_did": req.UserDID,
+		"hash":     req.Hash,
+		"expiry":   req.Expiry.String(),
+	})
 
 	balance, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
 	if err != nil {

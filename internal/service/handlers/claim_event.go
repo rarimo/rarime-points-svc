@@ -43,19 +43,20 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 
 	evType := EventTypes(r).Get(event.Type) // expired events can be claimed
 	if evType == nil {
-		Log(r).Error("Wrong event type is stored in DB: might be bad event config")
+		Log(r).Errorf("Wrong event type %s is stored in DB: might be bad event config", event.Type)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 	if evType.Disabled {
-		Log(r).Infof("Event type %s is disabled, while user has tried to claim", evType.Name)
+		Log(r).Infof("Event type %s is disabled, while user has tried to claim", event.Type)
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
 	event, err = claimEventWithPoints(*event, evType.Reward, r)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to claim event and accrue points to the balance")
+		Log(r).WithError(err).Errorf("Failed to claim event %s and accrue %d points to the balance %s",
+			event.ID, evType.Reward, event.UserDID)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -63,7 +64,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	// balance should exist cause of previous logic
 	balance, err := BalancesQ(r).GetWithRank(event.UserDID)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get balance by DID with rank")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

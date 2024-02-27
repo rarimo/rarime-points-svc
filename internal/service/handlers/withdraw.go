@@ -22,6 +22,11 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
+	log := Log(r).WithFields(map[string]any{
+		"user_did":      req.Data.ID,
+		"points_amount": req.Data.Attributes.Amount,
+		"dest_address":  req.Data.Attributes.Address,
+	})
 
 	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Data.ID)) {
 		ape.RenderErr(w, problems.Unauthorized())
@@ -30,7 +35,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	balance, err := BalancesQ(r).FilterByDID(req.Data.ID).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -68,7 +73,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to perform withdrawal")
+		log.WithError(err).Error("Failed to perform withdrawal")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -76,7 +81,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	// balance should exist cause of previous logic
 	balance, err = BalancesQ(r).GetWithRank(req.Data.ID)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by DID with rank")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

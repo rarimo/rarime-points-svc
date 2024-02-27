@@ -70,7 +70,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	// Balance will exist cause of previous logic.
 	balance, err = BalancesQ(r).GetWithRank(did)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get created balance by DID")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
