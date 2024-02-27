@@ -72,7 +72,7 @@ func (q *balances) SetPassport(hash string, exp time.Time) error {
 }
 
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
-	q.selector = page.ApplyTo(q.selector, "amount")
+	q.selector = page.ApplyTo(q.selector, "amount", "updated_at")
 	return q
 }
 

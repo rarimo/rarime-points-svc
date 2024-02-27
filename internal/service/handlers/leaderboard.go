@@ -24,7 +24,9 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, newLeaderboardResponse(leaders))
+	resp := newLeaderboardResponse(leaders)
+	resp.Links = req.GetLinks(r)
+	ape.Render(w, resp)
 }
 
 func newLeaderboardResponse(balances []data.Balance) resources.BalanceListResponse {
