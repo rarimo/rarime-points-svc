@@ -22,10 +22,9 @@ import (
 
 type runner struct {
 	network
-	db     *pgdb.DB
-	types  evtypes.Types
-	log    *logan.Entry
-	cancel context.CancelFunc
+	db    *pgdb.DB
+	types evtypes.Types
+	log   *logan.Entry
 }
 
 type network struct {
@@ -56,13 +55,22 @@ type extConfig interface {
 
 func Run(ctx context.Context, cfg extConfig) {
 	log := cfg.Log().WithField("who", "sbt-checker")
-	if cfg.EventTypes().Get(evtypes.TypeGetPoH, evtypes.FilterInactive) == nil {
+	getPoh := cfg.EventTypes().Get(evtypes.TypeGetPoH, evtypes.FilterInactive)
+	if getPoh == nil {
 		log.Warn("PoH event is disabled or expired, SBT check will not run")
 		return
 	}
 
 	ctx2, cancel := context.WithCancel(ctx)
 	defer cancel()
+
+	if exp := getPoh.ExpiresAt; exp != nil {
+		until := exp.Sub(time.Now().UTC())
+		time.AfterFunc(until, func() {
+			log.Warn("PoH event has expired, stopping SBT checkers for all networks")
+			cancel()
+		})
+	}
 
 	var wg sync.WaitGroup
 	for name, net := range cfg.SbtCheck().networks {
@@ -79,7 +87,6 @@ func Run(ctx context.Context, cfg extConfig) {
 			db:      cfg.DB().Clone(),
 			types:   cfg.EventTypes(),
 			log:     log.WithField("network", name),
-			cancel:  cancel,
 		}
 
 		runnerName := fmt.Sprintf("sbt-checker[%s]", net.name)
@@ -128,7 +135,7 @@ func (r *runner) getLastBlock(ctx context.Context) (*uint64, error) {
 		return nil, nil
 	}
 
-	if r.fromBlock+r.maxBlocks < lastBlock {
+	if r.maxBlocks > 0 && r.fromBlock+r.maxBlocks < lastBlock {
 		r.log.Debugf("maxBlockPerRequest limit exceeded: setting last block to %d instead of %d", r.fromBlock+r.maxBlocks, lastBlock)
 		lastBlock = r.fromBlock + r.maxBlocks
 	}
@@ -244,9 +251,7 @@ func (r *runner) findPohEvent(did string) (*data.Event, error) {
 func (r *runner) fulfillPohEvent(poh data.Event) error {
 	getPoh := r.types.Get(evtypes.TypeGetPoH, evtypes.FilterExpired)
 	if getPoh == nil {
-		r.log.Warn("PoH event type has expired: stopping SBT checkers for all networks")
-		r.cancel() // detected by running.WithBackOff
-		return nil
+		return nil // event has expired
 	}
 
 	_, err := r.eventsQ().FilterByID(poh.ID).Update(data.EventFulfilled, nil, &getPoh.Reward)
