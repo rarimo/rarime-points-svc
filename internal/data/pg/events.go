@@ -44,13 +44,13 @@ func (q *events) Insert(events ...data.Event) error {
 	}
 
 	stmt := squirrel.Insert(eventsTable).
-		Columns("user_did", "type", "status", "meta", "points_amount")
+		Columns("user_did", "type", "status", "meta", "points_amount", "external_id")
 	for _, event := range events {
 		var meta any
 		if len(event.Meta) != 0 {
 			meta = event.Meta
 		}
-		stmt = stmt.Values(event.UserDID, event.Type, event.Status, meta, event.PointsAmount)
+		stmt = stmt.Values(event.UserDID, event.Type, event.Status, meta, event.PointsAmount, event.ExternalID)
 	}
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -202,6 +202,10 @@ func (q *events) FilterByType(types ...string) data.EventsQ {
 		return q
 	}
 	return q.applyCondition(squirrel.Eq{"type": types})
+}
+
+func (q *events) FilterByExternalID(id string) data.EventsQ {
+	return q.applyCondition(squirrel.Eq{"external_id": id})
 }
 
 func (q *events) FilterByUpdatedAtBefore(unix int64) data.EventsQ {

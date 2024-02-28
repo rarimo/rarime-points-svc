@@ -34,7 +34,9 @@ CREATE TABLE IF NOT EXISTS events
     created_at    integer          NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     updated_at    integer          NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     meta          jsonb,
-    points_amount integer
+    points_amount integer,
+    external_id   text,
+    CONSTRAINT unique_external_id UNIQUE (user_did, type, external_id)
 );
 
 CREATE INDEX IF NOT EXISTS events_user_did_index ON events using btree (user_did);
@@ -59,18 +61,9 @@ CREATE TABLE IF NOT EXISTS withdrawals
 CREATE INDEX IF NOT EXISTS withdrawals_user_did_index ON withdrawals using btree (user_did);
 
 -- +migrate Down
-DROP INDEX IF EXISTS withdrawals_user_did_index;
 DROP TABLE IF EXISTS withdrawals;
-
-DROP TRIGGER IF EXISTS set_updated_at ON events;
-DROP INDEX IF EXISTS events_type_index;
-DROP INDEX IF EXISTS events_user_did_index;
-DROP INDEX IF EXISTS events_updated_at_index;
 DROP TABLE IF EXISTS events;
-DROP TYPE IF EXISTS event_status;
-
-DROP TRIGGER IF EXISTS set_updated_at ON balances;
-DROP INDEX IF EXISTS balances_amount_index;
 DROP TABLE IF EXISTS balances;
 
+DROP TYPE IF EXISTS event_status;
 DROP FUNCTION IF EXISTS trigger_set_updated_at();
