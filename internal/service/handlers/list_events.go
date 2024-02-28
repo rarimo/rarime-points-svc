@@ -46,7 +46,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 			FilterByType(req.FilterType...).
 			Count()
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to count filtered events: did=%s status=%v type=%v",
+			Log(r).WithError(err).Errorf("Failed to count filtered events: did=%s status=%v type=%v",
 				*req.FilterDID, req.FilterStatus, req.FilterType)
 			ape.RenderErr(w, problems.InternalError())
 			return
