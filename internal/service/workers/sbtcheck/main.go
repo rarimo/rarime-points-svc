@@ -76,7 +76,7 @@ func Run(ctx context.Context, cfg extConfig) {
 
 		r := &runner{
 			network: net,
-			db:      cfg.DB(),
+			db:      cfg.DB().Clone(),
 			types:   cfg.EventTypes(),
 			log:     log.WithField("network", name),
 			cancel:  cancel,

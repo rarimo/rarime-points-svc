@@ -20,3 +20,4 @@ jobs:
         with:
           reporter: github-pr-review
           cache: false
+          golangci_lint_flags: --timeout=2m

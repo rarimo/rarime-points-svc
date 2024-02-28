@@ -35,7 +35,7 @@ func NewEvents(db *pgdb.DB) data.EventsQ {
 }
 
 func (q *events) New() data.EventsQ {
-	return NewEvents(q.db.Clone())
+	return NewEvents(q.db)
 }
 
 func (q *events) Insert(events ...data.Event) error {

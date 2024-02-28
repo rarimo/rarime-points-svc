@@ -13,7 +13,7 @@ import (
 
 func initialRun(cfg config.Config) error {
 	var (
-		q   = pg.NewEvents(cfg.DB())
+		q   = pg.NewEvents(cfg.DB().Clone())
 		log = cfg.Log().WithField("who", "reopener[initializer]")
 		col = &initCollector{
 			q:     q,

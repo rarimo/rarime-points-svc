@@ -28,7 +28,7 @@ func NewBalances(db *pgdb.DB) data.BalancesQ {
 }
 
 func (q *balances) New() data.BalancesQ {
-	return NewBalances(q.db.Clone())
+	return NewBalances(q.db)
 }
 
 func (q *balances) Insert(bal data.Balance) error {
