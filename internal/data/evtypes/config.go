@@ -43,18 +43,19 @@ func (c *config) EventTypes() Types {
 			m[t.Name] = t
 		}
 
-		if _, ok := m[TypePassportScan]; ok {
-			if _, ok := raw.PassportRewards[PassportRewardRequiredAge]; !ok {
-				panic(fmt.Errorf("absent required field: %s", PassportRewardRequiredAge))
-			} else if _, ok := raw.PassportRewards[PassportRewardRequiredNationality]; !ok {
-				panic(fmt.Errorf("absent required field: %s", PassportRewardRequiredNationality))
+		if _, ok := m[TypePassportScan]; !ok {
+			if len(raw.PassportRewards) != 0 {
+				panic(fmt.Errorf("rewards exists, but event PassportScan not exists"))
 			}
 			return Types{m, raw.Types, raw.PassportRewards}
 		}
 
-		if len(raw.PassportRewards) != 0 {
-			panic(fmt.Errorf("rewards exists, but event PassportScan not exists"))
+		if _, ok := raw.PassportRewards[PassportRewardAge]; !ok {
+			panic(fmt.Errorf("absent required field: %s", PassportRewardAge))
+		} else if _, ok := raw.PassportRewards[PassportRewardNationality]; !ok {
+			panic(fmt.Errorf("absent required field: %s", PassportRewardNationality))
 		}
+
 		return Types{m, raw.Types, raw.PassportRewards}
 	}).(Types)
 }

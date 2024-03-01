@@ -55,13 +55,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if event.Type == evtypes.TypePassportScan {
-		evt, err := EventsQ(r).FilterByID(req.Data.ID).Get()
-		if err != nil {
-			Log(r).WithError(err).Error("Failed to get PassportScan event")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-		evType.Reward = *evt.PointsAmount
+		evType.Reward = *event.PointsAmount
 	}
 
 	event, err = claimEventWithPoints(*event, evType.Reward, r)

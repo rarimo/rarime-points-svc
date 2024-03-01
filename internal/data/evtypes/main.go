@@ -29,8 +29,8 @@ const (
 )
 
 const (
-	PassportRewardRequiredAge         = "age"
-	PassportRewardRequiredNationality = "nationality"
+	PassportRewardAge         = "age"
+	PassportRewardNationality = "nationality"
 )
 
 type EventConfig struct {

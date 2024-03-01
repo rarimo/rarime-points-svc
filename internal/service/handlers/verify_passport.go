@@ -34,10 +34,10 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	var reward int64
 	var success bool
-	logMsgPassportScan := "PassportScan event type is disabled or expired, not accruing points"
+	logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
+	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evType != nil {
 		reward, success = EventTypes(r).CalculatePassportScanReward(req.SharedData...)
 		if !success {
@@ -100,18 +100,18 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				return fmt.Errorf("get passport_scan event by DID: %w", err)
 			}
-			logMsgOpenEventPassportScan := "PassportScan event not open"
+			logMsgOpenE := "PassportScan event not open"
 			if passportScanEvent != nil {
 				_, err = EventsQ(r).FilterByUserDID(req.UserDID).FilterByType(evtypes.TypePassportScan).Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), &reward)
 				if err != nil {
 					return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
 				}
-				logMsgOpenEventPassportScan = "PassportScan event open"
-				logMsgPassportScan = "PassportScan event reward update successful"
+				logMsgOpenE = "PassportScan event open"
+				logMsgScan = "PassportScan event reward update successful"
 			}
-			log.Debug(logMsgOpenEventPassportScan)
+			log.Debug(logMsgOpenE)
 		}
-		log.Debug(logMsgPassportScan)
+		log.Debug(logMsgScan)
 
 		evType = EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 		if evType == nil {
