@@ -14,6 +14,7 @@ type ReferralsQ interface {
 
 	Select() ([]Referral, error)
 	Get(id string) (*Referral, error)
+	Count() (uint, error)
 
 	FilterByUserDID(string) ReferralsQ
 	FilterByIsConsumed(bool) ReferralsQ

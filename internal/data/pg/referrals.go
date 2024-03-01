@@ -13,12 +13,14 @@ const referralsTable = "referrals"
 type referrals struct {
 	db       *pgdb.DB
 	selector squirrel.SelectBuilder
+	counter  squirrel.SelectBuilder
 }
 
 func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 	return &referrals{
 		db:       db,
 		selector: squirrel.Select("*").From(referralsTable),
+		counter:  squirrel.Select("COUNT(*)").From(referralsTable),
 	}
 }
 
@@ -75,12 +77,28 @@ func (q *referrals) Get(id string) (*data.Referral, error) {
 	return &res, nil
 }
 
+func (q *referrals) Count() (uint, error) {
+	var res struct {
+		Count uint
+	}
+
+	if err := q.db.Get(&res, q.counter); err != nil {
+		return 0, fmt.Errorf("count referrals: %w", err)
+	}
+
+	return res.Count, nil
+}
+
 func (q *referrals) FilterByUserDID(did string) data.ReferralsQ {
-	q.selector = q.selector.Where(squirrel.Eq{"user_did": did})
-	return q
+	return q.applyCondition(squirrel.Eq{"user_did": did})
 }
 
 func (q *referrals) FilterByIsConsumed(isConsumed bool) data.ReferralsQ {
-	q.selector = q.selector.Where(squirrel.Eq{"is_consumed": isConsumed})
+	return q.applyCondition(squirrel.Eq{"is_consumed": isConsumed})
+}
+
+func (q *referrals) applyCondition(cond squirrel.Sqlizer) data.ReferralsQ {
+	q.selector = q.selector.Where(cond)
+	q.counter = q.counter.Where(cond)
 	return q
 }
