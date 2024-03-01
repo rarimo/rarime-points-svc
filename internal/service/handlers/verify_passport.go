@@ -35,10 +35,10 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reward int64
-	var success bool
 	logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
 	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evType != nil {
+		var success bool
 		reward, success = EventTypes(r).CalculatePassportScanReward(req.SharedData...)
 		if !success {
 			log.WithError(err).Error("Failed to calculate PassportScanReward, incorrect fields")
@@ -96,13 +96,20 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if evType != nil {
-			passportScanEvent, err := EventsQ(r).FilterByUserDID(req.UserDID).FilterByType(evtypes.TypePassportScan).FilterByStatus(data.EventOpen).Get()
+			passportScanEvent, err := EventsQ(r).
+				FilterByUserDID(req.UserDID).
+				FilterByType(evtypes.TypePassportScan).
+				FilterByStatus(data.EventOpen).
+				Get()
 			if err != nil {
 				return fmt.Errorf("get passport_scan event by DID: %w", err)
 			}
 			logMsgOpenE := "PassportScan event not open"
 			if passportScanEvent != nil {
-				_, err = EventsQ(r).FilterByUserDID(req.UserDID).FilterByType(evtypes.TypePassportScan).Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), &reward)
+				_, err = EventsQ(r).
+					FilterByUserDID(req.UserDID).
+					FilterByType(evtypes.TypePassportScan).
+					Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), &reward)
 				if err != nil {
 					return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
 				}
