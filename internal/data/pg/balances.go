@@ -12,7 +12,7 @@ import (
 )
 
 const balancesTable = "balances"
-const balancesRankColumns = "did, MAX(amount) as amount, created_at, updated_at, referral_id, referred_by, passport_hash, passport_expires"
+const balancesRankColumns = "did, MAX(amount) as amount, created_at, updated_at, referred_by, passport_hash, passport_expires"
 
 type balances struct {
 	db       *pgdb.DB
@@ -36,7 +36,6 @@ func (q *balances) Insert(bal data.Balance) error {
 	stmt := squirrel.Insert(balancesTable).SetMap(map[string]interface{}{
 		"did":              bal.DID,
 		"amount":           bal.Amount,
-		"referral_id":      bal.ReferralID,
 		"referred_by":      bal.ReferredBy,
 		"passport_hash":    bal.PassportHash,
 		"passport_expires": bal.PassportExpires,
@@ -103,7 +102,7 @@ func (q *balances) GetWithRank(did string) (*data.Balance, error) {
 	var res data.Balance
 	stmt := fmt.Sprintf(`
 		SELECT * FROM (
-			SELECT *, RANK() OVER (ORDER BY amount DESC, created_at ASC) AS rank FROM (
+			SELECT *, RANK() OVER (ORDER BY amount, updated_at DESC) AS rank FROM (
 				SELECT %s FROM %s GROUP BY did
 			) AS t
 		) AS ranked WHERE did = ?
@@ -121,10 +120,6 @@ func (q *balances) GetWithRank(did string) (*data.Balance, error) {
 
 func (q *balances) FilterByDID(did string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"did": did})
-}
-
-func (q *balances) FilterByReferralID(referralID string) data.BalancesQ {
-	return q.applyCondition(squirrel.Eq{"referral_id": referralID})
 }
 
 func (q *balances) applyCondition(cond squirrel.Eq) data.BalancesQ {

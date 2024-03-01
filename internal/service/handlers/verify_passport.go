@@ -7,7 +7,6 @@ import (
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
-	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -39,7 +38,6 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		err = EventsQ(r).Transaction(func() error {
 			balance = &data.Balance{
 				DID:             req.UserDID,
-				ReferralID:      referralid.New(req.UserDID),
 				PassportHash:    sql.NullString{String: req.Hash, Valid: true},
 				PassportExpires: sql.NullTime{Time: req.Expiry, Valid: true},
 			}
@@ -108,20 +106,12 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// TODO: implement new referrals flow
 func getReferrerDID(balance data.Balance, r *http.Request) (string, error) {
 	if !balance.ReferredBy.Valid {
 		return "", nil
 	}
 
 	refBy := balance.ReferredBy.String
-	referrer, err := BalancesQ(r).FilterByReferralID(refBy).Get()
-	if err != nil {
-		return "", fmt.Errorf("failed to get balance by referral ID: %w", err)
-	}
-	if referrer == nil {
-		return "", fmt.Errorf("referrer not found: %s", refBy)
-	}
-
-	Log(r).Debugf("Found referrer: DID=%s", referrer.DID)
-	return referrer.DID, nil
+	return refBy, nil
 }
