@@ -9,7 +9,15 @@ listener:
   addr: localhost:8000
 
 event_types:
+  passport_rewards:
+      age: 20
+      nationality: 50
   types:
+    - name: passport_scan
+      title: Points for passport scan
+      reward: 200
+      description: Get points for scan passport and share data
+      frequency: one-time
     - name: get_poh
       title: Get PoH credential
       reward: 50

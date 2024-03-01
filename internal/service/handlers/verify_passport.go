@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -33,9 +34,30 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
+	var reward int64
+	var success bool
+	logMsgPassportScan := "PassportScan event type is disabled or expired, not accruing points"
+	if evType != nil {
+		reward, success = EventTypes(r).CalculatePassportScanReward(req.SharedData...)
+		if !success {
+			log.WithError(err).Error("Failed to calculate PassportScanReward, incorrect fields")
+			ape.RenderErr(w, problems.NotFound())
+			return
+		}
+	}
+
 	if balance == nil {
 		log.Debug("Balance not found, creating new one")
 		events := EventTypes(r).PrepareEvents(req.UserDID, evtypes.FilterNotOpenable)
+
+		for i := 0; i < len(events); i++ {
+			if events[i].Type == evtypes.TypePassportScan {
+				events[i].PointsAmount = &reward
+				events[i].Status = data.EventFulfilled
+			}
+		}
+
 		err = EventsQ(r).Transaction(func() error {
 			balance = &data.Balance{
 				DID:             req.UserDID,
@@ -73,7 +95,25 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("set passport for balance by DID: %w", err)
 		}
 
-		evType := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+		if evType != nil {
+			passportScanEvent, err := EventsQ(r).FilterByUserDID(req.UserDID).FilterByType(evtypes.TypePassportScan).FilterByStatus(data.EventOpen).Get()
+			if err != nil {
+				return fmt.Errorf("get passport_scan event by DID: %w", err)
+			}
+			logMsgOpenEventPassportScan := "PassportScan event not open"
+			if passportScanEvent != nil {
+				_, err = EventsQ(r).FilterByUserDID(req.UserDID).FilterByType(evtypes.TypePassportScan).Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), &reward)
+				if err != nil {
+					return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
+				}
+				logMsgOpenEventPassportScan = "PassportScan event open"
+				logMsgPassportScan = "PassportScan event reward update successful"
+			}
+			log.Debug(logMsgOpenEventPassportScan)
+		}
+		log.Debug(logMsgPassportScan)
+
+		evType = EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 		if evType == nil {
 			log.Debug("Referral event type is disabled or expired, not accruing points to referrer")
 			return nil

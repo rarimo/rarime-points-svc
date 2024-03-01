@@ -6,6 +6,7 @@ import (
 
 	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
@@ -51,6 +52,16 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		Log(r).Infof("Event type %s is disabled, while user has tried to claim", event.Type)
 		ape.RenderErr(w, problems.Forbidden())
 		return
+	}
+
+	if event.Type == evtypes.TypePassportScan {
+		evt, err := EventsQ(r).FilterByID(req.Data.ID).Get()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to get PassportScan event")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+		evType.Reward = *evt.PointsAmount
 	}
 
 	event, err = claimEventWithPoints(*event, evType.Reward, r)

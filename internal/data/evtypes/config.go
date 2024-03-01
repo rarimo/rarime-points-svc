@@ -24,7 +24,8 @@ func NewConfig(getter kv.Getter) EventTypeser {
 func (c *config) EventTypes() Types {
 	return c.once.Do(func() interface{} {
 		var raw struct {
-			Types []EventConfig `fig:"types,required"`
+			Types           []EventConfig  `fig:"types,required"`
+			PassportRewards map[string]int `fig:"passport_rewards"`
 		}
 
 		err := figure.Out(&raw).
@@ -42,7 +43,19 @@ func (c *config) EventTypes() Types {
 			m[t.Name] = t
 		}
 
-		return Types{m, raw.Types}
+		if _, ok := m[TypePassportScan]; ok {
+			if _, ok := raw.PassportRewards[PassportRewardRequiredAge]; !ok {
+				panic(fmt.Errorf("absent required field: %s", PassportRewardRequiredAge))
+			} else if _, ok := raw.PassportRewards[PassportRewardRequiredNationality]; !ok {
+				panic(fmt.Errorf("absent required field: %s", PassportRewardRequiredNationality))
+			}
+			return Types{m, raw.Types, raw.PassportRewards}
+		}
+
+		if len(raw.PassportRewards) != 0 {
+			panic(fmt.Errorf("rewards exists, but event PassportScan not exists"))
+		}
+		return Types{m, raw.Types, raw.PassportRewards}
 	}).(Types)
 }
 
