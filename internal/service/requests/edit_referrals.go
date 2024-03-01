@@ -7,12 +7,12 @@ import (
 	"gitlab.com/distributed_lab/urlval/v4"
 )
 
-type AddReferralsRequest struct {
-	DID   string `url:"did"`
-	Count uint   `url:"count"`
+type EditReferralsRequest struct {
+	DID   string  `url:"did"`
+	Count *uint64 `url:"count"`
 }
 
-func NewAddReferrals(r *http.Request) (req AddReferralsRequest, err error) {
+func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
 	if err = urlval.Decode(r.URL.Query(), &req); err != nil {
 		err = newDecodeError("query", err)
 		return
@@ -20,6 +20,6 @@ func NewAddReferrals(r *http.Request) (req AddReferralsRequest, err error) {
 
 	return req, validation.Errors{
 		"did":   validation.Validate(req.DID, validation.Required),
-		"count": validation.Validate(req.Count, validation.Required, validation.Min(1)),
+		"count": validation.Validate(req.Count, validation.Required),
 	}
 }

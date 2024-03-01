@@ -13,6 +13,7 @@ const referralsTable = "referrals"
 type referrals struct {
 	db       *pgdb.DB
 	selector squirrel.SelectBuilder
+	updater  squirrel.UpdateBuilder
 	counter  squirrel.SelectBuilder
 }
 
@@ -20,7 +21,8 @@ func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 	return &referrals{
 		db:       db,
 		selector: squirrel.Select("*").From(referralsTable),
-		counter:  squirrel.Select("COUNT(*)").From(referralsTable),
+		updater:  squirrel.Update(referralsTable).Set("is_consumed", true),
+		counter:  squirrel.Select("COUNT(*) as count").From(referralsTable),
 	}
 }
 
@@ -45,13 +47,35 @@ func (q *referrals) Insert(referrals ...data.Referral) error {
 	return nil
 }
 
-func (q *referrals) Deactivate(id string) error {
-	stmt := squirrel.Update(referralsTable).
-		Set("is_consumed", true).
-		Where(squirrel.Eq{"id": id})
+func (q *referrals) Consume(ids ...string) ([]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	var res struct {
+		IDs []string `db:"id"`
+	}
+
+	stmt := q.updater.Where(squirrel.Eq{"id": ids}).Suffix("Returning id")
 
 	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("deactivate referral [id=%s]: %w", id, err)
+		return nil, fmt.Errorf("consume referrals [%v]: %w", ids, err)
+	}
+
+	return res.IDs, nil
+}
+
+func (q *referrals) ConsumeFirst(did string, count uint64) error {
+	stmt := fmt.Sprintf(`
+		UPDATE %s SET is_consumed = true WHERE id IN (
+			SELECT id FROM %s
+			WHERE user_did = ? AND is_consumed = false
+			ORDER BY created_at ASC LIMIT %d
+		);
+	`, referralsTable, referralsTable, count)
+
+	if err := q.db.ExecRaw(stmt, did); err != nil {
+		return fmt.Errorf("consume first %d referrals: %w", count, err)
 	}
 
 	return nil
@@ -77,9 +101,9 @@ func (q *referrals) Get(id string) (*data.Referral, error) {
 	return &res, nil
 }
 
-func (q *referrals) Count() (uint, error) {
+func (q *referrals) Count() (uint64, error) {
 	var res struct {
-		Count uint
+		Count uint64 `db:"count"`
 	}
 
 	if err := q.db.Get(&res, q.counter); err != nil {
@@ -99,6 +123,7 @@ func (q *referrals) FilterByIsConsumed(isConsumed bool) data.ReferralsQ {
 
 func (q *referrals) applyCondition(cond squirrel.Sqlizer) data.ReferralsQ {
 	q.selector = q.selector.Where(cond)
+	q.updater = q.updater.Where(cond)
 	q.counter = q.counter.Where(cond)
 	return q
 }

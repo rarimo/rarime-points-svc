@@ -9,7 +9,7 @@ import (
 const bytesCount = 8
 
 // New generates a new deterministic referral ID from DID and index.
-func New(did string, index uint) string {
+func New(did string, index uint64) string {
 	s := fmt.Sprintf("%s_%d", did, index)
 	hash := sha256.New()
 	hash.Write([]byte(s))
@@ -20,7 +20,7 @@ func New(did string, index uint) string {
 // NewMany generates a bunch of referral IDs for a single DID with incrementing
 // index. Specify non-zero index argument to start from a specific index, this is
 // useful when you have stored referral IDs for this DID previously.
-func NewMany(did string, count, index uint) []string {
+func NewMany(did string, count, index uint64) []string {
 	ids := make([]string, count)
 	for i := index; index < count; index++ {
 		ids[i] = New(did, i)

@@ -10,11 +10,12 @@ type Referral struct {
 type ReferralsQ interface {
 	New() ReferralsQ
 	Insert(...Referral) error
-	Deactivate(id string) error
+	Consume(ids ...string) (consumedIDs []string, err error)
+	ConsumeFirst(did string, count uint64) error
 
 	Select() ([]Referral, error)
 	Get(id string) (*Referral, error)
-	Count() (uint, error)
+	Count() (uint64, error)
 
 	FilterByUserDID(string) ReferralsQ
 	FilterByIsConsumed(bool) ReferralsQ
