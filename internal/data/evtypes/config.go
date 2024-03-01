@@ -52,7 +52,8 @@ func (c *config) EventTypes() Types {
 
 		if _, ok := raw.PassportRewards[PassportRewardAge]; !ok {
 			panic(fmt.Errorf("absent required field: %s", PassportRewardAge))
-		} else if _, ok := raw.PassportRewards[PassportRewardNationality]; !ok {
+		}
+		if _, ok := raw.PassportRewards[PassportRewardNationality]; !ok {
 			panic(fmt.Errorf("absent required field: %s", PassportRewardNationality))
 		}
 

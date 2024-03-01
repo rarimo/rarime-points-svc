@@ -55,6 +55,12 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if event.Type == evtypes.TypePassportScan {
+		if event.PointsAmount == nil {
+			Log(r).WithError(err).Errorf("PointsAmount can't be nil for event %s",
+				event.Type)
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
 		evType.Reward = *event.PointsAmount
 	}
 
