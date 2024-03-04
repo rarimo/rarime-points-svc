@@ -136,6 +136,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			UserDID: refDID,
 			Type:    evType.Name,
 			Status:  data.EventFulfilled,
+			Meta:    data.Jsonb(fmt.Sprintf(`{"did": "%s"}`, req.UserDID)),
 		})
 		if err != nil {
 			return fmt.Errorf("add event for referrer: %w", err)
