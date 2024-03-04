@@ -30,6 +30,32 @@ functionality to interact with these endpoints.
 
 The path for internal endpoints is `/integrations/rarime-points-svc/v1/private/*`.
 
+### Add referrals
+
+Private endpoint to set number of available referral codes or create a new
+_System user_ with referrals. _System user_ is unable to claim events or
+withdraw, it has `is_disabled` attribute set to `true`, so the client app should not allow it interactions with the system, although it is technically possible to do other actions.
+
+Path: `/integrations/rarime-points-svc/v1/private/referrals`
+Query parameters:
+- `did` - user DID to create or edit referrals for
+- `count` - number of referrals to set
+
+Example to set 200 referrals for user `did:example:123`:
+```shell
+curl -X POST "http://localhost/integrations/rarime-points-svc/v1/private/referrals?did=did:example:123&count=200"
+```
+
+Behavior:
+a) User does not exist -> create a _System user_ with the specified number of
+referrals
+b) User exists, `N` > `count` -> add `N - count` active referrals
+c) User exists, `N` < `count` -> consume `count - N` active referrals (not delete!)
+d) User exists, `N` = `count` -> do nothing
+
+Where `N` is the current number of active referrals for the user, `count` is
+query parameter value.
+
 ### Local build
 
 We do use openapi:json standard for API. We use swagger for documenting our API.

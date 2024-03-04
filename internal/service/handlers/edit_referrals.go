@@ -40,7 +40,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 
 	var index uint64
 	if balance != nil {
-		index, err = ReferralsQ(r).FilterByUserDID(balance.DID).Count()
+		index, err = ReferralsQ(r).FilterByUserDID(balance.DID).FilterByIsConsumed(false).Count()
 		if err != nil {
 			Log(r).WithError(err).Error("Failed to get referral count for user DID")
 			ape.RenderErr(w, problems.InternalError())
