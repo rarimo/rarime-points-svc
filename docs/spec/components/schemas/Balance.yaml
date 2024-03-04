@@ -42,3 +42,9 @@ allOf:
             format: int
             description: Rank of the user in the full leaderboard. Returned only for the single user.
             example: 294
+          referral_codes:
+            type: array
+            description: Referral codes used to build a referral link and send it to friends. Required if a balance is created 
+            example: ["zgsScguZ", "jerUsmac"]
+            items:
+              type: string

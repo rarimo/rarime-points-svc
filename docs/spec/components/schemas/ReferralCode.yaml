@@ -1,7 +1,0 @@
-allOf:
-  - $ref: '#/components/schemas/ReferralCodeKey'
-  - type: object
-    x-go-is-request: true
-    properties:
-      attributes:
-        type: object

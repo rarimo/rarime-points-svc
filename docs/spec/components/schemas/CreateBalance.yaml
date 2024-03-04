@@ -3,7 +3,7 @@ allOf:
   - type: object
     x-go-is-request: true
     required:
-      - relationships
+      - attributes
     properties:
       attributes:
         type: object
@@ -12,18 +12,6 @@ allOf:
         properties:
           referred_by:
             type: string
-            description: ID of the referrer from the link
+            description: referrer code from the link
             example: "rCx18MZ4"
-      relationships:
-        type: object
-        required:
-          - referred_by
-        properties:
-          referred_by:
-            type: object
-            required:
-              - data
-            properties:
-              data: 
-                $ref: '#/components/schemas/ReferralCodeKey'
                 

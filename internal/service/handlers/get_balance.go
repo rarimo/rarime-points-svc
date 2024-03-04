@@ -36,7 +36,7 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, resources.BalanceResponse{Data: newBalanceModel(*balance)})
+	ape.Render(w, newBalanceResponse(*balance, nil))
 }
 
 func newBalanceModel(balance data.Balance) resources.Balance {
@@ -54,4 +54,18 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 			Rank:       balance.Rank,
 		},
 	}
+}
+
+func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
+	balanceResponse := resources.BalanceResponse{Data: newBalanceModel(balance)}
+	if referrals == nil {
+		return balanceResponse
+	}
+
+	referralCodes := make([]string, len(referrals))
+	balanceResponse.Data.Attributes.ReferralCodes = &referralCodes
+	for i, referral := range referrals {
+		referralCodes[i] = referral.ID
+	}
+	return balanceResponse
 }

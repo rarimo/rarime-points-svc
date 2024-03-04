@@ -9,7 +9,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
-	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
@@ -41,10 +40,8 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var referredBy string = req.Data.Relationships.ReferredBy.Data.ID
-
-	referral, err := ReferralsQ(r).Get(referredBy)
-	if referral == nil || referral.IsConsumed {
+	referral, err := ReferralsQ(r).FilterByIsConsumed(false).Get(req.Data.Attributes.ReferredBy)
+	if referral == nil {
 		ape.RenderErr(w, problems.NotFound())
 		return
 	}
@@ -56,8 +53,8 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	referrals := prepareReferralsToAdd(did, 5, 0)
-	events := prepareEventsWithRef(did, referredBy, r)
-	if err = createBalanceWithEventsAndReferrals(did, referredBy, events, referrals, r); err != nil {
+	events := prepareEventsWithRef(did, req.Data.Attributes.ReferredBy, r)
+	if err = createBalanceWithEventsAndReferrals(did, req.Data.Attributes.ReferredBy, events, referrals, r); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance with events")
 		ape.RenderErr(w, problems.InternalError())
 		return
@@ -74,13 +71,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balanceResponse := resources.BalanceResponse{Data: newBalanceModel(*balance)}
-
-	for _, referralmodel := range referrals {
-		balanceResponse.Included.Add(&resources.ReferralCode{Key: resources.Key{ID: referralmodel.ID, Type: resources.REFERRAL_CODE}})
-	}
-
-	ape.Render(w, balanceResponse)
+	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
 func prepareEventsWithRef(did, refBy string, r *http.Request) []data.Event {
