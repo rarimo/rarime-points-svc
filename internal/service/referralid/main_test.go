@@ -6,7 +6,7 @@ func TestNew(t *testing.T) {
 	tests := []struct {
 		name  string
 		did   string
-		index uint
+		index uint64
 		want  string
 	}{
 		{

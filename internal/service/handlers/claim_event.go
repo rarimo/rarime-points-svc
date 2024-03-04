@@ -20,17 +20,12 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := EventsQ(r).
-		FilterByID(req.Data.ID).
-		FilterByStatus(data.EventFulfilled).
-		Get()
-
+	event, err := EventsQ(r).FilterByID(req.Data.ID).FilterByStatus(data.EventFulfilled).Get()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get event by balance ID")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
-
 	if event == nil {
 		Log(r).Debugf("Event not found for id=%s status=%s", req.Data.ID, data.EventFulfilled)
 		ape.RenderErr(w, problems.NotFound())
@@ -49,19 +44,21 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if evType.Disabled {
-		Log(r).Infof("Event type %s is disabled, while user has tried to claim", event.Type)
+		Log(r).Infof("Attempt to claim: event type %s is disabled", event.Type)
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
-	if event.Type == evtypes.TypePassportScan {
-		if event.PointsAmount == nil {
-			Log(r).WithError(err).Errorf("PointsAmount can't be nil for event %s",
-				event.Type)
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-		evType.Reward = *event.PointsAmount
+	balance, err := BalancesQ(r).FilterByDID(event.UserDID).FilterDisabled().Get()
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get balance by DID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if balance == nil {
+		Log(r).Infof("Attempt to claim: balance user_did=%s is disabled", event.UserDID)
+		ape.RenderErr(w, problems.NotFound())
+		return
 	}
 
 	event, err = claimEventWithPoints(*event, evType.Reward, r)
@@ -73,7 +70,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// balance should exist cause of previous logic
-	balance, err := BalancesQ(r).GetWithRank(event.UserDID)
+	balance, err = BalancesQ(r).GetWithRank(event.UserDID)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID with rank")
 		ape.RenderErr(w, problems.InternalError())

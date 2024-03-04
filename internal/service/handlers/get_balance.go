@@ -48,6 +48,7 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 		Attributes: resources.BalanceAttributes{
 			Amount:     balance.Amount,
 			IsVerified: balance.PassportExpires.Time.After(time.Now().UTC()),
+			IsDisabled: !balance.ReferredBy.Valid,
 			CreatedAt:  balance.CreatedAt,
 			UpdatedAt:  balance.UpdatedAt,
 			Rank:       balance.Rank,

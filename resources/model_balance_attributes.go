@@ -9,6 +9,8 @@ type BalanceAttributes struct {
 	Amount int64 `json:"amount"`
 	// Unix timestamp of balance creation
 	CreatedAt int32 `json:"created_at"`
+	// Whether the user was not referred by anybody, but the balance with some events was reserved. It happens when the user fulfills some event before the balance creation.
+	IsDisabled bool `json:"is_disabled"`
 	// Whether the user has scanned passport
 	IsVerified bool `json:"is_verified"`
 	// Rank of the user in the full leaderboard. Returned only for the single user.

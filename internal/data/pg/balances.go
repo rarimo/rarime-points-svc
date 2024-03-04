@@ -102,7 +102,7 @@ func (q *balances) GetWithRank(did string) (*data.Balance, error) {
 	var res data.Balance
 	stmt := fmt.Sprintf(`
 		SELECT * FROM (
-			SELECT *, RANK() OVER (ORDER BY amount, updated_at DESC) AS rank FROM (
+			SELECT *, RANK() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM (
 				SELECT %s FROM %s GROUP BY did
 			) AS t
 		) AS ranked WHERE did = ?
@@ -122,7 +122,11 @@ func (q *balances) FilterByDID(did string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"did": did})
 }
 
-func (q *balances) applyCondition(cond squirrel.Eq) data.BalancesQ {
+func (q *balances) FilterDisabled() data.BalancesQ {
+	return q.applyCondition(squirrel.NotEq{"referred_by": nil})
+}
+
+func (q *balances) applyCondition(cond squirrel.Sqlizer) data.BalancesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
 	return q

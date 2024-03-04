@@ -31,4 +31,5 @@ type BalancesQ interface {
 	GetWithRank(did string) (*Balance, error)
 
 	FilterByDID(string) BalancesQ
+	FilterDisabled() BalancesQ
 }

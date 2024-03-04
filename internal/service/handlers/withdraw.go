@@ -114,13 +114,14 @@ func isEligibleToWithdraw(balance *data.Balance, amount int64) error {
 		}
 	}
 
-	if !balance.PassportHash.Valid {
-		return mapValidationErr("is_verified", "user must have verified passport for withdrawals")
-	}
-	if balance.PassportExpires.Time.Before(time.Now().UTC()) {
+	switch {
+	case !balance.ReferredBy.Valid:
+		return mapValidationErr("is_disabled", "user must be referred to withdraw")
+	case !balance.PassportHash.Valid:
+		return mapValidationErr("is_verified", "user must have verified passport to withdraw")
+	case balance.PassportExpires.Time.Before(time.Now().UTC()):
 		return mapValidationErr("is_verified", "user passport is expired")
-	}
-	if balance.Amount < amount {
+	case balance.Amount < amount:
 		return mapValidationErr("data/attributes/amount", "insufficient balance: %d", balance.Amount)
 	}
 
