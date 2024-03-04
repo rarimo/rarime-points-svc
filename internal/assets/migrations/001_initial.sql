@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS balances
     passport_expires timestamp without time zone
 );
 
-CREATE INDEX IF NOT EXISTS balances_page_index ON balances (amount, updated_at);
+CREATE INDEX IF NOT EXISTS balances_page_index ON balances (amount, updated_at) WHERE referred_by IS NOT NULL;
 
 CREATE TRIGGER set_updated_at
     BEFORE UPDATE

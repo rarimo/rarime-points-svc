@@ -103,7 +103,7 @@ func (q *balances) GetWithRank(did string) (*data.Balance, error) {
 	stmt := fmt.Sprintf(`
 		SELECT * FROM (
 			SELECT *, RANK() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM (
-				SELECT %s FROM %s GROUP BY did
+				SELECT %s FROM %s WHERE referred_by IS NOT NULL GROUP BY did
 			) AS t
 		) AS ranked WHERE did = ?
 	`, balancesRankColumns, balancesTable)

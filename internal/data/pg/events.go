@@ -29,7 +29,7 @@ func NewEvents(db *pgdb.DB) data.EventsQ {
 		selector:   squirrel.Select("*").From(eventsTable),
 		updater:    squirrel.Update(eventsTable),
 		deleter:    squirrel.Delete(eventsTable),
-		counter:    squirrel.Select("count(id) AS count").From(eventsTable),
+		counter:    squirrel.Select("COUNT(*) AS count").From(eventsTable),
 		reopenable: squirrel.Select("user_did", "type").Distinct().From(eventsTable + " e1"),
 	}
 }
