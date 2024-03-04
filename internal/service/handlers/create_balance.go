@@ -8,7 +8,6 @@ import (
 	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
-	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -42,18 +41,9 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var referredBy string
+	// TODO: implement new referrals flow
+	// also put this in relationships, maybe
 	if attr := req.Data.Attributes; attr != nil {
-		referrer, err := BalancesQ(r).FilterByReferralID(attr.ReferredBy).Get()
-		if err != nil {
-			Log(r).WithError(err).Error("Failed to check referrer existence")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-		if referrer == nil {
-			Log(r).Debugf("Referrer not found for referral_id=%s", attr.ReferredBy)
-			ape.RenderErr(w, problems.NotFound())
-			return
-		}
 		referredBy = attr.ReferredBy
 	}
 
@@ -104,7 +94,6 @@ func createBalanceWithEvents(did, refBy string, events []data.Event, r *http.Req
 	return EventsQ(r).Transaction(func() error {
 		err := BalancesQ(r).Insert(data.Balance{
 			DID:        did,
-			ReferralID: referralid.New(did),
 			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
 		})
 

@@ -12,7 +12,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
-	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck/verifiers"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/pgdb"
@@ -264,10 +263,7 @@ func (r *runner) fulfillPohEvent(poh data.Event) error {
 
 func (r *runner) createBalance(did string) error {
 	return r.eventsQ().Transaction(func() error {
-		err := r.balancesQ().Insert(data.Balance{
-			DID:        did,
-			ReferralID: referralid.New(did),
-		})
+		err := r.balancesQ().Insert(data.Balance{DID: did})
 		if err != nil {
 			return fmt.Errorf("insert balance: %w", err)
 		}
