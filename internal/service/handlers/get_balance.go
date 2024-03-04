@@ -36,7 +36,7 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, newBalanceModel(*balance))
+	ape.Render(w, resources.BalanceResponse{Data: newBalanceModel(*balance)})
 }
 
 func newBalanceModel(balance data.Balance) resources.Balance {

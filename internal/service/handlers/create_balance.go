@@ -9,6 +9,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
+	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
@@ -40,15 +41,23 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var referredBy string
-	// TODO: implement new referrals flow
-	// also put this in relationships, maybe
-	if attr := req.Data.Attributes; attr != nil {
-		referredBy = attr.ReferredBy
+	var referredBy string = req.Data.Relationships.ReferredBy.Data.ID
+
+	referral, err := ReferralsQ(r).Get(referredBy)
+	if referral == nil || referral.IsConsumed {
+		ape.RenderErr(w, problems.NotFound())
+		return
 	}
 
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get referral by ID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	referrals := prepareReferralsToAdd(did, 5, 0)
 	events := prepareEventsWithRef(did, referredBy, r)
-	if err = createBalanceWithEvents(did, referredBy, events, r); err != nil {
+	if err = createBalanceWithEventsAndReferrals(did, referredBy, events, referrals, r); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance with events")
 		ape.RenderErr(w, problems.InternalError())
 		return
@@ -65,7 +74,13 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, newBalanceModel(*balance))
+	balanceResponse := resources.BalanceResponse{Data: newBalanceModel(*balance)}
+
+	for _, referralmodel := range referrals {
+		balanceResponse.Included.Add(&resources.ReferralCode{Key: resources.Key{ID: referralmodel.ID, Type: resources.REFERRAL_CODE}})
+	}
+
+	ape.Render(w, balanceResponse)
 }
 
 func prepareEventsWithRef(did, refBy string, r *http.Request) []data.Event {
@@ -104,6 +119,36 @@ func createBalanceWithEvents(did, refBy string, events []data.Event, r *http.Req
 		Log(r).Debugf("%d events will be added for user_did=%s", len(events), did)
 		if err = EventsQ(r).Insert(events...); err != nil {
 			return fmt.Errorf("add open events: %w", err)
+		}
+
+		return nil
+	})
+}
+
+func createBalanceWithEventsAndReferrals(did, refBy string, events []data.Event, refCodes []data.Referral, r *http.Request) error {
+	return EventsQ(r).Transaction(func() error {
+		err := BalancesQ(r).Insert(data.Balance{
+			DID:        did,
+			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
+		})
+
+		if err != nil {
+			return fmt.Errorf("add balance: %w", err)
+		}
+
+		Log(r).Debugf("%d events will be added for user_did=%s", len(events), did)
+		if err = EventsQ(r).Insert(events...); err != nil {
+			return fmt.Errorf("add open events: %w", err)
+		}
+
+		Log(r).Debugf("%d referrals will be added for user_did=%s", len(refCodes), did)
+		if err = ReferralsQ(r).Insert(refCodes...); err != nil {
+			return fmt.Errorf("add referrals: %w", err)
+		}
+
+		Log(r).Debugf("%s referral will be consumed", refBy)
+		if _, err := ReferralsQ(r).Consume(refBy); err != nil {
+			return fmt.Errorf("consume referral: %w", err)
 		}
 
 		return nil

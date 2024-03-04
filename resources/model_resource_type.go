@@ -13,6 +13,7 @@ const (
 	CREATE_BALANCE ResourceType = "create_balance"
 	EVENT          ResourceType = "event"
 	POINT_PRICE    ResourceType = "point_price"
+	REFERRAL_CODE  ResourceType = "referral_code"
 	WITHDRAW       ResourceType = "withdraw"
 	WITHDRAWAL     ResourceType = "withdrawal"
 )
