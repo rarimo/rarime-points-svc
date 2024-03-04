@@ -34,7 +34,9 @@ The path for internal endpoints is `/integrations/rarime-points-svc/v1/private/*
 
 Private endpoint to set number of available referral codes or create a new
 _System user_ with referrals. _System user_ is unable to claim events or
-withdraw, it has `is_disabled` attribute set to `true`, so the client app should not allow it interactions with the system, although it is technically possible to do other actions.
+withdraw, it has `is_disabled` attribute set to `true`, so the client app should
+not allow it interactions with the system, although it is technically possible
+to do other actions.
 
 Path: `/integrations/rarime-points-svc/v1/private/referrals`
 Query parameters:
