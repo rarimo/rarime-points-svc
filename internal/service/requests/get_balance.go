@@ -8,20 +8,16 @@ import (
 	"gitlab.com/distributed_lab/urlval/v4"
 )
 
-type GetBalanceFilters struct {
+type GetBalance struct {
+	DID           string
 	Rank          bool `url:"rank"`
 	ReferralCodes bool `url:"referral_codes"`
-}
-
-type GetBalance struct {
-	DID string
-	GetBalanceFilters
 }
 
 func NewGetBalance(r *http.Request) (getBalance GetBalance, err error) {
 	getBalance.DID = chi.URLParam(r, "did")
 
-	if err = urlval.Decode(r.URL.Query(), &getBalance.GetBalanceFilters); err != nil {
+	if err = urlval.Decode(r.URL.Query(), &getBalance); err != nil {
 		err = newDecodeError("query", err)
 		return
 	}

@@ -70,6 +70,17 @@ func (q *balances) SetPassport(hash string, exp time.Time) error {
 	return nil
 }
 
+func (q *balances) SetReferredBy(referralCode string) error {
+	stmt := q.updater.
+		Set("referred_by", referralCode)
+
+	if err := q.db.Exec(stmt); err != nil {
+		return fmt.Errorf("set referred_by: %w", err)
+	}
+
+	return nil
+}
+
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
 	q.selector = page.ApplyTo(q.selector, "amount", "updated_at")
 	return q

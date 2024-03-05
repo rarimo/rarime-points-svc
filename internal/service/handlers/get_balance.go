@@ -24,7 +24,12 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := getRankedBalance(r, req.DID, req.Rank)
+	var balance *data.Balance
+	if req.Rank {
+		balance, err = BalancesQ(r).GetWithRank(req.DID)
+	} else {
+		balance, err = BalancesQ(r).FilterByDID(req.DID).Get()
+	}
 
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
@@ -79,11 +84,4 @@ func newBalanceResponse(balance data.Balance, referrals []data.Referral) resourc
 		referralCodes[i] = referral.ID
 	}
 	return balanceResponse
-}
-
-func getRankedBalance(r *http.Request, did string, rank bool) (*data.Balance, error) {
-	if rank {
-		return BalancesQ(r).GetWithRank(did)
-	}
-	return BalancesQ(r).FilterByDID(did).Get()
 }

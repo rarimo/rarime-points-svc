@@ -23,6 +23,7 @@ type BalancesQ interface {
 	Insert(Balance) error
 	UpdateAmountBy(points int64) error
 	SetPassport(hash string, exp time.Time) error
+	SetReferredBy(referralCode string) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
