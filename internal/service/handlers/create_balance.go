@@ -138,7 +138,7 @@ func createBalanceWithEventsAndReferrals(did, refBy string, events []data.Event,
 		}
 
 		Log(r).Debugf("%s referral will be consumed", refBy)
-		if _, err := ReferralsQ(r).Consume(refBy); err != nil {
+		if _, err = ReferralsQ(r).Consume(refBy); err != nil {
 			return fmt.Errorf("consume referral: %w", err)
 		}
 

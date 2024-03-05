@@ -24,7 +24,8 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := BalancesQ(r).GetWithRank(req.DID)
+	balance, err := getRankedBalance(r, req.DID, req.Rank)
+
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
@@ -36,7 +37,17 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, newBalanceResponse(*balance, nil))
+	var referrals []data.Referral
+	if req.ReferralCodes {
+		referrals, err = ReferralsQ(r).FilterByUserDID(req.DID).FilterByIsConsumed(false).Select()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to get referrals by DID")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+	}
+
+	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
 func newBalanceModel(balance data.Balance) resources.Balance {
@@ -58,7 +69,7 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 
 func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
 	balanceResponse := resources.BalanceResponse{Data: newBalanceModel(balance)}
-	if referrals == nil {
+	if len(referrals) == 0 {
 		return balanceResponse
 	}
 
@@ -68,4 +79,11 @@ func newBalanceResponse(balance data.Balance, referrals []data.Referral) resourc
 		referralCodes[i] = referral.ID
 	}
 	return balanceResponse
+}
+
+func getRankedBalance(r *http.Request, did string, rank bool) (*data.Balance, error) {
+	if rank {
+		return BalancesQ(r).GetWithRank(did)
+	}
+	return BalancesQ(r).FilterByDID(did).Get()
 }
