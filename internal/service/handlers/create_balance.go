@@ -34,7 +34,7 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Balance should not exist
+	// Balance should not exist or be inactive
 	if balance != nil && balance.ReferredBy.Valid {
 		ape.RenderErr(w, problems.Conflict())
 		return
