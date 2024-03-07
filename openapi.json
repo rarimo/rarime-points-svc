@@ -12,7 +12,7 @@
     }
   ],
   "paths": {
-    "/integrations/rarime-points-svc/v1/balances": {
+    "/integrations/rarime-points-svc/v1/public/balances": {
       "post": {
         "tags": [
           "Points balance"
@@ -126,7 +126,7 @@
         }
       }
     },
-    "/integrations/rarime-points-svc/v1/balances/{did}": {
+    "/integrations/rarime-points-svc/v1/public/balances/{did}": {
       "get": {
         "tags": [
           "Points balance"
@@ -137,6 +137,26 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/pathDID"
+          },
+          {
+            "in": "query",
+            "name": "rank",
+            "description": "Specifies whether to return the rank",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": true
+            }
+          },
+          {
+            "in": "query",
+            "name": "referral_codes",
+            "description": "Specifies whether to return the referral codes",
+            "required": false,
+            "schema": {
+              "type": "booleand",
+              "example": true
+            }
           }
         ],
         "responses": {
@@ -170,7 +190,7 @@
         }
       }
     },
-    "/integrations/rarime-points-svc/v1/balances/{did}/withdrawals": {
+    "/integrations/rarime-points-svc/v1/public/balances/{did}/withdrawals": {
       "get": {
         "tags": [
           "Points balance"
@@ -293,7 +313,7 @@
         }
       }
     },
-    "/integrations/rarime-points-svc/v1/events": {
+    "/integrations/rarime-points-svc/v1/public/events": {
       "get": {
         "tags": [
           "Events"
@@ -402,7 +422,7 @@
         }
       }
     },
-    "/integrations/rarime-points-svc/v1/events/{id}": {
+    "/integrations/rarime-points-svc/v1/public/events/{id}": {
       "patch": {
         "tags": [
           "Events"
@@ -490,7 +510,7 @@
         }
       }
     },
-    "/integrations/rarime-points-svc/v1/point_price": {
+    "/integrations/rarime-points-svc/v1/public/point_price": {
       "get": {
         "tags": [
           "Points balance"
@@ -541,8 +561,8 @@
                 "type": "object",
                 "required": [
                   "amount",
-                  "referral_id",
                   "is_verified",
+                  "is_disabled",
                   "created_at",
                   "updated_at"
                 ],
@@ -553,15 +573,15 @@
                     "description": "Amount of points",
                     "example": 580
                   },
-                  "referral_id": {
-                    "type": "string",
-                    "description": "Referral ID used to build a referral link and send it to friends",
-                    "example": "zgsScguZ"
-                  },
                   "is_verified": {
                     "type": "boolean",
                     "description": "Whether the user has scanned passport",
                     "example": true
+                  },
+                  "is_disabled": {
+                    "type": "boolean",
+                    "description": "Whether the user was not referred by anybody, but the balance with some\nevents was reserved. It happens when the user fulfills some event\nbefore the balance creation.\n",
+                    "example": false
                   },
                   "created_at": {
                     "type": "integer",
@@ -578,6 +598,17 @@
                     "format": "int",
                     "description": "Rank of the user in the full leaderboard. Returned only for the single user.",
                     "example": 294
+                  },
+                  "referral_codes": {
+                    "type": "array",
+                    "description": "Referral codes used to build a referral link and send it to friends. Required if a balance is created",
+                    "example": [
+                      "zgsScguZ",
+                      "jerUsmac"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -632,6 +663,9 @@
           {
             "type": "object",
             "x-go-is-request": true,
+            "required": [
+              "attributes"
+            ],
             "properties": {
               "attributes": {
                 "type": "object",
@@ -641,7 +675,7 @@
                 "properties": {
                   "referred_by": {
                     "type": "string",
-                    "description": "ID of the referrer from the link",
+                    "description": "referrer code from the link",
                     "example": "rCx18MZ4"
                   }
                 }
@@ -1047,6 +1081,11 @@
           "type"
         ],
         "properties": {
+          "id": {
+            "type": "string",
+            "description": "DID of the points owner",
+            "example": "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
+          },
           "type": {
             "type": "string",
             "enum": [
