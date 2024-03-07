@@ -20,6 +20,11 @@ func Run(ctx context.Context, cfg config.Config) {
 	}
 
 	cron.Init(cfg.Log())
+
+	if err := initOpener(ctx, cfg); err != nil {
+		panic(fmt.Errorf("reopener: failed to initialize opener: %w", err))
+	}
+
 	atDayStart := gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))
 
 	daily := newWorker(cfg, evtypes.Daily)

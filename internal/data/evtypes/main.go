@@ -40,6 +40,7 @@ type EventConfig struct {
 	Title       string     `fig:"title,required"`
 	Frequency   Frequency  `fig:"frequency,required"`
 	ExpiresAt   *time.Time `fig:"expires_at"`
+	StartsAt    *time.Time `fig:"starts_at"`
 	NoAutoOpen  bool       `fig:"no_auto_open"`
 	Disabled    bool       `fig:"disabled"`
 }

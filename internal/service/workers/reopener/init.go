@@ -1,13 +1,16 @@
 package reopener
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/go-co-op/gocron/v2"
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/cron"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -114,4 +117,77 @@ func (c *initCollector) selectAbsent() ([]data.ReopenableEvent, error) {
 
 	log.Infof("%d new (DID, type) pairs to open: %v", len(res), res)
 	return res, nil
+}
+
+func initOpener(ctx context.Context, cfg config.Config) error {
+	log := cfg.Log().WithField("who", "opener[initializer]")
+
+	notStartedEv := cfg.EventTypes().List(func(ev evtypes.EventConfig) bool {
+		return ev.Disabled || !evtypes.FilterNotStarted(ev) || ev.StartsAt == nil
+	})
+
+	if len(notStartedEv) != 0 {
+		log.Info("No events to open at Start time: all types already opened or there no types with StartAt")
+		return nil
+	}
+
+	balancesQ := pg.NewBalances(cfg.DB().Clone())
+	eventsQ := pg.NewEvents(cfg.DB().Clone())
+
+	for _, ev := range notStartedEv {
+		_, err := cron.NewJob(
+			gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(*ev.StartsAt)),
+			gocron.NewTask(func() {
+				log := cfg.Log().WithField("who", fmt.Sprintf("opener[%s]", ev.Name))
+
+				var balances []data.Balance
+				var err error
+
+				for i := 0; i < 4; i++ {
+					if balances, err = balancesQ.New().FilterDisabled().Select(); err == nil {
+						break
+					}
+
+					log.Errorf("Failed to get balances: %s [retry %d]", err, i)
+					time.Sleep(time.Second * 5)
+				}
+
+				if err != nil {
+					log.Errorf("Failed to get balances: %s", err)
+					return
+				}
+
+				events := make([]data.Event, len(balances))
+				status := data.EventOpen
+				if ev.Name == evtypes.TypeFreeWeekly {
+					status = data.EventFulfilled
+				}
+
+				for i, balance := range balances {
+					events[i] = data.Event{UserDID: balance.DID, Type: ev.Name, Status: status}
+				}
+
+				for i := 0; i < 4; i++ {
+					if err = eventsQ.New().Insert(events...); err == nil {
+						break
+					}
+
+					log.Errorf("Failed to insert events: %s [retry %d]", err, i)
+					time.Sleep(time.Second * 5)
+				}
+
+				if err != nil {
+					log.Errorf("Failed to insert events: %s", err)
+					return
+				}
+			}, ctx),
+			gocron.WithName(fmt.Sprintf("opener[%s]", ev.Name)),
+		)
+
+		if err != nil {
+			return fmt.Errorf("opener: failed to initialize job: %w", err)
+		}
+	}
+
+	return nil
 }

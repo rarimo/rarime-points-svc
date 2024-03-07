@@ -52,6 +52,12 @@ event_types:
       frequency: unlimited
       description: The user {:did} has verified the passport. Claim the reward!
       no_auto_open: true
+    - name: planned
+      title: Planned event
+      reward: 25
+      frequency: unlimited
+      description: Event that start at specidied time
+      starts_at: 2020-01-01T00:00:00Z
 
 auth:
   addr: http://rarime-auth
