@@ -12,6 +12,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/cron"
 	"gitlab.com/distributed_lab/logan/v3"
+	"gitlab.com/distributed_lab/running"
 )
 
 func initialRun(cfg config.Config) error {
@@ -119,11 +120,11 @@ func (c *initCollector) selectAbsent() ([]data.ReopenableEvent, error) {
 	return res, nil
 }
 
-func initOpener(ctx context.Context, cfg config.Config) error {
+func runStartingWatchers(ctx context.Context, cfg config.Config) error {
 	log := cfg.Log().WithField("who", "opener[initializer]")
 
 	notStartedEv := cfg.EventTypes().List(func(ev evtypes.EventConfig) bool {
-		return ev.Disabled || !evtypes.FilterNotStarted(ev) || ev.StartsAt == nil
+		return ev.Disabled || !evtypes.FilterNotStarted(ev)
 	})
 
 	if len(notStartedEv) != 0 {
@@ -131,56 +132,10 @@ func initOpener(ctx context.Context, cfg config.Config) error {
 		return nil
 	}
 
-	balancesQ := pg.NewBalances(cfg.DB().Clone())
-	eventsQ := pg.NewEvents(cfg.DB().Clone())
-
 	for _, ev := range notStartedEv {
 		_, err := cron.NewJob(
 			gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(*ev.StartsAt)),
-			gocron.NewTask(func() {
-				log := cfg.Log().WithField("who", fmt.Sprintf("opener[%s]", ev.Name))
-
-				var balances []data.Balance
-				var err error
-
-				for i := 0; i < 4; i++ {
-					if balances, err = balancesQ.New().FilterDisabled().Select(); err == nil {
-						break
-					}
-
-					log.Errorf("Failed to get balances: %s [retry %d]", err, i)
-					time.Sleep(time.Second * 5)
-				}
-
-				if err != nil {
-					log.Errorf("Failed to get balances: %s", err)
-					return
-				}
-
-				events := make([]data.Event, len(balances))
-				status := data.EventOpen
-				if ev.Name == evtypes.TypeFreeWeekly {
-					status = data.EventFulfilled
-				}
-
-				for i, balance := range balances {
-					events[i] = data.Event{UserDID: balance.DID, Type: ev.Name, Status: status}
-				}
-
-				for i := 0; i < 4; i++ {
-					if err = eventsQ.New().Insert(events...); err == nil {
-						break
-					}
-
-					log.Errorf("Failed to insert events: %s [retry %d]", err, i)
-					time.Sleep(time.Second * 5)
-				}
-
-				if err != nil {
-					log.Errorf("Failed to insert events: %s", err)
-					return
-				}
-			}, ctx),
+			gocron.NewTask(startingWatcher(cfg, ev.Name), ctx),
 			gocron.WithName(fmt.Sprintf("opener[%s]", ev.Name)),
 		)
 
@@ -190,4 +145,37 @@ func initOpener(ctx context.Context, cfg config.Config) error {
 	}
 
 	return nil
+}
+
+func startingWatcher(cfg config.Config, name string) func(context.Context) {
+	return func(ctx context.Context) {
+		log := cfg.Log().WithField("who", fmt.Sprintf("opener[%s]", name))
+
+		var balances []data.Balance
+		var err error
+
+		running.UntilSuccess(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
+			if balances, err = pg.NewBalances(cfg.DB().Clone()).FilterDisabled().Select(); err == nil {
+				return false, err
+			}
+			return true, nil
+		}, retryPeriod, retryPeriod)
+
+		events := make([]data.Event, len(balances))
+		status := data.EventOpen
+		if name == evtypes.TypeFreeWeekly {
+			status = data.EventFulfilled
+		}
+
+		for i, balance := range balances {
+			events[i] = data.Event{UserDID: balance.DID, Type: name, Status: status}
+		}
+
+		running.UntilSuccess(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
+			if err = pg.NewEvents(cfg.DB().Clone()).Insert(events...); err == nil {
+				return false, err
+			}
+			return true, nil
+		}, retryPeriod, retryPeriod)
+	}
 }

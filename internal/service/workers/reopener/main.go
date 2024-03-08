@@ -21,7 +21,7 @@ func Run(ctx context.Context, cfg config.Config) {
 
 	cron.Init(cfg.Log())
 
-	if err := initOpener(ctx, cfg); err != nil {
+	if err := runStartingWatchers(ctx, cfg); err != nil {
 		panic(fmt.Errorf("reopener: failed to initialize opener: %w", err))
 	}
 

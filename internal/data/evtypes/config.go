@@ -42,7 +42,7 @@ func (c *config) EventTypes() Types {
 			}
 
 			if t.ExpiresAt != nil && t.StartsAt != nil && !t.StartsAt.Before(*t.ExpiresAt) {
-				panic(fmt.Errorf("invalid starts_at; starts_at must be before expires_at: %s > %s",
+				panic(fmt.Errorf("starts_at must be before expires_at: %s > %s",
 					t.StartsAt, t.ExpiresAt))
 			}
 
