@@ -1,3 +1,28 @@
+get:
+  tags:
+    - Events
+  summary: Get event
+  description: Returns event for a single user.
+  operationId: getEvent
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/Event'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'
+
 patch:
   tags:
     - Events

@@ -7,6 +7,7 @@ required:
   - reward
   - title
   - description
+  - short_description
   - frequency
   - no_auto_open
 properties:
@@ -25,14 +26,27 @@ properties:
   description:
     type: string
     example: Lorem ipsum dolor sit amet
+  short_description:
+    type: string
+    example: Short description
   frequency:
     type: string
     description: |
       Event frequency, which means how often you can fulfill
       certain task and claim the reward.
     enum: [one-time, daily, weekly, unlimited]
+  starts_at:
+    type: string
+    format: time.Time
+    description: General event starting date (UTC RFC3339)
+    example: 2020-01-01T00:00:00Z
   expires_at:
     type: string
     format: time.Time
     description: General event expiration date (UTC RFC3339)
     example: 2020-01-01T00:00:00Z
+  actional_url:
+    type: string
+    format: url.URL
+    description: Actional URL
+    example: https://
