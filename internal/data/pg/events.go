@@ -212,6 +212,16 @@ func (q *events) FilterByUpdatedAtBefore(unix int64) data.EventsQ {
 	return q.applyCondition(squirrel.Lt{"updated_at": unix})
 }
 
+func (q *events) FilterInactiveNotClaimed(types ...string) data.EventsQ {
+	if len(types) == 0 {
+		return q
+	}
+	return q.applyCondition(squirrel.Or{
+		squirrel.NotEq{"type": types},
+		squirrel.Eq{"status": data.EventClaimed},
+	})
+}
+
 func (q *events) applyCondition(cond squirrel.Sqlizer) data.EventsQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
