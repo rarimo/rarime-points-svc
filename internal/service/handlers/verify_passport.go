@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
@@ -26,6 +27,8 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		"expiry":   req.Expiry.String(),
 	})
 
+	expireDate := time.Now().UTC().AddDate(0, 1, 0)
+
 	balance, err := BalancesQ(r).FilterByPassportHash(req.Hash).Get()
 	if err != nil {
 		log.WithError(err).Error("Failed to get balance by DID")
@@ -37,6 +40,13 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		if balance.DID != req.UserDID {
 			log.Error("passport_hash already in use")
 			ape.RenderErr(w, problems.Conflict())
+			return
+		}
+
+		err = BalancesQ(r).FilterByDID(req.UserDID).SetPassport(balance.PassportHash.String, expireDate)
+		if err != nil {
+			log.WithError(err).Error("Failed to set expiration date")
+			ape.RenderErr(w, problems.InternalError())
 			return
 		}
 
@@ -79,7 +89,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			balance = &data.Balance{
 				DID:             req.UserDID,
 				PassportHash:    sql.NullString{String: req.Hash, Valid: true},
-				PassportExpires: sql.NullTime{Time: req.Expiry, Valid: true},
+				PassportExpires: sql.NullTime{Time: expireDate, Valid: true},
 			}
 
 			if err = BalancesQ(r).Insert(*balance); err != nil {
@@ -106,7 +116,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	err = EventsQ(r).Transaction(func() error {
 		// If you make this endpoint public, you should check the passport hash for
 		// uniqueness and provide a better validation. Think about other changes too.
-		err = BalancesQ(r).FilterByDID(req.UserDID).SetPassport(req.Hash, req.Expiry)
+		err = BalancesQ(r).FilterByDID(req.UserDID).SetPassport(req.Hash, expireDate)
 		if err != nil {
 			return fmt.Errorf("set passport for balance by DID: %w", err)
 		}
