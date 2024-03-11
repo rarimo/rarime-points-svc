@@ -45,7 +45,7 @@ type EventConfig struct {
 	ExpiresAt        *time.Time `fig:"expires_at"`
 	NoAutoOpen       bool       `fig:"no_auto_open"`
 	Disabled         bool       `fig:"disabled"`
-	ActionalUrl      *url.URL   `fig:"actional_url"`
+	ActionURL        *url.URL   `fig:"action_url"`
 }
 
 func (e EventConfig) Resource() resources.EventStaticMeta {
@@ -58,7 +58,7 @@ func (e EventConfig) Resource() resources.EventStaticMeta {
 		Frequency:        e.Frequency.String(),
 		StartsAt:         e.StartsAt,
 		ExpiresAt:        e.ExpiresAt,
-		ActionalUrl:      e.ActionalUrl,
+		ActionUrl:        e.ActionURL,
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 )
 
 const retryPeriod = 5 * time.Minute
+const maxRetries = 12
 
 func Run(ctx context.Context, cfg config.Config) {
 	if err := initialRun(cfg); err != nil {

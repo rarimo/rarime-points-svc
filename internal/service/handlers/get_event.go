@@ -11,13 +11,13 @@ import (
 )
 
 func GetEvent(w http.ResponseWriter, r *http.Request) {
-	req, err := requests.NewGetEvent(r)
+	id, err := requests.NewGetEvent(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
 
-	event, err := EventsQ(r).FilterByID(req).Get()
+	event, err := EventsQ(r).FilterByID(id).Get()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get event by ID")
 		ape.RenderErr(w, problems.InternalError())

@@ -2,7 +2,7 @@ get:
   tags:
     - Events
   summary: Get event
-  description: Returns event for a single user.
+  description: Returns a single event by ID.
   operationId: getEvent
   responses:
     200:
@@ -20,6 +20,8 @@ get:
       $ref: '#/components/responses/invalidParameter'
     401:
       $ref: '#/components/responses/invalidAuth'
+    404:
+      $ref: '#/components/responses/notFound'
     500:
       $ref: '#/components/responses/internalError'
 

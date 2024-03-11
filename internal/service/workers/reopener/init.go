@@ -154,12 +154,12 @@ func startingWatcher(cfg config.Config, name string) func(context.Context) {
 		var balances []data.Balance
 		var err error
 
-		running.UntilSuccess(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
+		running.WithThreshold(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
 			if balances, err = pg.NewBalances(cfg.DB().Clone()).FilterDisabled().Select(); err == nil {
 				return false, err
 			}
 			return true, nil
-		}, retryPeriod, retryPeriod)
+		}, retryPeriod, retryPeriod, maxRetries)
 
 		events := make([]data.Event, len(balances))
 		status := data.EventOpen
@@ -171,11 +171,11 @@ func startingWatcher(cfg config.Config, name string) func(context.Context) {
 			events[i] = data.Event{UserDID: balance.DID, Type: name, Status: status}
 		}
 
-		running.UntilSuccess(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
+		running.WithThreshold(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
 			if err = pg.NewEvents(cfg.DB().Clone()).Insert(events...); err == nil {
 				return false, err
 			}
 			return true, nil
-		}, retryPeriod, retryPeriod)
+		}, retryPeriod, retryPeriod, maxRetries)
 	}
 }

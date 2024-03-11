@@ -19,7 +19,7 @@ event_types:
       description: Get points for scan passport and share data
       short_description: Short description
       frequency: one-time
-      actional_url: https://...
+      action_url: https://...
     - name: get_poh
       title: Get PoH credential
       reward: 50
@@ -64,7 +64,7 @@ event_types:
       title: Planned event
       reward: 25
       frequency: unlimited
-      description: Event that start at specidied time
+      description: Event that start at specified time
       short_description: Short description
       starts_at: 2020-01-01T00:00:00Z
 

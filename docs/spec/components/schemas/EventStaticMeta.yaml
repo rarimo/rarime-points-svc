@@ -45,8 +45,7 @@ properties:
     format: time.Time
     description: General event expiration date (UTC RFC3339)
     example: 2020-01-01T00:00:00Z
-  actional_url:
+  action_url:
     type: string
     format: url.URL
-    description: Actional URL
-    example: https://
+    example: https://robotornot.rarimo.com

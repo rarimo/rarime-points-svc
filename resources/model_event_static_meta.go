@@ -11,8 +11,7 @@ import (
 
 // Primary event metadata in plain JSON. This is a template to be filled by `dynamic` when it's present.
 type EventStaticMeta struct {
-	// Actional URL
-	ActionalUrl *url.URL `json:"actional_url,omitempty"`
+	ActionUrl   *url.URL `json:"action_url,omitempty"`
 	Description string   `json:"description"`
 	// General event expiration date (UTC RFC3339)
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`

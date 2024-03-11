@@ -45,7 +45,7 @@ func (w *worker) job(ctx context.Context) {
 			return false, fmt.Errorf("reopen events: %w", err)
 		}
 		return true, nil
-	}, retryPeriod, retryPeriod, 12)
+	}, retryPeriod, retryPeriod, maxRetries)
 }
 
 func (w *worker) reopenEvents(types []string) error {
