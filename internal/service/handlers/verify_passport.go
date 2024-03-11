@@ -34,8 +34,13 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if balance != nil {
-		log.Error("passport_hash already in use")
-		ape.RenderErr(w, problems.Conflict())
+		if balance.DID != req.UserDID {
+			log.Error("passport_hash already in use")
+			ape.RenderErr(w, problems.Conflict())
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
@@ -47,7 +52,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reward int64
-	logMsgScan := "PassportScan event type is disabled or expired, not accuring points"
+	logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
 	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evType != nil {
 		var success bool
