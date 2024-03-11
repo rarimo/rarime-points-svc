@@ -10,8 +10,9 @@ require (
 	github.com/go-chi/chi v4.1.2+incompatible
 	github.com/go-co-op/gocron/v2 v2.2.2
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
+	github.com/google/jsonapi v1.0.0
 	github.com/iden3/go-iden3-core/v2 v2.0.4
-	github.com/rarimo/auth-svc v1.0.0-rc2
+	github.com/rarimo/auth-svc v1.0.0-rc2.0.20240311143312-de1e2258f175
 	github.com/rarimo/saver-grpc-lib v1.0.0
 	github.com/rubenv/sql-migrate v1.6.1
 	gitlab.com/distributed_lab/ape v1.7.1
@@ -79,7 +80,6 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/google/jsonapi v1.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect

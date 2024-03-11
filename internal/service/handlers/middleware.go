@@ -18,12 +18,12 @@ func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http
 			claims, err := auth.ValidateJWT(r)
 			if err != nil {
 				log.WithError(err).Info("Got invalid auth or validation error")
-				ape.Render(w, problems.Unauthorized())
+				ape.RenderErr(w, problems.Unauthorized())
 				return
 			}
 
 			if len(claims) == 0 {
-				ape.Render(w, problems.Unauthorized())
+				ape.RenderErr(w, problems.Unauthorized())
 				return
 			}
 
