@@ -32,5 +32,6 @@ type BalancesQ interface {
 	GetWithRank(did string) (*Balance, error)
 
 	FilterByDID(string) BalancesQ
+	FilterByPassportHash(string) BalancesQ
 	FilterDisabled() BalancesQ
 }

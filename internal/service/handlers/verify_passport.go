@@ -26,7 +26,20 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		"expiry":   req.Expiry.String(),
 	})
 
-	balance, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
+	balance, err := BalancesQ(r).FilterByPassportHash(req.Hash).Get()
+	if err != nil {
+		log.WithError(err).Error("Failed to get balance by DID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	if balance != nil {
+		log.Error("passport_hash already in use")
+		ape.RenderErr(w, problems.Conflict())
+		return
+	}
+
+	balance, err = BalancesQ(r).FilterByDID(req.UserDID).Get()
 	if err != nil {
 		log.WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
@@ -34,7 +47,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var reward int64
-	logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
+	logMsgScan := "PassportScan event type is disabled or expired, not accuring points"
 	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evType != nil {
 		var success bool

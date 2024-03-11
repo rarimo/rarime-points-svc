@@ -133,6 +133,10 @@ func (q *balances) FilterByDID(did string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"did": did})
 }
 
+func (q *balances) FilterByPassportHash(passportHash string) data.BalancesQ {
+	return q.applyCondition(squirrel.Eq{"passport_hash": passportHash})
+}
+
 func (q *balances) FilterDisabled() data.BalancesQ {
 	return q.applyCondition(squirrel.NotEq{"referred_by": nil})
 }
