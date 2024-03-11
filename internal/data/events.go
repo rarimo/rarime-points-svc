@@ -63,4 +63,5 @@ type EventsQ interface {
 	FilterByType(...string) EventsQ
 	FilterByUpdatedAtBefore(int64) EventsQ
 	FilterByExternalID(string) EventsQ
+	FilterInactiveNotClaimed(types ...string) EventsQ
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
@@ -25,10 +26,15 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	inactiveTypes := EventTypes(r).Names(func(ev evtypes.EventConfig) bool {
+		return !evtypes.FilterInactive(ev)
+	})
+
 	events, err := EventsQ(r).
 		FilterByUserDID(*req.FilterDID).
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
+		FilterInactiveNotClaimed(inactiveTypes...).
 		Page(&req.CursorPageParams).
 		Select()
 	if err != nil {
@@ -44,6 +50,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 			FilterByUserDID(*req.FilterDID).
 			FilterByStatus(req.FilterStatus...).
 			FilterByType(req.FilterType...).
+			FilterInactiveNotClaimed(inactiveTypes...).
 			Count()
 		if err != nil {
 			Log(r).WithError(err).Errorf("Failed to count filtered events: did=%s status=%v type=%v",
