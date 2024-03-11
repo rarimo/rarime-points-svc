@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -48,14 +47,14 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err = adjustReferralsCount(index, req, r); err != nil {
+	referrals, err := adjustReferralsCount(index, req, r)
+	if err != nil {
 		Log(r).WithError(err).Error("Failed to adjust referrals count")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	// TODO: return balance WITHOUT rank and with referrals included, or just referrals, also above
-	w.WriteHeader(http.StatusNoContent)
+	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
 func prepareReferralsToAdd(did string, count, index uint64) []data.Referral {
@@ -72,20 +71,20 @@ func prepareReferralsToAdd(did string, count, index uint64) []data.Referral {
 	return refs
 }
 
-func adjustReferralsCount(index uint64, req requests.EditReferralsRequest, r *http.Request) error {
+func adjustReferralsCount(index uint64, req requests.EditReferralsRequest, r *http.Request) (refs []data.Referral, err error) {
 	switch {
 	case *req.Count < index:
 		toConsume := index - *req.Count
-		if err := ReferralsQ(r).ConsumeFirst(req.DID, toConsume); err != nil {
-			return fmt.Errorf("consume referrals: %w", err)
+		if err = ReferralsQ(r).ConsumeFirst(req.DID, toConsume); err != nil {
+			return
 		}
 		Log(r).Infof("Consumed %d referrals for DID %s", toConsume, req.DID)
 
 	case *req.Count > index:
 		toAdd := *req.Count - index
-		err := ReferralsQ(r).Insert(prepareReferralsToAdd(req.DID, toAdd, index)...)
-		if err != nil {
-			return fmt.Errorf("insert referrals: %w", err)
+		refs = prepareReferralsToAdd(req.DID, toAdd, index)
+		if err = ReferralsQ(r).Insert(refs...); err != nil {
+			return
 		}
 		Log(r).Infof("Inserted %d referrals for DID %s", toAdd, req.DID)
 
@@ -93,5 +92,5 @@ func adjustReferralsCount(index uint64, req requests.EditReferralsRequest, r *ht
 		Log(r).Infof("No referrals to add or consume for DID %s", req.DID)
 	}
 
-	return nil
+	return
 }

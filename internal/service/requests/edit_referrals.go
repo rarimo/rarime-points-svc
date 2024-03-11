@@ -1,20 +1,20 @@
 package requests
 
 import (
+	"encoding/json"
 	"net/http"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"gitlab.com/distributed_lab/urlval/v4"
 )
 
 type EditReferralsRequest struct {
-	DID   string  `url:"did"`
-	Count *uint64 `url:"count"`
+	DID   string  `json:"did"`
+	Count *uint64 `json:"count"`
 }
 
 func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
-	if err = urlval.Decode(r.URL.Query(), &req); err != nil {
-		err = newDecodeError("query", err)
+	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		err = newDecodeError("body", err)
 		return
 	}
 
