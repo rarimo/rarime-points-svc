@@ -21,9 +21,9 @@ func New(did string, index uint64) string {
 // index. Specify non-zero index argument to start from a specific index, this is
 // useful when you have stored referral IDs for this DID previously.
 func NewMany(did string, count, index uint64) []string {
-	ids := make([]string, count)
-	for i := index; index < count; index++ {
-		ids[i] = New(did, i)
+	ids := make([]string, 0, count)
+	for i := index; i < count+index; i++ {
+		ids = append(ids, New(did, i))
 	}
 	return ids
 }
