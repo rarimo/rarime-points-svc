@@ -142,10 +142,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			return nil
 		}
 
-		refDID, err := getReferrerDID(*balance, r)
-		if err != nil {
-			return fmt.Errorf("get referrer DID by referred_by: %w", err)
-		}
+		refDID := balance.ReferredBy.String
 		if refDID == "" {
 			return nil
 		}
@@ -170,14 +167,4 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// TODO: implement new referrals flow
-func getReferrerDID(balance data.Balance, r *http.Request) (string, error) {
-	if !balance.ReferredBy.Valid {
-		return "", nil
-	}
-
-	refBy := balance.ReferredBy.String
-	return refBy, nil
 }
