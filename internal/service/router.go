@@ -30,6 +30,7 @@ func Run(ctx context.Context, cfg config.Config) {
 				r.Post("/", handlers.CreateBalance)
 				r.Route("/{did}", func(r chi.Router) {
 					r.Get("/", handlers.GetBalance)
+					r.Patch("/", handlers.ActivateBalance)
 					r.Get("/withdrawals", handlers.ListWithdrawals)
 					r.Post("/withdrawals", handlers.Withdraw)
 				})

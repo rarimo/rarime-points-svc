@@ -40,3 +40,44 @@ get:
       $ref: '#/components/responses/invalidAuth'
     500:
       $ref: '#/components/responses/internalError'
+
+patch:
+  tags:
+    - Points balance
+  summary: Activate points balance
+  description: |
+    Activate inactive balance. Balance is inactive when referred_by field is null.
+    did in query must match with id in request body
+  operationId: activatePointsBalance
+  parameters:
+    - $ref: '#/components/parameters/pathDID'
+  requestBody:
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/CreateBalance'
+
+
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/Balance'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    500:
+      $ref: '#/components/responses/internalError'
