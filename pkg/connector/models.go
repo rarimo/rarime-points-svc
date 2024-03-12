@@ -3,7 +3,6 @@ package connector
 import (
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/google/jsonapi"
 )
@@ -15,10 +14,9 @@ type FulfillEventRequest struct {
 }
 
 type VerifyPassportRequest struct {
-	UserDID    string    `json:"user_did"`
-	Hash       string    `json:"hash"`
-	Expiry     time.Time `json:"expiry"`
-	SharedData []string  `json:"shared_data"`
+	UserDID    string   `json:"user_did"`
+	Hash       string   `json:"hash"`
+	SharedData []string `json:"shared_data"`
 }
 
 // ErrorCode represents an error with a code indicating the unhappy flow that occurred

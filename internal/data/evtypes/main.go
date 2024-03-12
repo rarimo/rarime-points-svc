@@ -133,13 +133,14 @@ func (t Types) ensureInitialized() {
 	}
 }
 
-func (t Types) CalculatePassportScanReward(sharedFields ...string) (reward int64, success bool) {
+func (t Types) CalculatePassportScanReward(sharedFields ...string) (*int64, bool) {
+	var reward int64
 	for _, field := range sharedFields {
 		val, ok := t.passportRewards[field]
 		if !ok {
-			return 0, false
+			return nil, false
 		}
 		reward += int64(val)
 	}
-	return reward, true
+	return &reward, true
 }
