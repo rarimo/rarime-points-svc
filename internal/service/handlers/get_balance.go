@@ -78,6 +78,8 @@ func newBalanceResponse(balance data.Balance, referrals []data.Referral) resourc
 		return balanceResponse
 	}
 
+	balanceResponse.Data.Attributes.IsWithdrawalAllowed = &balance.IsWithdrawalAllowed
+
 	referralCodes := make([]string, len(referrals))
 	balanceResponse.Data.Attributes.ReferralCodes = &referralCodes
 	for i, referral := range referrals {

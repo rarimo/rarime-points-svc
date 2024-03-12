@@ -13,6 +13,8 @@ type BalanceAttributes struct {
 	IsDisabled bool `json:"is_disabled"`
 	// Whether the user has scanned passport
 	IsVerified bool `json:"is_verified"`
+	// User haven't ability to withdraw
+	IsWithdrawalAllowed *bool `json:"is_withdrawal_allowed,omitempty"`
 	// Rank of the user in the full leaderboard. Returned only for the single user.
 	Rank *int `json:"rank,omitempty"`
 	// Referral codes used to build a referral link and send it to friends. Required if a balance is created

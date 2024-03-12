@@ -17,6 +17,7 @@ type VerifyPassportRequest struct {
 	UserDID    string   `json:"user_did"`
 	Hash       string   `json:"hash"`
 	SharedData []string `json:"shared_data"`
+	IsUSA      bool     `json:"is_usa"`
 }
 
 // ErrorCode represents an error with a code indicating the unhappy flow that occurred

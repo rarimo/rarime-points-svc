@@ -117,9 +117,10 @@ func createBalanceWithPassportTx(r *http.Request, req connector.VerifyPassportRe
 
 	return EventsQ(r).Transaction(func() (err error) {
 		balance := &data.Balance{
-			DID:             req.UserDID,
-			PassportHash:    sql.NullString{String: req.Hash, Valid: true},
-			PassportExpires: sql.NullTime{Time: time.Now().UTC().AddDate(0, 1, 0), Valid: true},
+			DID:                 req.UserDID,
+			PassportHash:        sql.NullString{String: req.Hash, Valid: true},
+			PassportExpires:     sql.NullTime{Time: time.Now().UTC().AddDate(0, 1, 0), Valid: true},
+			IsWithdrawalAllowed: !req.IsUSA,
 		}
 
 		if err = BalancesQ(r).Insert(*balance); err != nil {
@@ -147,6 +148,10 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 		err := BalancesQ(r).FilterByDID(req.UserDID).SetPassport(req.Hash, time.Now().UTC().AddDate(0, 1, 0))
 		if err != nil {
 			return fmt.Errorf("set passport for balance by DID: %w", err)
+		}
+
+		if req.IsUSA && BalancesQ(r).FilterByDID(req.UserDID).SetIsWithdrawalAllowed(!req.IsUSA) != nil {
+			return fmt.Errorf("set is_withdrawal_allowed for balance by DID: %w", err)
 		}
 
 		if reward != nil {

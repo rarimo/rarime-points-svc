@@ -48,3 +48,7 @@ allOf:
             example: ["zgsScguZ", "jerUsmac"]
             items:
               type: string
+          is_withdrawal_allowed:
+            type: boolean
+            description: User haven't ability to withdraw
+            example: true
