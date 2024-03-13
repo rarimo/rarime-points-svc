@@ -5,13 +5,13 @@ AS $$ BEGIN NEW.updated_at = EXTRACT('EPOCH' FROM NOW()); RETURN NEW; END; $$;
 
 CREATE TABLE IF NOT EXISTS balances
 (
-    did              text PRIMARY KEY,
-    amount           bigint NOT NULL default 0,
-    created_at       integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
-    updated_at       integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
-    referred_by      text UNIQUE,
-    passport_hash    text UNIQUE,
-    passport_expires timestamp without time zone
+    did                   text PRIMARY KEY,
+    amount                bigint  NOT NULL default 0,
+    created_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
+    updated_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
+    referred_by           text UNIQUE,
+    passport_hash         text UNIQUE,
+    passport_expires      timestamp without time zone,
     is_withdrawal_allowed boolean NOT NULL default true
 );
 
