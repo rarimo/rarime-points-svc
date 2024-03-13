@@ -33,8 +33,15 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if balance == nil {
+		Log(r).Debug("Balance not exist")
+		ape.RenderErr(w, problems.NotFound())
+		return
+	}
+
 	// Balance should be inactive
-	if balance == nil || balance.ReferredBy.Valid {
+	if balance.ReferredBy.Valid {
+		Log(r).Debug("Balance already activated")
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
@@ -47,6 +54,7 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if referral == nil {
+		Log(r).Debug("Referral code already consumed or not exists")
 		ape.RenderErr(w, problems.NotFound())
 		return
 	}

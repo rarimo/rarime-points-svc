@@ -50,5 +50,5 @@ allOf:
               type: string
           is_withdrawal_allowed:
             type: boolean
-            description: User haven't ability to withdraw
+            description: Whether the user can withdraw tokens. Returned only for the single user.
             example: true

@@ -24,8 +24,9 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log := Log(r).WithFields(map[string]any{
-		"user_did": req.UserDID,
-		"hash":     req.Hash,
+		"user_did":    req.UserDID,
+		"hash":        req.Hash,
+		"shared_data": req.SharedData,
 	})
 
 	balance, err := BalancesQ(r).FilterByPassportHash(req.Hash).Get()
@@ -78,7 +79,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !balance.PassportHash.Valid {
-		err = setBalancePassportTx(r, req, reward, balance.ReferredBy.String)
+		err = setBalancePassportTx(r, req, reward, balance.ReferredBy)
 
 		if err != nil {
 			log.WithError(err).Error("Failed to set passport and add event for referrer")
@@ -104,8 +105,9 @@ func createBalanceWithPassportTx(r *http.Request, req connector.VerifyPassportRe
 	events := EventTypes(r).PrepareEvents(req.UserDID, evtypes.FilterNotOpenable)
 
 	log := Log(r).WithFields(map[string]any{
-		"user_did": req.UserDID,
-		"hash":     req.Hash,
+		"user_did":    req.UserDID,
+		"hash":        req.Hash,
+		"shared_data": req.SharedData,
 	})
 
 	for i := 0; i < len(events); i++ {
@@ -135,50 +137,37 @@ func createBalanceWithPassportTx(r *http.Request, req connector.VerifyPassportRe
 	})
 }
 
-func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, reward *int64, refDID string) error {
+func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, reward *int64, refBy sql.NullString) error {
 	log := Log(r).WithFields(map[string]any{
-		"user_did": req.UserDID,
-		"hash":     req.Hash,
+		"user_did":    req.UserDID,
+		"hash":        req.Hash,
+		"shared_data": req.SharedData,
 	})
-
-	logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
 	return EventsQ(r).Transaction(func() error {
-		// If you make this endpoint public, you should check the passport hash for
-		// uniqueness and provide a better validation. Think about other changes too.
-		err := BalancesQ(r).FilterByDID(req.UserDID).SetPassport(req.Hash, time.Now().UTC().AddDate(0, 1, 0))
+		_, err := BalancesQ(r).FilterByDID(req.UserDID).
+			Update(data.Balance{
+				ReferredBy:          refBy,
+				PassportHash:        sql.NullString{String: req.Hash, Valid: true},
+				PassportExpires:     sql.NullTime{Time: time.Now().UTC().AddDate(0, 1, 0), Valid: true},
+				IsWithdrawalAllowed: !req.IsUSA})
+
 		if err != nil {
 			return fmt.Errorf("set passport for balance by DID: %w", err)
 		}
 
-		if req.IsUSA && BalancesQ(r).FilterByDID(req.UserDID).SetIsWithdrawalAllowed(!req.IsUSA) != nil {
-			return fmt.Errorf("set is_withdrawal_allowed for balance by DID: %w", err)
-		}
-
+		logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
 		if reward != nil {
-			passportScanEvent, err := EventsQ(r).
-				FilterByUserDID(req.UserDID).
-				FilterByType(evtypes.TypePassportScan).
-				FilterByStatus(data.EventOpen).
-				Get()
-			if err != nil {
-				return fmt.Errorf("get passport_scan event by DID: %w", err)
+			logMsgScan = "PassportScan event type available"
+			if err = fulFillPassportScanEvent(r, req, reward); err != nil {
+				return fmt.Errorf("fulfill passport scan event for user: %w", err)
 			}
-
-			logMsgOpenE := "PassportScan event not open"
-			if passportScanEvent != nil {
-				_, err = EventsQ(r).
-					FilterByUserDID(req.UserDID).
-					FilterByType(evtypes.TypePassportScan).
-					Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), reward)
-				if err != nil {
-					return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
-				}
-				logMsgOpenE = "PassportScan event open"
-				logMsgScan = "PassportScan event reward update successful"
-			}
-			log.Debug(logMsgOpenE)
 		}
 		log.Debug(logMsgScan)
+
+		if !refBy.Valid {
+			log.Debug("User balance incative")
+			return nil
+		}
 
 		evType := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 		if evType == nil {
@@ -186,12 +175,18 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 			return nil
 		}
 
-		if refDID == "" {
-			return nil
+		ref, err := ReferralsQ(r).Get(refBy.String)
+		if err != nil {
+			return fmt.Errorf("get referral: %w", err)
+		}
+
+		// normally should never happen
+		if ref == nil {
+			return fmt.Errorf("referral code not found")
 		}
 
 		err = EventsQ(r).Insert(data.Event{
-			UserDID: refDID,
+			UserDID: ref.UserDID,
 			Type:    evType.Name,
 			Status:  data.EventFulfilled,
 			Meta:    data.Jsonb(fmt.Sprintf(`{"did": "%s"}`, req.UserDID)),
@@ -202,4 +197,38 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 
 		return nil
 	})
+}
+
+func fulFillPassportScanEvent(r *http.Request, req connector.VerifyPassportRequest, reward *int64) error {
+	log := Log(r).WithFields(map[string]any{
+		"user_did":    req.UserDID,
+		"hash":        req.Hash,
+		"shared_data": req.SharedData,
+	})
+
+	passportScanEvent, err := EventsQ(r).
+		FilterByUserDID(req.UserDID).
+		FilterByType(evtypes.TypePassportScan).
+		FilterByStatus(data.EventOpen).
+		Get()
+
+	if err != nil {
+		return fmt.Errorf("get passport_scan event by DID: %w", err)
+	}
+
+	if passportScanEvent != nil {
+		log.Debug("PassportScan event open")
+
+		_, err = EventsQ(r).
+			FilterByUserDID(req.UserDID).
+			FilterByType(evtypes.TypePassportScan).
+			Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), reward)
+		if err != nil {
+			return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
+		}
+		log.Debug("PassportScan event reward update successful")
+		return nil
+	}
+	log.Debug("PassportScan event not open")
+	return nil
 }

@@ -92,6 +92,22 @@ func (q *balances) SetIsWithdrawalAllowed(state bool) error {
 	return nil
 }
 
+func (q *balances) Update(bal data.Balance) (*data.Balance, error) {
+	stmt := q.updater.
+		Set("is_withdrawal_allowed", bal.IsWithdrawalAllowed).
+		Set("referred_by", bal.ReferredBy).
+		Set("passport_hash", bal.PassportHash).
+		Set("passport_expires", bal.PassportExpires).
+		Suffix("RETURNING *")
+
+	var res data.Balance
+	if err := q.db.Get(&res, stmt); err != nil {
+		return nil, fmt.Errorf("insert balance %+v: %w", bal, err)
+	}
+
+	return &res, nil
+}
+
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
 	q.selector = page.ApplyTo(q.selector, "amount", "updated_at")
 	return q

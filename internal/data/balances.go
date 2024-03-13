@@ -27,6 +27,8 @@ type BalancesQ interface {
 	SetReferredBy(referralCode string) error
 	SetIsWithdrawalAllowed(bool) error
 
+	Update(Balance) (*Balance, error)
+
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
 	Get() (*Balance, error)

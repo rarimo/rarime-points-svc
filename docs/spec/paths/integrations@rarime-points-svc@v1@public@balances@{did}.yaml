@@ -62,7 +62,6 @@ patch:
             data:
               $ref: '#/components/schemas/CreateBalance'
 
-
   responses:
     200:
       description: Success
@@ -79,5 +78,13 @@ patch:
       $ref: '#/components/responses/invalidParameter'
     401:
       $ref: '#/components/responses/invalidAuth'
+    404:
+      $ref: '#/components/responses/notFound'
+    409:
+      description: Balance already activated
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
     500:
       $ref: '#/components/responses/internalError'
