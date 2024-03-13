@@ -91,9 +91,9 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = BalancesQ(r).FilterByDID(req.UserDID).SetPassport(balance.PassportHash.String, time.Now().UTC().AddDate(0, 1, 0))
+	err = BalancesQ(r).FilterByDID(req.UserDID).SetPassport(balance.PassportHash.String, time.Now().UTC().AddDate(0, 1, 0), !req.IsUSA)
 	if err != nil {
-		log.WithError(err).Error("Failed to set expiration date")
+		log.WithError(err).Error("Failed to update passport")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -144,13 +144,7 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 		"shared_data": req.SharedData,
 	})
 	return EventsQ(r).Transaction(func() error {
-		_, err := BalancesQ(r).FilterByDID(req.UserDID).
-			Update(data.Balance{
-				ReferredBy:          refBy,
-				PassportHash:        sql.NullString{String: req.Hash, Valid: true},
-				PassportExpires:     sql.NullTime{Time: time.Now().UTC().AddDate(0, 1, 0), Valid: true},
-				IsWithdrawalAllowed: !req.IsUSA})
-
+		err := BalancesQ(r).FilterByDID(req.UserDID).SetPassport(req.Hash, time.Now().UTC().AddDate(0, 1, 0), !req.IsUSA)
 		if err != nil {
 			return fmt.Errorf("set passport for balance by DID: %w", err)
 		}
@@ -158,7 +152,7 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 		logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
 		if reward != nil {
 			logMsgScan = "PassportScan event type available"
-			if err = fulFillPassportScanEvent(r, req, reward); err != nil {
+			if err = fulfillPassportScanEvent(r, req, reward); err != nil {
 				return fmt.Errorf("fulfill passport scan event for user: %w", err)
 			}
 		}
@@ -199,7 +193,7 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 	})
 }
 
-func fulFillPassportScanEvent(r *http.Request, req connector.VerifyPassportRequest, reward *int64) error {
+func fulfillPassportScanEvent(r *http.Request, req connector.VerifyPassportRequest, reward *int64) error {
 	log := Log(r).WithFields(map[string]any{
 		"user_did":    req.UserDID,
 		"hash":        req.Hash,

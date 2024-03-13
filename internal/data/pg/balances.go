@@ -58,13 +58,14 @@ func (q *balances) UpdateAmountBy(points int64) error {
 	return nil
 }
 
-func (q *balances) SetPassport(hash string, exp time.Time) error {
+func (q *balances) SetPassport(hash string, exp time.Time, isWithdrawalAllowed bool) error {
 	stmt := q.updater.
 		Set("passport_hash", hash).
-		Set("passport_expires", exp)
+		Set("passport_expires", exp).
+		Set("is_withdrawal_allowed", isWithdrawalAllowed)
 
 	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set passport hash and expires: %w", err)
+		return fmt.Errorf("set passport hash and expires, and isWithdrawalAllowed: %w", err)
 	}
 
 	return nil
@@ -79,33 +80,6 @@ func (q *balances) SetReferredBy(referralCode string) error {
 	}
 
 	return nil
-}
-
-func (q *balances) SetIsWithdrawalAllowed(state bool) error {
-	stmt := q.updater.
-		Set("is_withdrawal_allowed", state)
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set is_withdrawal_allowed: %w", err)
-	}
-
-	return nil
-}
-
-func (q *balances) Update(bal data.Balance) (*data.Balance, error) {
-	stmt := q.updater.
-		Set("is_withdrawal_allowed", bal.IsWithdrawalAllowed).
-		Set("referred_by", bal.ReferredBy).
-		Set("passport_hash", bal.PassportHash).
-		Set("passport_expires", bal.PassportExpires).
-		Suffix("RETURNING *")
-
-	var res data.Balance
-	if err := q.db.Get(&res, stmt); err != nil {
-		return nil, fmt.Errorf("insert balance %+v: %w", bal, err)
-	}
-
-	return &res, nil
 }
 
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
