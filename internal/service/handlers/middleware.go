@@ -17,13 +17,13 @@ func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := auth.ValidateJWT(r)
 			if err != nil {
-				log.WithError(err).Error("failed to execute auth validate request")
-				ape.Render(w, problems.InternalError())
+				log.WithError(err).Info("Got invalid auth or validation error")
+				ape.RenderErr(w, problems.Unauthorized())
 				return
 			}
 
 			if len(claims) == 0 {
-				ape.Render(w, problems.Unauthorized())
+				ape.RenderErr(w, problems.Unauthorized())
 				return
 			}
 
@@ -33,12 +33,12 @@ func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http
 	}
 }
 
-type ctxExtender func(context.Context) context.Context
-
 // DBCloneMiddleware is designed to clone DB session on each request. You must
 // put all new DB handlers here instead of ape.CtxMiddleware, unless you have a
 // reason to do otherwise.
 func DBCloneMiddleware(db *pgdb.DB) func(http.Handler) http.Handler {
+	type ctxExtender func(context.Context) context.Context
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			clone := db.Clone()
@@ -48,6 +48,7 @@ func DBCloneMiddleware(db *pgdb.DB) func(http.Handler) http.Handler {
 				CtxEventsQ(pg.NewEvents(clone)),
 				CtxBalancesQ(pg.NewBalances(clone)),
 				CtxWithdrawalsQ(pg.NewWithdrawals(clone)),
+				CtxReferralsQ(pg.NewReferrals(clone)),
 			}
 
 			for _, extender := range extenders {

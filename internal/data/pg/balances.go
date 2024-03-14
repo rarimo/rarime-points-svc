@@ -12,6 +12,7 @@ import (
 )
 
 const balancesTable = "balances"
+const balancesRankColumns = "did, MAX(amount) as amount, created_at, updated_at, referred_by, passport_hash, passport_expires"
 
 type balances struct {
 	db       *pgdb.DB
@@ -33,10 +34,11 @@ func (q *balances) New() data.BalancesQ {
 
 func (q *balances) Insert(bal data.Balance) error {
 	stmt := squirrel.Insert(balancesTable).SetMap(map[string]interface{}{
-		"did":         bal.DID,
-		"amount":      bal.Amount,
-		"referral_id": bal.ReferralID,
-		"referred_by": bal.ReferredBy,
+		"did":              bal.DID,
+		"amount":           bal.Amount,
+		"referred_by":      bal.ReferredBy,
+		"passport_hash":    bal.PassportHash,
+		"passport_expires": bal.PassportExpires,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -68,8 +70,19 @@ func (q *balances) SetPassport(hash string, exp time.Time) error {
 	return nil
 }
 
+func (q *balances) SetReferredBy(referralCode string) error {
+	stmt := q.updater.
+		Set("referred_by", referralCode)
+
+	if err := q.db.Exec(stmt); err != nil {
+		return fmt.Errorf("set referred_by: %w", err)
+	}
+
+	return nil
+}
+
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
-	q.selector = page.ApplyTo(q.selector, "amount")
+	q.selector = page.ApplyTo(q.selector, "amount", "updated_at")
 	return q
 }
 
@@ -96,20 +109,35 @@ func (q *balances) Get() (*data.Balance, error) {
 	return &res, nil
 }
 
-func (q *balances) WithRank() data.BalancesQ {
-	q.selector = q.selector.Column("RANK() OVER (ORDER BY amount DESC, updated_at ASC) AS rank")
-	return q
+func (q *balances) GetWithRank(did string) (*data.Balance, error) {
+	var res data.Balance
+	stmt := fmt.Sprintf(`
+		SELECT * FROM (
+			SELECT *, RANK() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM (
+				SELECT %s FROM %s GROUP BY did
+			) AS t
+		) AS ranked WHERE did = ?
+	`, balancesRankColumns, balancesTable)
+
+	if err := q.db.GetRaw(&res, stmt, did); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("get balance with rank: %w", err)
+	}
+
+	return &res, nil
 }
 
 func (q *balances) FilterByDID(did string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"did": did})
 }
 
-func (q *balances) FilterByReferralID(referralID string) data.BalancesQ {
-	return q.applyCondition(squirrel.Eq{"referral_id": referralID})
+func (q *balances) FilterDisabled() data.BalancesQ {
+	return q.applyCondition(squirrel.NotEq{"referred_by": nil})
 }
 
-func (q *balances) applyCondition(cond squirrel.Eq) data.BalancesQ {
+func (q *balances) applyCondition(cond squirrel.Sqlizer) data.BalancesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
 	return q

@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
-	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -20,7 +20,11 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
-	log := Log(r).WithFields(map[string]any{"user_did": req.UserDID, "hash": req.Hash})
+	log := Log(r).WithFields(map[string]any{
+		"user_did": req.UserDID,
+		"hash":     req.Hash,
+		"expiry":   req.Expiry.String(),
+	})
 
 	balance, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
 	if err != nil {
@@ -29,13 +33,33 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var reward int64
+	logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
+	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
+	if evType != nil {
+		var success bool
+		reward, success = EventTypes(r).CalculatePassportScanReward(req.SharedData...)
+		if !success {
+			log.WithError(err).Error("Failed to calculate PassportScanReward, incorrect fields")
+			ape.RenderErr(w, problems.NotFound())
+			return
+		}
+	}
+
 	if balance == nil {
 		log.Debug("Balance not found, creating new one")
 		events := EventTypes(r).PrepareEvents(req.UserDID, evtypes.FilterNotOpenable)
+
+		for i := 0; i < len(events); i++ {
+			if events[i].Type == evtypes.TypePassportScan {
+				events[i].PointsAmount = &reward
+				events[i].Status = data.EventFulfilled
+			}
+		}
+
 		err = EventsQ(r).Transaction(func() error {
 			balance = &data.Balance{
 				DID:             req.UserDID,
-				ReferralID:      referralid.New(req.UserDID),
 				PassportHash:    sql.NullString{String: req.Hash, Valid: true},
 				PassportExpires: sql.NullTime{Time: req.Expiry, Valid: true},
 			}
@@ -69,7 +93,32 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("set passport for balance by DID: %w", err)
 		}
 
-		evType := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+		if evType != nil {
+			passportScanEvent, err := EventsQ(r).
+				FilterByUserDID(req.UserDID).
+				FilterByType(evtypes.TypePassportScan).
+				FilterByStatus(data.EventOpen).
+				Get()
+			if err != nil {
+				return fmt.Errorf("get passport_scan event by DID: %w", err)
+			}
+			logMsgOpenE := "PassportScan event not open"
+			if passportScanEvent != nil {
+				_, err = EventsQ(r).
+					FilterByUserDID(req.UserDID).
+					FilterByType(evtypes.TypePassportScan).
+					Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), &reward)
+				if err != nil {
+					return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
+				}
+				logMsgOpenE = "PassportScan event open"
+				logMsgScan = "PassportScan event reward update successful"
+			}
+			log.Debug(logMsgOpenE)
+		}
+		log.Debug(logMsgScan)
+
+		evType = EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 		if evType == nil {
 			log.Debug("Referral event type is disabled or expired, not accruing points to referrer")
 			return nil
@@ -87,6 +136,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			UserDID: refDID,
 			Type:    evType.Name,
 			Status:  data.EventFulfilled,
+			Meta:    data.Jsonb(fmt.Sprintf(`{"did": "%s"}`, req.UserDID)),
 		})
 		if err != nil {
 			return fmt.Errorf("add event for referrer: %w", err)
@@ -104,20 +154,12 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// TODO: implement new referrals flow
 func getReferrerDID(balance data.Balance, r *http.Request) (string, error) {
 	if !balance.ReferredBy.Valid {
 		return "", nil
 	}
 
 	refBy := balance.ReferredBy.String
-	referrer, err := BalancesQ(r).FilterByReferralID(refBy).Get()
-	if err != nil {
-		return "", fmt.Errorf("failed to get balance by referral ID: %w", err)
-	}
-	if referrer == nil {
-		return "", fmt.Errorf("referrer not found: %s", refBy)
-	}
-
-	Log(r).Debugf("Found referrer: DID=%s", referrer.DID)
-	return referrer.DID, nil
+	return refBy, nil
 }

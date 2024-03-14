@@ -19,17 +19,12 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := EventsQ(r).
-		FilterByID(req.Data.ID).
-		FilterByStatus(data.EventFulfilled).
-		Get()
-
+	event, err := EventsQ(r).FilterByID(req.Data.ID).FilterByStatus(data.EventFulfilled).Get()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get event by balance ID")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
-
 	if event == nil {
 		Log(r).Debugf("Event not found for id=%s status=%s", req.Data.ID, data.EventFulfilled)
 		ape.RenderErr(w, problems.NotFound())
@@ -43,27 +38,40 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 
 	evType := EventTypes(r).Get(event.Type) // expired events can be claimed
 	if evType == nil {
-		Log(r).Error("Wrong event type is stored in DB: might be bad event config")
+		Log(r).Errorf("Wrong event type %s is stored in DB: might be bad event config", event.Type)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 	if evType.Disabled {
-		Log(r).Infof("Event type %s is disabled, while user has tried to claim", evType.Name)
+		Log(r).Infof("Attempt to claim: event type %s is disabled", event.Type)
 		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
+
+	balance, err := BalancesQ(r).FilterByDID(event.UserDID).FilterDisabled().Get()
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get balance by DID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if balance == nil {
+		Log(r).Infof("Attempt to claim: balance user_did=%s is disabled", event.UserDID)
+		ape.RenderErr(w, problems.NotFound())
 		return
 	}
 
 	event, err = claimEventWithPoints(*event, evType.Reward, r)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to claim event and accrue points to the balance")
+		Log(r).WithError(err).Errorf("Failed to claim event %s and accrue %d points to the balance %s",
+			event.ID, evType.Reward, event.UserDID)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	// balance should exist cause of previous logic
-	balance, err := getBalanceByDID(event.UserDID, true, r)
+	balance, err = BalancesQ(r).GetWithRank(event.UserDID)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get balance by DID with rank")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

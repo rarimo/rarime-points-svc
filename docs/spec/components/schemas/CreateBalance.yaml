@@ -2,6 +2,8 @@ allOf:
   - $ref: '#/components/schemas/CreateBalanceKey'
   - type: object
     x-go-is-request: true
+    required:
+      - attributes
     properties:
       attributes:
         type: object
@@ -10,5 +12,6 @@ allOf:
         properties:
           referred_by:
             type: string
-            description: ID of the referrer from the link
+            description: referrer code from the link
             example: "rCx18MZ4"
+                

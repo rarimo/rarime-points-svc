@@ -5,6 +5,6 @@
 package resources
 
 type CreateBalanceAttributes struct {
-	// ID of the referrer from the link
+	// referrer code from the link
 	ReferredBy string `json:"referred_by"`
 }

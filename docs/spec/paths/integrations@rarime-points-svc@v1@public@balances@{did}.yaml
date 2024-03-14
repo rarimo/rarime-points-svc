@@ -8,6 +8,20 @@ get:
   operationId: getPointsBalance
   parameters:
     - $ref: '#/components/parameters/pathDID'
+    - in: query
+      name: 'rank'
+      description: 'Specifies whether to return the rank'
+      required: false
+      schema:
+        type: boolean
+        example: true
+    - in: query
+      name: 'referral_codes'
+      description: 'Specifies whether to return the referral codes'
+      required: false
+      schema:
+        type: booleand
+        example: true
   responses:
     200:
       description: Success

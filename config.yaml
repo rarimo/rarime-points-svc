@@ -6,17 +6,18 @@ db:
   url: postgres://points:points@localhost:5432/points?sslmode=disable
 
 listener:
-  addr: :8000
-
-cop:
-  disabled: true
-  endpoint: "http://..."
-  upstream: "http://..."
-  service_name: rarime-points-svc
-  service_port: 80
+  addr: localhost:8000
 
 event_types:
+  passport_rewards:
+      age: 20
+      nationality: 50
   types:
+    - name: passport_scan
+      title: Points for passport scan
+      reward: 200
+      description: Get points for scan passport and share data
+      frequency: one-time
     - name: get_poh
       title: Get PoH credential
       reward: 50
@@ -56,7 +57,7 @@ auth:
   addr: http://rarime-auth
 
 broadcaster:
-  addr: "http://broadcaster"
+  addr: broadcaster
   sender_account: "rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds"
 
 withdrawal:

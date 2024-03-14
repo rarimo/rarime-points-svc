@@ -7,6 +7,7 @@ import (
 
 	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
@@ -20,19 +21,25 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.FilterDID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(*req.FilterDID)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
+	inactiveTypes := EventTypes(r).Names(func(ev evtypes.EventConfig) bool {
+		return !evtypes.FilterInactive(ev)
+	})
+
 	events, err := EventsQ(r).
-		FilterByUserDID(req.FilterDID).
+		FilterByUserDID(*req.FilterDID).
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
+		FilterInactiveNotClaimed(inactiveTypes...).
 		Page(&req.CursorPageParams).
 		Select()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get event list")
+		Log(r).WithError(err).Errorf("Failed to get filtered paginated event list: did=%s status=%v type=%v",
+			*req.FilterDID, req.FilterStatus, req.FilterType)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -40,12 +47,14 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	var eventsCount int
 	if req.Count {
 		eventsCount, err = EventsQ(r).
-			FilterByUserDID(req.FilterDID).
+			FilterByUserDID(*req.FilterDID).
 			FilterByStatus(req.FilterStatus...).
 			FilterByType(req.FilterType...).
+			FilterInactiveNotClaimed(inactiveTypes...).
 			Count()
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to count events")
+			Log(r).WithError(err).Errorf("Failed to count filtered events: did=%s status=%v type=%v",
+				*req.FilterDID, req.FilterStatus, req.FilterType)
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
@@ -58,9 +67,9 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var last string
+	var last int32
 	if len(events) > 0 {
-		last = events[len(events)-1].ID
+		last = events[len(events)-1].UpdatedAt
 	}
 
 	resp := newEventsResponse(events, meta)

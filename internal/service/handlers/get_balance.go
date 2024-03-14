@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -23,7 +24,13 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := getBalanceByDID(req.DID, true, r)
+	var balance *data.Balance
+	if req.Rank {
+		balance, err = BalancesQ(r).GetWithRank(req.DID)
+	} else {
+		balance, err = BalancesQ(r).FilterByDID(req.DID).Get()
+	}
+
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
@@ -35,7 +42,17 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, newBalanceModel(*balance))
+	var referrals []data.Referral
+	if req.ReferralCodes {
+		referrals, err = ReferralsQ(r).FilterByUserDID(req.DID).FilterByIsConsumed(false).Select()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to get referrals by DID")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+	}
+
+	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
 func newBalanceModel(balance data.Balance) resources.Balance {
@@ -46,8 +63,8 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 		},
 		Attributes: resources.BalanceAttributes{
 			Amount:     balance.Amount,
-			ReferralId: balance.ReferralID,
-			IsVerified: balance.PassportHash.Valid,
+			IsVerified: balance.PassportExpires.Time.After(time.Now().UTC()),
+			IsDisabled: !balance.ReferredBy.Valid,
 			CreatedAt:  balance.CreatedAt,
 			UpdatedAt:  balance.UpdatedAt,
 			Rank:       balance.Rank,
@@ -55,11 +72,16 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 	}
 }
 
-func getBalanceByDID(did string, withRank bool, r *http.Request) (*data.Balance, error) {
-	q := BalancesQ(r).FilterByDID(did)
-	if withRank {
-		q.WithRank()
+func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
+	balanceResponse := resources.BalanceResponse{Data: newBalanceModel(balance)}
+	if len(referrals) == 0 {
+		return balanceResponse
 	}
 
-	return q.Get()
+	referralCodes := make([]string, len(referrals))
+	balanceResponse.Data.Attributes.ReferralCodes = &referralCodes
+	for i, referral := range referrals {
+		referralCodes[i] = referral.ID
+	}
+	return balanceResponse
 }

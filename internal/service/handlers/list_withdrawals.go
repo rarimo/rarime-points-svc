@@ -25,14 +25,14 @@ func ListWithdrawals(w http.ResponseWriter, r *http.Request) {
 
 	withdrawals, err := WithdrawalsQ(r).FilterByUserDID(req.DID).Page(&req.CursorPageParams).Select()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get withdrawal list")
+		Log(r).WithError(err).Errorf("Failed to get filtered withdrawal list: did=%s", req.DID)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	var last string
+	var last int32
 	if len(withdrawals) > 0 {
-		last = withdrawals[len(withdrawals)-1].ID
+		last = withdrawals[len(withdrawals)-1].CreatedAt
 	}
 
 	resp := newWithdrawalsResponse(withdrawals)

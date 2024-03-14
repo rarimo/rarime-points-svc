@@ -22,15 +22,20 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
+	log := Log(r).WithFields(map[string]any{
+		"user_did":      req.Data.ID,
+		"points_amount": req.Data.Attributes.Amount,
+		"dest_address":  req.Data.Attributes.Address,
+	})
 
 	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Data.ID)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
-	balance, err := getBalanceByDID(req.Data.ID, true, r)
+	balance, err := BalancesQ(r).FilterByDID(req.Data.ID).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -40,7 +45,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := isEligibleToWithdraw(balance, req.Data.Attributes.Amount); err != nil {
+	if err = isEligibleToWithdraw(balance, req.Data.Attributes.Amount); err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
@@ -68,15 +73,15 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to perform withdrawal")
+		log.WithError(err).Error("Failed to perform withdrawal")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	// balance should exist cause of previous logic
-	balance, err = getBalanceByDID(req.Data.ID, true, r)
+	balance, err = BalancesQ(r).GetWithRank(req.Data.ID)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by DID with rank")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -102,20 +107,21 @@ func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.Wit
 	return &resp
 }
 
-func isEligibleToWithdraw(balance *data.Balance, amount int64) validation.Errors {
+func isEligibleToWithdraw(balance *data.Balance, amount int64) error {
 	mapValidationErr := func(field, format string, a ...any) validation.Errors {
 		return validation.Errors{
 			field: fmt.Errorf(format, a...),
 		}
 	}
 
-	if !balance.PassportHash.Valid {
-		return mapValidationErr("is_verified", "user must have verified passport for withdrawals")
-	}
-	if balance.PassportExpires.Time.Before(time.Now().UTC()) {
+	switch {
+	case !balance.ReferredBy.Valid:
+		return mapValidationErr("is_disabled", "user must be referred to withdraw")
+	case !balance.PassportHash.Valid:
+		return mapValidationErr("is_verified", "user must have verified passport to withdraw")
+	case balance.PassportExpires.Time.Before(time.Now().UTC()):
 		return mapValidationErr("is_verified", "user passport is expired")
-	}
-	if balance.Amount < amount {
+	case balance.Amount < amount:
 		return mapValidationErr("data/attributes/amount", "insufficient balance: %d", balance.Amount)
 	}
 
@@ -123,14 +129,14 @@ func isEligibleToWithdraw(balance *data.Balance, amount int64) validation.Errors
 }
 
 func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
-	var (
-		from  = cosmos.MustAccAddressFromBech32(Broadcaster(r).Sender())
-		to    = cosmos.MustAccAddressFromBech32(req.Data.Attributes.Address)
-		urmo  = req.Data.Attributes.Amount * PointPrice(r)
-		coins = cosmos.NewCoins(cosmos.NewInt64Coin("urmo", int64(urmo)))
-	)
+	urmo := req.Data.Attributes.Amount * PointPrice(r)
+	tx := &bank.MsgSend{
+		FromAddress: Broadcaster(r).Sender(),
+		ToAddress:   req.Data.Attributes.Address,
+		Amount:      cosmos.NewCoins(cosmos.NewInt64Coin("urmo", urmo)),
+	}
 
-	err := Broadcaster(r).BroadcastTx(r.Context(), bank.NewMsgSend(from, to, coins))
+	err := Broadcaster(r).BroadcastTx(r.Context(), tx)
 	if err != nil {
 		return fmt.Errorf("broadcast withdrawal tx: %w", err)
 	}

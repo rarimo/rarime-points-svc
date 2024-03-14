@@ -17,14 +17,16 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	leaders, err := BalancesQ(r).Page(&req.OffsetPageParams).Select()
+	leaders, err := BalancesQ(r).FilterDisabled().Page(&req.OffsetPageParams).Select()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance leaders")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	ape.Render(w, newLeaderboardResponse(leaders))
+	resp := newLeaderboardResponse(leaders)
+	resp.Links = req.GetLinks(r)
+	ape.Render(w, resp)
 }
 
 func newLeaderboardResponse(balances []data.Balance) resources.BalanceListResponse {

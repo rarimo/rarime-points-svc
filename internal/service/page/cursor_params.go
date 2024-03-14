@@ -31,13 +31,12 @@ func (p *CursorParams) Validate() error {
 	}.Filter()
 }
 
-func (p *CursorParams) GetLinks(r *http.Request, last string) *resources.Links {
+func (p *CursorParams) GetLinks(r *http.Request, last int32) *resources.Links {
 	result := resources.Links{
 		Self: p.getLink(r, p.Cursor),
 	}
-	if last != "" {
-		lastI, _ := strconv.ParseUint(last, 10, 64)
-		result.Next = p.getLink(r, lastI)
+	if last != 0 {
+		result.Next = p.getLink(r, uint64(last))
 	}
 	return &result
 }

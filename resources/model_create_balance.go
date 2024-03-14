@@ -8,7 +8,7 @@ import "encoding/json"
 
 type CreateBalance struct {
 	Key
-	Attributes *CreateBalanceAttributes `json:"attributes,omitempty"`
+	Attributes CreateBalanceAttributes `json:"attributes"`
 }
 type CreateBalanceRequest struct {
 	Data     CreateBalance `json:"data"`

@@ -15,11 +15,9 @@ func NewCreateBalance(r *http.Request) (req resources.CreateBalanceRequest, err 
 	}
 
 	errs := validation.Errors{
-		"data/id":   validation.Validate(req.Data.ID, validation.Required),
-		"data/type": validation.Validate(req.Data.Type, validation.Required, validation.In(resources.CREATE_BALANCE)),
-	}
-	if attr := req.Data.Attributes; attr != nil {
-		errs["data/attributes/referred_by"] = validation.Validate(attr.ReferredBy, validation.Required)
+		"data/id":                     validation.Validate(req.Data.ID, validation.Required),
+		"data/type":                   validation.Validate(req.Data.Type, validation.Required, validation.In(resources.CREATE_BALANCE)),
+		"data/attributes/referred_by": validation.Validate(req.Data.Attributes.ReferredBy, validation.Required),
 	}
 
 	return req, errs.Filter()

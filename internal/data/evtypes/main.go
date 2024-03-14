@@ -25,6 +25,12 @@ const (
 	TypeFreeWeekly       = "free_weekly"
 	TypeBeReferred       = "be_referred"
 	TypeReferralSpecific = "referral_specific"
+	TypePassportScan     = "passport_scan"
+)
+
+const (
+	PassportRewardAge         = "age"
+	PassportRewardNationality = "nationality"
 )
 
 type EventConfig struct {
@@ -50,8 +56,9 @@ func (e EventConfig) Resource() resources.EventStaticMeta {
 }
 
 type Types struct {
-	m    map[string]EventConfig
-	list []EventConfig
+	m               map[string]EventConfig
+	list            []EventConfig
+	passportRewards map[string]int
 }
 
 func (t Types) Get(name string, filters ...filter) *EventConfig {
@@ -117,4 +124,15 @@ func (t Types) ensureInitialized() {
 	if t.m == nil || t.list == nil {
 		panic("event types are not correctly initialized")
 	}
+}
+
+func (t Types) CalculatePassportScanReward(sharedFields ...string) (reward int64, success bool) {
+	for _, field := range sharedFields {
+		val, ok := t.passportRewards[field]
+		if !ok {
+			return 0, false
+		}
+		reward += int64(val)
+	}
+	return reward, true
 }

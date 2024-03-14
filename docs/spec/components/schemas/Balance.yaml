@@ -8,8 +8,8 @@ allOf:
         type: object
         required:
           - amount
-          - referral_id
           - is_verified
+          - is_disabled
           - created_at
           - updated_at
         properties:
@@ -18,14 +18,17 @@ allOf:
             format: int64
             description: Amount of points
             example: 580
-          referral_id:
-            type: string
-            description: Referral ID used to build a referral link and send it to friends
-            example: "zgsScguZ"
           is_verified:
             type: boolean
             description: Whether the user has scanned passport
             example: true
+          is_disabled:
+            type: boolean
+            description: |
+              Whether the user was not referred by anybody, but the balance with some
+              events was reserved. It happens when the user fulfills some event
+              before the balance creation.
+            example: false
           created_at:
             type: integer
             description: Unix timestamp of balance creation
@@ -39,3 +42,9 @@ allOf:
             format: int
             description: Rank of the user in the full leaderboard. Returned only for the single user.
             example: 294
+          referral_codes:
+            type: array
+            description: Referral codes used to build a referral link and send it to friends. Required if a balance is created 
+            example: ["zgsScguZ", "jerUsmac"]
+            items:
+              type: string

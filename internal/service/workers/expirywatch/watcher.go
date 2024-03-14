@@ -28,11 +28,11 @@ func newWatcher(cfg config.Config) *watcher {
 
 func (w *watcher) initialRun() error {
 	expired := w.types.Names(func(ev evtypes.EventConfig) bool {
-		return ev.Disabled || !evtypes.FilterExpired(ev)
+		return !ev.Disabled && !evtypes.FilterExpired(ev)
 	})
 
 	if len(expired) == 0 {
-		w.log.Debug("No events have expired")
+		w.log.Debug("No events were disabled or have expired")
 		return nil
 	}
 
@@ -40,12 +40,12 @@ func (w *watcher) initialRun() error {
 }
 
 func (w *watcher) cleanOpen(types ...string) error {
-	deleted, err := w.q.FilterByType(types...).FilterByStatus(data.EventOpen).Delete()
+	deleted, err := w.q.New().FilterByType(types...).FilterByStatus(data.EventOpen).Delete()
 	if err != nil {
-		return fmt.Errorf("clean expired open events [expired=%v]: %w", types, err)
+		return fmt.Errorf("clean open events [types=%v]: %w", types, err)
 	}
 
-	w.log.Infof("Deleted %d expired open events", deleted)
+	w.log.Infof("Deleted %d expired and disabled open events, types: %v", deleted, types)
 	return nil
 }
 

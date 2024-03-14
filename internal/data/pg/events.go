@@ -29,7 +29,7 @@ func NewEvents(db *pgdb.DB) data.EventsQ {
 		selector:   squirrel.Select("*").From(eventsTable),
 		updater:    squirrel.Update(eventsTable),
 		deleter:    squirrel.Delete(eventsTable),
-		counter:    squirrel.Select("count(id) AS count").From(eventsTable),
+		counter:    squirrel.Select("COUNT(*) AS count").From(eventsTable),
 		reopenable: squirrel.Select("user_did", "type").Distinct().From(eventsTable + " e1"),
 	}
 }
@@ -210,6 +210,16 @@ func (q *events) FilterByExternalID(id string) data.EventsQ {
 
 func (q *events) FilterByUpdatedAtBefore(unix int64) data.EventsQ {
 	return q.applyCondition(squirrel.Lt{"updated_at": unix})
+}
+
+func (q *events) FilterInactiveNotClaimed(types ...string) data.EventsQ {
+	if len(types) == 0 {
+		return q
+	}
+	return q.applyCondition(squirrel.Or{
+		squirrel.NotEq{"type": types},
+		squirrel.Eq{"status": data.EventClaimed},
+	})
 }
 
 func (q *events) applyCondition(cond squirrel.Sqlizer) data.EventsQ {

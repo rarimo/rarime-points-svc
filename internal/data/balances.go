@@ -12,7 +12,6 @@ type Balance struct {
 	Amount          int64          `db:"amount"`
 	CreatedAt       int32          `db:"created_at"`
 	UpdatedAt       int32          `db:"updated_at"`
-	ReferralID      string         `db:"referral_id"`
 	ReferredBy      sql.NullString `db:"referred_by"`
 	PassportHash    sql.NullString `db:"passport_hash"`
 	PassportExpires sql.NullTime   `db:"passport_expires"`
@@ -24,12 +23,14 @@ type BalancesQ interface {
 	Insert(Balance) error
 	UpdateAmountBy(points int64) error
 	SetPassport(hash string, exp time.Time) error
+	SetReferredBy(referralCode string) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
 	Get() (*Balance, error)
+	// GetWithRank returns balance with rank, filtered by DID. No other filters can be applied.
+	GetWithRank(did string) (*Balance, error)
 
-	WithRank() BalancesQ
 	FilterByDID(string) BalancesQ
-	FilterByReferralID(string) BalancesQ
+	FilterDisabled() BalancesQ
 }
