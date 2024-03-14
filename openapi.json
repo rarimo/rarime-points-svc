@@ -18,7 +18,7 @@
           "Points balance"
         ],
         "summary": "Create points balance",
-        "description": "Create an empty balance for authorized user who makes the request. Rank is included.\nThis operation might be time-consuming, because `open` events should be added for\nthe new account synchronously (to display them right after the request).\n",
+        "description": "Create an empty balance for authorized user who makes the request. Rank is included\nin response.\n\nThis operation might be time-consuming, because `open` events should be added for\nthe new account synchronously (to display them right after the request).\n\nIf balance already exists, but it is disabled (it was not referred by another user,\nbut has fulfilled some event), you should use this endpoint as well.\n",
         "operationId": "createPointsBalance",
         "requestBody": {
           "content": {
@@ -119,6 +119,16 @@
           },
           "400": {
             "$ref": "#/components/responses/invalidParameter"
+          },
+          "409": {
+            "description": "Balance already exists and it is not disabled",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/internalError"
