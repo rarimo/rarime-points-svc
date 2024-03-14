@@ -20,6 +20,7 @@ event_types:
       short_description: Short description
       frequency: one-time
       action_url: https://...
+      logo: https://...
     - name: get_poh
       title: Get PoH credential
       reward: 50

@@ -28,12 +28,27 @@ func NewPointer(getter kv.Getter) Pointer {
 
 func (p *points) Points() *Client {
 	return p.once.Do(func() any {
+		var disabledConfig struct {
+			Disabled bool `fig:"disabled"`
+		}
+
+		err := figure.Out(&disabledConfig).
+			From(kv.MustGetStringMap(p.getter, "points")).
+			Please()
+		if err != nil {
+			panic(fmt.Errorf("failed to figure out disabled for points: %s", err))
+		}
+
+		if disabledConfig.Disabled {
+			return &Client{disabled: true}
+		}
+
 		var cfg struct {
 			Addr           *url.URL      `fig:"addr,required"`
 			RequestTimeout time.Duration `fig:"request_timeout"`
 		}
 
-		err := figure.Out(&cfg).
+		err = figure.Out(&cfg).
 			From(kv.MustGetStringMap(p.getter, "points")).
 			Please()
 		if err != nil {

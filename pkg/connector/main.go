@@ -16,7 +16,8 @@ import (
 const privatePrefix = "/integrations/rarime-points-svc/v1/private"
 
 type Client struct {
-	conn *conn.Connector
+	disabled bool
+	conn     *conn.Connector
 }
 
 func NewClient(cli iface.Client) *Client {
@@ -24,6 +25,10 @@ func NewClient(cli iface.Client) *Client {
 }
 
 func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) *Error {
+	if c.disabled {
+		return nil
+	}
+
 	u, _ := url.Parse(privatePrefix + "/events")
 
 	err := c.conn.PatchJSON(u, req, ctx, nil)
@@ -46,6 +51,10 @@ func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) *Err
 }
 
 func (c *Client) VerifyPassport(ctx context.Context, req VerifyPassportRequest) error {
+	if c.disabled {
+		return nil
+	}
+
 	u, _ := url.Parse(privatePrefix + "/balances")
 	return c.conn.PatchJSON(u, req, ctx, nil)
 }

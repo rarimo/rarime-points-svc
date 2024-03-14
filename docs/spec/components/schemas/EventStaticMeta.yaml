@@ -49,3 +49,7 @@ properties:
     type: string
     format: url.URL
     example: https://robotornot.rarimo.com
+  logo:
+    type: string
+    format: url.URL
+    example: https://logo.com/some_logo.svg

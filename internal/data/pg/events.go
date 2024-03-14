@@ -100,7 +100,7 @@ func (q *events) Transaction(f func() error) error {
 }
 
 func (q *events) Page(page *pgdb.OffsetPageParams) data.EventsQ {
-	ord := "case when status = 'fulfilled' then 1 when status = 'open' then 2 when status = 'claimed' then 3 end"
+	ord := fmt.Sprintf("case when status = '%s' then 1 when status = '%s' then 2 when status = '%s' then 3 end", data.EventFulfilled, data.EventOpen, data.EventClaimed)
 	q.selector = page.ApplyTo(q.selector.OrderBy(ord), "updated_at")
 	return q
 }
