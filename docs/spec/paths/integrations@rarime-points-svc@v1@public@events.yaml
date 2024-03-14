@@ -35,8 +35,8 @@ get:
       schema:
         type: boolean
         example: true
-    - $ref: '#/components/parameters/pageCursor'
     - $ref: '#/components/parameters/pageLimit'
+    - $ref: '#/components/parameters/pageNumber'
     - $ref: '#/components/parameters/pageOrder'
   responses:
     200:
