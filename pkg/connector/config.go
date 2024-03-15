@@ -9,6 +9,7 @@ import (
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
+	"gitlab.com/distributed_lab/logan/v3"
 )
 
 const defaultTimeout = 10 * time.Second
@@ -40,7 +41,7 @@ func (p *points) Points() *Client {
 		}
 
 		if disabledConfig.Disabled {
-			return &Client{disabled: true}
+			return &Client{disabled: true, log: logan.New()}
 		}
 
 		var cfg struct {

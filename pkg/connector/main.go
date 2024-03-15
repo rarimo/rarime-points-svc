@@ -11,21 +11,24 @@ import (
 	conn "gitlab.com/distributed_lab/json-api-connector"
 	"gitlab.com/distributed_lab/json-api-connector/cerrors"
 	iface "gitlab.com/distributed_lab/json-api-connector/client"
+	"gitlab.com/distributed_lab/logan/v3"
 )
 
 const privatePrefix = "/integrations/rarime-points-svc/v1/private"
 
 type Client struct {
 	disabled bool
+	log      *logan.Entry
 	conn     *conn.Connector
 }
 
 func NewClient(cli iface.Client) *Client {
-	return &Client{conn: conn.NewConnector(cli)}
+	return &Client{conn: conn.NewConnector(cli), log: logan.New()}
 }
 
 func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) *Error {
 	if c.disabled {
+		c.log.Info("Points connector disabled")
 		return nil
 	}
 
@@ -52,6 +55,7 @@ func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) *Err
 
 func (c *Client) VerifyPassport(ctx context.Context, req VerifyPassportRequest) error {
 	if c.disabled {
+		c.log.Info("Points connector disabled")
 		return nil
 	}
 
