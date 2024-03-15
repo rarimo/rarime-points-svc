@@ -68,6 +68,18 @@ event_types:
       description: Event that start at specified time
       short_description: Short description
       starts_at: 2020-01-01T00:00:00Z
+    - name: generate_proof_age
+      title: Generate proof age
+      reward: 25
+      frequency: one-time
+      description: Event that become fulfilled when user create proof that prove age
+      short_description: Short description
+    - name: generate_proof_nationality
+      title: Generate proof nationality
+      reward: 50
+      frequency: one-time
+      description: Event that become fulfilled when user create proof that prove nationality
+      short_description: Short description
 
 auth:
   addr: http://rarime-auth
