@@ -27,41 +27,78 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 		"verifier_did": req.VerifierDID,
 	})
 
-	balance, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
+	owner, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
 	if err != nil {
 		log.WithError(err).Error("Failed to get balance by DID")
 		ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
 		return
 	}
 
-	if balance == nil {
-		log.Error("Balance not exists")
-		ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
+	// Normally should never happen
+	if owner == nil {
+		log.Error("Proof owner balance not exists")
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	verifierBalance, err := BalancesQ(r).FilterByDID(req.VerifierDID).Get()
+	verifier, err := BalancesQ(r).FilterByDID(req.VerifierDID).Get()
 	if err != nil {
 		log.WithError(err).Error("Failed to get verifier balance by DID")
 		ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
 		return
 	}
 
-	if verifierBalance == nil {
-		log.Error("Verifier balance not exists")
-		ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
+	// If the verifier does not have a balance, then create it
+	if verifier == nil {
+		events := EventTypes(r).PrepareEvents(req.VerifierDID, evtypes.FilterNotOpenable)
+		typeExists := false
+		for i, ev := range events {
+			if ev.Type == fmt.Sprintf("verify_proof_%s", req.ProofType) {
+				events[i].Status = data.EventFulfilled
+				typeExists = true
+				break
+			}
+		}
+
+		if !typeExists {
+			log.Debug("Event type is not openable")
+			ape.RenderErr(w, api.CodeEventNotFound.JSONAPIError())
+			return
+		}
+
+		if err = createBalanceWithEvents(req.VerifierDID, "", events, r); err != nil {
+			log.WithError(err).Error("Failed to create balance with events")
+			ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
+			return
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	if err = verifyProofFulfill(r, req, req.VerifierDID, fmt.Sprintf("verify_proof_%s", req.ProofType)); err != nil {
-		log.WithError(err).Errorf("Failed to fulfill verify_proof_%s event for user", req.ProofType)
-	}
-
-	// The verifier must have a verified passport for the owner of the proof to receive points
-	if verifierBalance.PassportHash.Valid && verifierBalance.PassportExpires.Time.Before(time.Now().UTC()) {
-		if err = verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", req.ProofType)); err != nil {
-			log.WithError(err).Errorf("Failed to fulfill verified_proof_%s event for user", req.ProofType)
+	err = EventsQ(r).Transaction(func() (err error) {
+		if err = verifyProofFulfill(r, req, req.VerifierDID, fmt.Sprintf("verify_proof_%s", req.ProofType)); err != nil {
+			log.WithError(err).Errorf("Failed to fulfill verify_proof_%s event for user", req.ProofType)
+			return
 		}
+
+		// The verifier must have a verified passport for the owner of the proof to receive points
+		if verifier.PassportHash.Valid && verifier.PassportExpires.Time.Before(time.Now().UTC()) {
+			log.Debugf("Verifier have valid passport. Fulfill event for proof owner")
+			if err = verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", req.ProofType)); err != nil {
+				log.WithError(err).Errorf("Failed to fulfill verified_proof_%s event for user", req.ProofType)
+				return
+			}
+			return
+		}
+
+		log.Debugf("Verifier haven't valid passport")
+		return
+	})
+	if err != nil {
+		log.WithError(err).Error("Failed to fulfill verify proof events")
+		ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
