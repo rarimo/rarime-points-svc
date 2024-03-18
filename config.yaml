@@ -80,6 +80,30 @@ event_types:
       frequency: one-time
       description: Event that become fulfilled when user create proof that prove nationality
       short_description: Short description
+    - name: verify_proof_age
+      title: Verify proof age
+      reward: 25
+      frequency: one-time
+      description: Event that become fulfilled when user verify someone else's proof age
+      short_description: Short description
+    - name: verify_proof_nationality
+      title: Verify proof nationality
+      reward: 50
+      frequency: one-time
+      description: Event that become fulfilled when user verify someone else's proof nationality
+      short_description: Short description
+    - name: verified_proof_age
+      title: Have proof age verified
+      reward: 25
+      frequency: one-time
+      description: Event that become fulfilled when another user verify you proof age (user that verify must have verified passport)
+      short_description: Short description
+    - name: verified_proof_nationality
+      title: Have proof nationality verified
+      reward: 50
+      frequency: one-time
+      description: Event that become fulfilled when another user verify you proof nationality (user that verify must have verified passport)
+      short_description: Short description
 
 auth:
   addr: http://rarime-auth
