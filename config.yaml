@@ -81,3 +81,14 @@ sbt_check:
       rpc: https://your-rpc
       contract: 0x...
       request_timeout: 5s
+
+issuer:
+  host:
+  username:
+  password:
+  schema:
+  type:
+  issuer:
+
+levels:
+  levels: [10, 20, 30]

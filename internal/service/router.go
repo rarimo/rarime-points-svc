@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"github.com/rarimo/rarime-points-svc/internal/issuer"
 
 	"github.com/go-chi/chi"
 	"github.com/rarimo/rarime-points-svc/internal/config"
@@ -20,6 +21,8 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxEventTypes(cfg.EventTypes()),
 			handlers.CtxBroadcaster(cfg.Broadcaster()),
 			handlers.CtxPointPrice(cfg.PointPrice()),
+			handlers.CtxIssuerClient(issuer.NewClient(cfg)),
+			handlers.CtxLevels(cfg.Levels()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)

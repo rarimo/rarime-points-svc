@@ -12,7 +12,7 @@ import (
 )
 
 const balancesTable = "balances"
-const balancesRankColumns = "did, MAX(amount) as amount, created_at, updated_at, referred_by, passport_hash, passport_expires"
+const balancesRankColumns = "did, MAX(amount) as amount, created_at, updated_at, referred_by, passport_hash, passport_expires, level, level_claim_id"
 
 type balances struct {
 	db       *pgdb.DB
@@ -39,6 +39,8 @@ func (q *balances) Insert(bal data.Balance) error {
 		"referred_by":      bal.ReferredBy,
 		"passport_hash":    bal.PassportHash,
 		"passport_expires": bal.PassportExpires,
+		"level":            bal.Level,
+		"level_claim_id":   bal.LevelClaimId,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -65,6 +67,18 @@ func (q *balances) SetPassport(hash string, exp time.Time) error {
 
 	if err := q.db.Exec(stmt); err != nil {
 		return fmt.Errorf("set passport hash and expires: %w", err)
+	}
+
+	return nil
+}
+
+func (q *balances) SetLevel(level int, id string) error {
+	stmt := q.updater.
+		Set("level", level).
+		Set("level_claim_id", id)
+
+	if err := q.db.Exec(stmt); err != nil {
+		return fmt.Errorf("failed set level : %w", err)
 	}
 
 	return nil
@@ -141,4 +155,8 @@ func (q *balances) applyCondition(cond squirrel.Sqlizer) data.BalancesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
 	return q
+}
+
+func (q *balances) Transaction(f func() error) error {
+	return q.db.Transaction(f)
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/rarimo/rarime-points-svc/internal/issuer"
 	"net/http"
 
 	"github.com/rarimo/auth-svc/resources"
@@ -23,6 +24,8 @@ const (
 	userClaimsCtxKey
 	broadcasterCtxKey
 	pointPriceCtxKey
+	issuerClientCtxKey
+	levelsCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -113,4 +116,24 @@ func CtxPointPrice(price int64) func(context.Context) context.Context {
 
 func PointPrice(r *http.Request) int64 {
 	return r.Context().Value(pointPriceCtxKey).(int64)
+}
+
+func CtxIssuerClient(client *issuer.Client) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, issuerClientCtxKey, client)
+	}
+}
+
+func Issuer(r *http.Request) *issuer.Client {
+	return r.Context().Value(issuerClientCtxKey).(*issuer.Client)
+}
+
+func CtxLevels(levels []int64) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, levelsCtxKey, levels)
+	}
+}
+
+func Levels(r *http.Request) []int64 {
+	return r.Context().Value(levelsCtxKey).([]int64)
 }

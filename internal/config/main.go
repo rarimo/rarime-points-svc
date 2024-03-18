@@ -20,6 +20,8 @@ type Config interface {
 	sbtcheck.SbtChecker
 
 	PointPrice() int64
+	IssuerConfig() *IssuerConfig
+	Levels() []int64
 }
 
 type config struct {
@@ -32,6 +34,8 @@ type config struct {
 	sbtcheck.SbtChecker
 
 	pointPrice comfig.Once
+	issuer     comfig.Once
+	levels     comfig.Once
 	getter     kv.Getter
 }
 

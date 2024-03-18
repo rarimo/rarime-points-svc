@@ -16,6 +16,8 @@ type Balance struct {
 	PassportHash    sql.NullString `db:"passport_hash"`
 	PassportExpires sql.NullTime   `db:"passport_expires"`
 	Rank            *int           `db:"rank"`
+	Level           int            `db:"level"`
+	LevelClaimId    *string        `db:"level_claim_id"`
 }
 
 type BalancesQ interface {
@@ -24,6 +26,7 @@ type BalancesQ interface {
 	UpdateAmountBy(points int64) error
 	SetPassport(hash string, exp time.Time) error
 	SetReferredBy(referralCode string) error
+	SetLevel(level int, id string) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
@@ -33,4 +36,6 @@ type BalancesQ interface {
 
 	FilterByDID(string) BalancesQ
 	FilterDisabled() BalancesQ
+
+	Transaction(func() error) error
 }

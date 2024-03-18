@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"cosmossdk.io/errors"
 	"fmt"
 	"net/http"
 
@@ -68,6 +69,12 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := updateLevelAfterBalance(event.UserDID, r); err != nil {
+		Log(r).WithError(err).Errorf("Failed to update level for user %s", event.UserDID)
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
 	// balance should exist cause of previous logic
 	balance, err = BalancesQ(r).GetWithRank(event.UserDID)
 	if err != nil {
@@ -96,6 +103,46 @@ func claimEventWithPoints(event data.Event, reward int64, r *http.Request) (clai
 		return nil
 	})
 	return
+}
+
+func updateLevelAfterBalance(did string, r *http.Request) error {
+	return BalancesQ(r).Transaction(func() error {
+		balance, err := BalancesQ(r).FilterByDID(did).Get()
+		if err != nil {
+			return err
+		}
+
+		level := getLevelByAmount(balance.Amount, r)
+		claimId := balance.LevelClaimId
+
+		if level > balance.Level {
+			if claimId != nil {
+				if err := Issuer(r).RevokeClaim(*claimId); err != nil {
+					return errors.Wrap(err, "failed to revoke claim")
+				}
+			}
+
+			claimId, err = Issuer(r).IssueLevelClaim(balance.DID, level)
+			if err != nil {
+				return errors.Wrap(err, "failed to issuer claim")
+			}
+		}
+
+		if level != balance.Level {
+			return BalancesQ(r).FilterByDID(did).SetLevel(level, *claimId)
+		}
+		return nil
+	})
+}
+
+func getLevelByAmount(amount int64, r *http.Request) int {
+	for i, am := range Levels(r) {
+		if amount < am {
+			return i
+		}
+	}
+
+	return len(Levels(r))
 }
 
 func newClaimEventResponse(
