@@ -13,7 +13,6 @@ var (
 
 type Client struct {
 	client *req.Client
-	issuer string
 	schema string
 	typ    string
 }
@@ -25,7 +24,6 @@ func NewClient(cfg config.Config) *Client {
 			SetCommonBasicAuth(cfg.IssuerConfig().Username, cfg.IssuerConfig().Password),
 		schema: cfg.IssuerConfig().CredentialSchema,
 		typ:    cfg.IssuerConfig().Type,
-		issuer: cfg.IssuerConfig().Issuer,
 	}
 }
 
@@ -43,8 +41,7 @@ func (c *Client) IssueLevelClaim(did string, level int) (*string, error) {
 	response, err := c.client.R().
 		SetBodyJsonMarshal(request).
 		SetSuccessResult(&result).
-		SetPathParam("identifier", c.issuer).
-		Post("/{identifier}/claims")
+		Post("/credentials")
 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to send post request")
@@ -81,35 +78,21 @@ func (c *Client) RevokeClaim(claimID string) error {
 		return errors.Wrap(err, "failed to get credential")
 	}
 
-	if !credential.Revoked {
-		response, err := c.client.R().
-			SetPathParam("nonce", strconv.FormatInt(credential.RevNonce, 10)).
-			SetPathParam("identifier", c.issuer).
-			Post("/{identifier}/claims/revoke/{nonce}")
+	if credential.Revoked {
+		return nil
+	}
 
-		if err != nil {
-			return errors.Wrap(err, "failed to send post request")
-		}
+	response, err := c.client.R().
+		SetPathParam("nonce", strconv.FormatInt(credential.RevNonce, 10)).
+		Post("/credentials/revoke/{nonce}")
 
-		if response.StatusCode >= 299 {
-			return errors.Wrap(ErrUnexpectedStatusCode, response.String())
-		}
+	if err != nil {
+		return errors.Wrap(err, "failed to send post request")
+	}
+
+	if response.StatusCode >= 299 {
+		return errors.Wrap(ErrUnexpectedStatusCode, response.String())
 	}
 
 	return nil
-}
-
-func (c *Client) GetClaimStatus(claimID string) (string, error) {
-	var result GetClaimStateStatusResponse
-	response, err := c.client.R().
-		SetSuccessResult(&result).
-		SetPathParam("identifier", c.issuer).
-		SetPathParam("id", claimID).
-		Get("/{identifier}/claims/{id}/status")
-	if err != nil {
-		return "", errors.Wrap(err, "failed to check claim's status")
-	}
-	defer response.Body.Close()
-
-	return result.Status, nil
 }

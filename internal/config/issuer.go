@@ -12,7 +12,6 @@ type IssuerConfig struct {
 	Password         string `fig:"password,required"`
 	CredentialSchema string `fig:"schema, required"`
 	Type             string `fig:"type"`
-	Issuer           string `fig:"issuer"`
 }
 
 func (c *config) IssuerConfig() *IssuerConfig {
