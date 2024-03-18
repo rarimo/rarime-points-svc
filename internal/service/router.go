@@ -48,6 +48,7 @@ func Run(ctx context.Context, cfg config.Config) {
 		r.Route("/private", func(r chi.Router) {
 			r.Patch("/balances", handlers.VerifyPassport)
 			r.Patch("/events", handlers.FulfillEvent)
+			r.Patch("/proofs", handlers.FulfillVerifyProofEvent)
 			r.Post("/referrals", handlers.EditReferrals)
 		})
 	})

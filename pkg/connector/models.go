@@ -13,6 +13,12 @@ type FulfillEventRequest struct {
 	ExternalID *string `json:"external_id,omitempty"`
 }
 
+type FulfillVerifyProofEventRequest struct {
+	UserDID     string `json:"user_did"`
+	ProofType   string `json:"proof_type"`
+	VerifierDID string `json:"verifier_did"`
+}
+
 type VerifyPassportRequest struct {
 	UserDID    string   `json:"user_did"`
 	Hash       string   `json:"hash"`

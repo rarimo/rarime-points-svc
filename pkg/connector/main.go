@@ -53,6 +53,33 @@ func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) *Err
 	}
 }
 
+func (c *Client) FulfillVerifyProofEvent(ctx context.Context, req FulfillVerifyProofEventRequest) *Error {
+	if c.disabled {
+		c.log.Info("Points connector disabled")
+		return nil
+	}
+
+	u, _ := url.Parse(privatePrefix + "/proofs")
+
+	err := c.conn.PatchJSON(u, req, ctx, nil)
+	if err == nil {
+		return nil
+	}
+
+	baseErr := err
+	code, err := extractErrCode(err)
+	if err != nil {
+		return &Error{
+			err: fmt.Errorf("failed to extract error code: %w; base error: %w", err, baseErr),
+		}
+	}
+
+	return &Error{
+		Code: code,
+		err:  baseErr,
+	}
+}
+
 func (c *Client) VerifyPassport(ctx context.Context, req VerifyPassportRequest) error {
 	if c.disabled {
 		c.log.Info("Points connector disabled")
