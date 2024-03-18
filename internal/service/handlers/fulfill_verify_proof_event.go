@@ -78,18 +78,13 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 
 	err = EventsQ(r).Transaction(func() (err error) {
 		if err = verifyProofFulfill(r, req, req.VerifierDID, fmt.Sprintf("verify_proof_%s", req.ProofType)); err != nil {
-			log.WithError(err).Errorf("Failed to fulfill verify_proof_%s event for user", req.ProofType)
 			return
 		}
 
 		// The verifier must have a verified passport for the owner of the proof to receive points
 		if verifier.PassportHash.Valid && verifier.PassportExpires.Time.Before(time.Now().UTC()) {
 			log.Debugf("Verifier have valid passport. Fulfill event for proof owner")
-			if err = verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", req.ProofType)); err != nil {
-				log.WithError(err).Errorf("Failed to fulfill verified_proof_%s event for user", req.ProofType)
-				return
-			}
-			return
+			return verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", req.ProofType))
 		}
 
 		log.Debugf("Verifier haven't valid passport")
