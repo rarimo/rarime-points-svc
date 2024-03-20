@@ -14,9 +14,9 @@ type FulfillEventRequest struct {
 }
 
 type FulfillVerifyProofEventRequest struct {
-	UserDID     string `json:"user_did"`
-	ProofType   string `json:"proof_type"`
-	VerifierDID string `json:"verifier_did"`
+	UserDID     string   `json:"user_did"`
+	ProofTypes  []string `json:"proof_types"`
+	VerifierDID string   `json:"verifier_did"`
 }
 
 type VerifyPassportRequest struct {

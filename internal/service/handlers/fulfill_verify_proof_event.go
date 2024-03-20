@@ -23,7 +23,7 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 
 	log := Log(r).WithFields(map[string]any{
 		"user_did":     req.UserDID,
-		"proof_type":   req.ProofType,
+		"proof_types":  req.ProofTypes,
 		"verifier_did": req.VerifierDID,
 	})
 
@@ -53,7 +53,7 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 		events := EventTypes(r).PrepareEvents(req.VerifierDID, evtypes.FilterNotOpenable)
 		typeExists := false
 		for i, ev := range events {
-			if ev.Type == fmt.Sprintf("verify_proof_%s", req.ProofType) {
+			if eventTypeIsOneOfProofs(ev.Type, req.ProofTypes) {
 				events[i].Status = data.EventFulfilled
 				typeExists = true
 				break
@@ -77,17 +77,24 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = EventsQ(r).Transaction(func() (err error) {
-		if err = verifyProofFulfill(r, req, req.VerifierDID, fmt.Sprintf("verify_proof_%s", req.ProofType)); err != nil {
-			return
+		passportValid := verifier.PassportHash.Valid && verifier.PassportExpires.Time.Before(time.Now().UTC())
+
+		if passportValid {
+			log.Debugf("Verifier have valid passport.")
+		}
+		for _, proof := range req.ProofTypes {
+			if err = verifyProofFulfill(r, req, req.VerifierDID, fmt.Sprintf("verify_proof_%s", proof)); err != nil {
+				return
+			}
+
+			// The verifier must have a verified passport for the owner of the proof to receive points
+			if passportValid {
+				if err = verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", proof)); err != nil {
+					return
+				}
+			}
 		}
 
-		// The verifier must have a verified passport for the owner of the proof to receive points
-		if verifier.PassportHash.Valid && verifier.PassportExpires.Time.Before(time.Now().UTC()) {
-			log.Debugf("Verifier have valid passport. Fulfill event for proof owner")
-			return verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", req.ProofType))
-		}
-
-		log.Debugf("Verifier haven't valid passport")
 		return
 	})
 	if err != nil {
@@ -104,7 +111,7 @@ func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest,
 	if eventType == nil {
 		Log(r).WithFields(map[string]any{
 			"user_did":     req.UserDID,
-			"proof_type":   req.ProofType,
+			"event_name":   eventName,
 			"verifier_did": req.VerifierDID,
 		}).Debugf("Event %s inactive", eventName)
 		return nil
@@ -120,7 +127,7 @@ func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest,
 	if event == nil {
 		Log(r).WithFields(map[string]any{
 			"user_did":     req.UserDID,
-			"proof_type":   req.ProofType,
+			"event_name":   eventName,
 			"verifier_did": req.VerifierDID,
 		}).Debugf("Event %s absent or already fulfilled for user", eventName)
 		return nil
@@ -132,4 +139,14 @@ func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest,
 	}
 
 	return nil
+}
+
+func eventTypeIsOneOfProofs(eventType string, proofs []string) bool {
+	for _, proof := range proofs {
+		if eventType == fmt.Sprintf("verify_proof_%s", proof) {
+			return true
+		}
+	}
+
+	return false
 }

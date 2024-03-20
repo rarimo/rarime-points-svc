@@ -16,7 +16,7 @@ func NewFulfillVerifyProofEvent(r *http.Request) (req connector.FulfillVerifyPro
 
 	return req, validation.Errors{
 		"user_did":     validation.Validate(req.UserDID, validation.Required),
-		"proof_type":   validation.Validate(req.ProofType, validation.Required),
+		"proof_types":  validation.Validate(req.ProofTypes, validation.Required),
 		"verifier_did": validation.Validate(req.VerifierDID, validation.Required),
 	}.Filter()
 }
