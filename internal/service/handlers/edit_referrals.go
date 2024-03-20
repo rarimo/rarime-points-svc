@@ -48,14 +48,16 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err = adjustReferralsCount(index, req, r); err != nil {
+	added, err := adjustReferralsCount(index, req, r)
+	if err != nil {
 		Log(r).WithError(err).Error("Failed to adjust referrals count")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	// TODO: return balance WITHOUT rank and with referrals included, or just referrals, also above
-	w.WriteHeader(http.StatusNoContent)
+	ape.Render(w, struct {
+		Refs []string `json:"added_referrals"`
+	}{added})
 }
 
 func prepareReferralsToAdd(did string, count, index uint64) []data.Referral {
@@ -72,26 +74,28 @@ func prepareReferralsToAdd(did string, count, index uint64) []data.Referral {
 	return refs
 }
 
-func adjustReferralsCount(index uint64, req requests.EditReferralsRequest, r *http.Request) error {
+func adjustReferralsCount(index uint64, req requests.EditReferralsRequest, r *http.Request) (refsAdded []string, err error) {
 	switch {
 	case *req.Count < index:
 		toConsume := index - *req.Count
-		if err := ReferralsQ(r).ConsumeFirst(req.DID, toConsume); err != nil {
-			return fmt.Errorf("consume referrals: %w", err)
+		if err = ReferralsQ(r).ConsumeFirst(req.DID, toConsume); err != nil {
+			return nil, fmt.Errorf("consume referrals: %w", err)
 		}
 		Log(r).Infof("Consumed %d referrals for DID %s", toConsume, req.DID)
 
 	case *req.Count > index:
 		toAdd := *req.Count - index
-		err := ReferralsQ(r).Insert(prepareReferralsToAdd(req.DID, toAdd, index)...)
-		if err != nil {
-			return fmt.Errorf("insert referrals: %w", err)
+		refsToAdd := prepareReferralsToAdd(req.DID, toAdd, index)
+		if err = ReferralsQ(r).Insert(refsToAdd...); err != nil {
+			return nil, fmt.Errorf("insert referrals: %w", err)
 		}
 		Log(r).Infof("Inserted %d referrals for DID %s", toAdd, req.DID)
+		// while this is deterministic, the codes will be the same
+		refsAdded = referralid.NewMany(req.DID, toAdd, index)
 
 	default:
 		Log(r).Infof("No referrals to add or consume for DID %s", req.DID)
 	}
 
-	return nil
+	return
 }
