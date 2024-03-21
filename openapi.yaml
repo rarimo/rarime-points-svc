@@ -20,7 +20,7 @@ paths:
         the new account synchronously (to display them right after the request).
 
         If balance already exists, but it is disabled (it was not referred by another user,
-        but has fulfilled some event), you should use this endpoint as well.
+        but has fulfilled some event), you should use PATCH balances/{did} endpoint as well.
       operationId: createPointsBalance
       requestBody:
         content:
@@ -131,6 +131,52 @@ paths:
           $ref: '#/components/responses/invalidParameter'
         '401':
           $ref: '#/components/responses/invalidAuth'
+        '500':
+          $ref: '#/components/responses/internalError'
+    patch:
+      tags:
+        - Points balance
+      summary: Activate points balance
+      description: |
+        Activate inactive balance. Balance is inactive when referred_by field is null.
+        did in query must match with id in request body
+      operationId: activatePointsBalance
+      parameters:
+        - $ref: '#/components/parameters/pathDID'
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/CreateBalance'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Balance'
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '404':
+          $ref: '#/components/responses/notFound'
+        '409':
+          description: Balance already activated
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/Errors'
         '500':
           $ref: '#/components/responses/internalError'
   '/integrations/rarime-points-svc/v1/public/balances/{did}/withdrawals':
@@ -250,8 +296,8 @@ paths:
           schema:
             type: boolean
             example: true
-        - $ref: '#/components/parameters/pageCursor'
         - $ref: '#/components/parameters/pageLimit'
+        - $ref: '#/components/parameters/pageNumber'
         - $ref: '#/components/parameters/pageOrder'
       responses:
         '200':
@@ -283,6 +329,32 @@ paths:
         '500':
           $ref: '#/components/responses/internalError'
   '/integrations/rarime-points-svc/v1/public/events/{id}':
+    get:
+      tags:
+        - Events
+      summary: Get event
+      description: Returns a single event by ID.
+      operationId: getEvent
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Event'
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '404':
+          $ref: '#/components/responses/notFound'
+        '500':
+          $ref: '#/components/responses/internalError'
     patch:
       tags:
         - Events
@@ -408,14 +480,28 @@ components:
                   format: int
                   description: Rank of the user in the full leaderboard. Returned only for the single user.
                   example: 294
-                referral_codes:
+                active_referral_codes:
                   type: array
-                  description: Referral codes used to build a referral link and send it to friends. Required if a balance is created
+                  description: |
+                    Referral codes which can be used to build a referral link and send it
+                    to friends. Returned only for the single user.
                   example:
                     - zgsScguZ
                     - jerUsmac
                   items:
                     type: string
+                consumed_referral_codes:
+                  type: array
+                  description: Referral codes used by invited users. Returned only for the single user.
+                  example:
+                    - 73k3bdYaFWM
+                    - 9csIL7dW65m
+                  items:
+                    type: string
+                is_withdrawal_allowed:
+                  type: boolean
+                  description: Whether the user can withdraw tokens. Returned only for the single user.
+                  example: true
     BalanceKey:
       type: object
       required:
@@ -474,6 +560,7 @@ components:
           type: string
           enum:
             - create_balance
+            - update_balance
     Errors:
       description: 'Standard JSON:API error'
       type: object
@@ -596,6 +683,7 @@ components:
         - reward
         - title
         - description
+        - short_description
         - frequency
         - no_auto_open
       properties:
@@ -614,6 +702,9 @@ components:
         description:
           type: string
           example: Lorem ipsum dolor sit amet
+        short_description:
+          type: string
+          example: Short description
         frequency:
           type: string
           description: |
@@ -624,11 +715,24 @@ components:
             - daily
             - weekly
             - unlimited
+        starts_at:
+          type: string
+          format: time.Time
+          description: General event starting date (UTC RFC3339)
+          example: 2020-01-01T00:00:00.000Z
         expires_at:
           type: string
           format: time.Time
           description: General event expiration date (UTC RFC3339)
           example: 2020-01-01T00:00:00.000Z
+        action_url:
+          type: string
+          format: url.URL
+          example: 'https://robotornot.rarimo.com'
+        logo:
+          type: string
+          format: url.URL
+          example: 'https://logo.com/some_logo.svg'
     PointPrice:
       allOf:
         - $ref: '#/components/schemas/PointPriceKey'

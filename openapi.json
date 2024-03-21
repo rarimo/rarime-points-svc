@@ -18,7 +18,7 @@
           "Points balance"
         ],
         "summary": "Create points balance",
-        "description": "Create an empty balance for authorized user who makes the request. Rank is included\nin response.\n\nThis operation might be time-consuming, because `open` events should be added for\nthe new account synchronously (to display them right after the request).\n\nIf balance already exists, but it is disabled (it was not referred by another user,\nbut has fulfilled some event), you should use this endpoint as well.\n",
+        "description": "Create an empty balance for authorized user who makes the request. Rank is included\nin response.\n\nThis operation might be time-consuming, because `open` events should be added for\nthe new account synchronously (to display them right after the request).\n\nIf balance already exists, but it is disabled (it was not referred by another user,\nbut has fulfilled some event), you should use PATCH balances/{did} endpoint as well.\n",
         "operationId": "createPointsBalance",
         "requestBody": {
           "content": {
@@ -193,6 +193,78 @@
           },
           "401": {
             "$ref": "#/components/responses/invalidAuth"
+          },
+          "500": {
+            "$ref": "#/components/responses/internalError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Points balance"
+        ],
+        "summary": "Activate points balance",
+        "description": "Activate inactive balance. Balance is inactive when referred_by field is null.\ndid in query must match with id in request body\n",
+        "operationId": "activatePointsBalance",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/pathDID"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "data"
+                ],
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/CreateBalance"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Balance"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalidParameter"
+          },
+          "401": {
+            "$ref": "#/components/responses/invalidAuth"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "409": {
+            "description": "Balance already activated",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
           },
           "500": {
             "$ref": "#/components/responses/internalError"
@@ -376,10 +448,10 @@
             }
           },
           {
-            "$ref": "#/components/parameters/pageCursor"
+            "$ref": "#/components/parameters/pageLimit"
           },
           {
-            "$ref": "#/components/parameters/pageLimit"
+            "$ref": "#/components/parameters/pageNumber"
           },
           {
             "$ref": "#/components/parameters/pageOrder"
@@ -433,6 +505,46 @@
       }
     },
     "/integrations/rarime-points-svc/v1/public/events/{id}": {
+      "get": {
+        "tags": [
+          "Events"
+        ],
+        "summary": "Get event",
+        "description": "Returns a single event by ID.",
+        "operationId": "getEvent",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Event"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalidParameter"
+          },
+          "401": {
+            "$ref": "#/components/responses/invalidAuth"
+          },
+          "404": {
+            "$ref": "#/components/responses/notFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/internalError"
+          }
+        }
+      },
       "patch": {
         "tags": [
           "Events"
@@ -609,9 +721,9 @@
                     "description": "Rank of the user in the full leaderboard. Returned only for the single user.",
                     "example": 294
                   },
-                  "referral_codes": {
+                  "active_referral_codes": {
                     "type": "array",
-                    "description": "Referral codes used to build a referral link and send it to friends. Required if a balance is created",
+                    "description": "Referral codes which can be used to build a referral link and send it\nto friends. Returned only for the single user.\n",
                     "example": [
                       "zgsScguZ",
                       "jerUsmac"
@@ -619,6 +731,22 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "consumed_referral_codes": {
+                    "type": "array",
+                    "description": "Referral codes used by invited users. Returned only for the single user.",
+                    "example": [
+                      "73k3bdYaFWM",
+                      "9csIL7dW65m"
+                    ],
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "is_withdrawal_allowed": {
+                    "type": "boolean",
+                    "description": "Whether the user can withdraw tokens. Returned only for the single user.",
+                    "example": true
                   }
                 }
               }
@@ -709,7 +837,8 @@
           "type": {
             "type": "string",
             "enum": [
-              "create_balance"
+              "create_balance",
+              "update_balance"
             ]
           }
         }
@@ -878,6 +1007,7 @@
           "reward",
           "title",
           "description",
+          "short_description",
           "frequency",
           "no_auto_open"
         ],
@@ -901,6 +1031,10 @@
             "type": "string",
             "example": "Lorem ipsum dolor sit amet"
           },
+          "short_description": {
+            "type": "string",
+            "example": "Short description"
+          },
           "frequency": {
             "type": "string",
             "description": "Event frequency, which means how often you can fulfill\ncertain task and claim the reward.\n",
@@ -911,11 +1045,27 @@
               "unlimited"
             ]
           },
+          "starts_at": {
+            "type": "string",
+            "format": "time.Time",
+            "description": "General event starting date (UTC RFC3339)",
+            "example": "2020-01-01T00:00:00.000Z"
+          },
           "expires_at": {
             "type": "string",
             "format": "time.Time",
             "description": "General event expiration date (UTC RFC3339)",
             "example": "2020-01-01T00:00:00.000Z"
+          },
+          "action_url": {
+            "type": "string",
+            "format": "url.URL",
+            "example": "https://robotornot.rarimo.com"
+          },
+          "logo": {
+            "type": "string",
+            "format": "url.URL",
+            "example": "https://logo.com/some_logo.svg"
           }
         }
       },
