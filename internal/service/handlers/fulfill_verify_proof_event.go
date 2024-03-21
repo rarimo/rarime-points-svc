@@ -78,20 +78,21 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 
 	err = EventsQ(r).Transaction(func() (err error) {
 		passportValid := verifier.PassportHash.Valid && verifier.PassportExpires.Time.Before(time.Now().UTC())
-
 		if passportValid {
 			log.Debugf("Verifier have valid passport.")
 		}
+
 		for _, proof := range req.ProofTypes {
 			if err = verifyProofFulfill(r, req, req.VerifierDID, fmt.Sprintf("verify_proof_%s", proof)); err != nil {
 				return
 			}
-
+			if !passportValid {
+				continue
+			}
 			// The verifier must have a verified passport for the owner of the proof to receive points
-			if passportValid {
-				if err = verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", proof)); err != nil {
-					return
-				}
+			err = verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", proof))
+			if err != nil {
+				return
 			}
 		}
 
@@ -106,36 +107,36 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest, did, eventName string) (err error) {
-	eventType := EventTypes(r).Get(eventName, evtypes.FilterInactive)
+func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest, did, evType string) (err error) {
+	log := Log(r).WithFields(map[string]any{
+		"user_did":     req.UserDID,
+		"event_name":   evType,
+		"verifier_did": req.VerifierDID,
+	})
+
+	eventType := EventTypes(r).Get(evType, evtypes.FilterInactive)
 	if eventType == nil {
-		Log(r).WithFields(map[string]any{
-			"user_did":     req.UserDID,
-			"event_name":   eventName,
-			"verifier_did": req.VerifierDID,
-		}).Debugf("Event %s inactive", eventName)
+		log.Debugf("Event %s inactive", evType)
 		return nil
 	}
 
-	event, err := EventsQ(r).FilterByUserDID(did).
-		FilterByType(eventName).
-		FilterByStatus(data.EventOpen).Get()
+	event, err := EventsQ(r).
+		FilterByUserDID(did).
+		FilterByType(evType).
+		FilterByStatus(data.EventOpen).
+		Get()
 	if err != nil {
-		return fmt.Errorf("failed to get event %s by DID: %w", eventName, err)
+		return fmt.Errorf("get event %s by DID: %w", evType, err)
 	}
 
 	if event == nil {
-		Log(r).WithFields(map[string]any{
-			"user_did":     req.UserDID,
-			"event_name":   eventName,
-			"verifier_did": req.VerifierDID,
-		}).Debugf("Event %s absent or already fulfilled for user", eventName)
+		log.Debugf("Event %s absent or already fulfilled for user", evType)
 		return nil
 	}
 
 	_, err = EventsQ(r).FilterByID(event.ID).Update(data.EventFulfilled, nil, nil)
 	if err != nil {
-		return fmt.Errorf("failed to update event: %w", err)
+		return fmt.Errorf("update event %s by ID: %w", evType, err)
 	}
 
 	return nil

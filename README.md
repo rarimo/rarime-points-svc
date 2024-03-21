@@ -50,7 +50,7 @@ curl -X POST "http://localhost/integrations/rarime-points-svc/v1/private/referra
 
 Behavior:
 a) User does not exist -> create a _System user_ with the specified number of
-referrals
+referrals (if count == 0, do not create)
 b) User exists, `N` > `count` -> add `N - count` active referrals
 c) User exists, `N` < `count` -> consume `count - N` active referrals (not delete!)
 d) User exists, `N` = `count` -> do nothing
