@@ -1217,8 +1217,8 @@ github.com/prometheus/procfs v0.9.0 h1:wzCHvIvM5SxWqYvwgVL7yJY8Lz3PKn49KQtpgMYJf
 github.com/prometheus/procfs v0.9.0/go.mod h1:+pB4zwohETzFnmlpe6yd2lSc+0/46IYZRB/chUwxUZY=
 github.com/rakyll/statik v0.1.7 h1:OF3QCZUuyPxuGEP7B4ypUa7sB/iHtqOTDYZXGM8KOdQ=
 github.com/rakyll/statik v0.1.7/go.mod h1:AlZONWzMtEnMs7W4e/1LURLiI49pIMmp6V9Unghqrcc=
-github.com/rarimo/auth-svc v1.0.0-rc2 h1:6w+T8xFZwi5gc2x8FlObnfMEij2zlNQZDNSdaBLY2iw=
-github.com/rarimo/auth-svc v1.0.0-rc2/go.mod h1:XtPIuJABJ3QNmhcpmJRlQrxuagPfpIWwFbY0j5SakFg=
+github.com/rarimo/auth-svc v1.0.0-rc2.0.20240311143312-de1e2258f175 h1:LWfw+633hf9J0unWMA528CEf+taYdzhhoqJVFj3po6Y=
+github.com/rarimo/auth-svc v1.0.0-rc2.0.20240311143312-de1e2258f175/go.mod h1:XtPIuJABJ3QNmhcpmJRlQrxuagPfpIWwFbY0j5SakFg=
 github.com/rarimo/broadcaster-svc v1.0.2 h1:ExQcjjWCRP5+POLDlZHrTD1ffUsBH+Dgv5FAgcP3BXc=
 github.com/rarimo/broadcaster-svc v1.0.2/go.mod h1:lYIHy+X4IqQt4eBdtMN/V352H3EV0/gO8G+32SFwUWI=
 github.com/rarimo/cosmos-sdk v0.46.7 h1:jU2PiWzc+19SF02cXM0O0puKPeH1C6Q6t2lzJ9s1ejc=
