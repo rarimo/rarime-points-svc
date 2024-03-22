@@ -4,20 +4,19 @@
 
 package resources
 
-import (
-	"net/url"
-	"time"
-)
+import "time"
 
 // Primary event metadata in plain JSON. This is a template to be filled by `dynamic` when it's present.
 type EventStaticMeta struct {
-	ActionUrl   *url.URL `json:"action_url,omitempty"`
-	Description string   `json:"description"`
+	// Page where you can fulfill the event
+	ActionUrl   *string `json:"action_url,omitempty"`
+	Description string  `json:"description"`
 	// General event expiration date (UTC RFC3339)
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 	// Event frequency, which means how often you can fulfill certain task and claim the reward.
-	Frequency string   `json:"frequency"`
-	Logo      *url.URL `json:"logo,omitempty"`
+	Frequency string `json:"frequency"`
+	// Event logo
+	Logo *string `json:"logo,omitempty"`
 	// Unique event code name
 	Name string `json:"name"`
 	// Reward amount in points

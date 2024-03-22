@@ -50,6 +50,14 @@ type EventConfig struct {
 }
 
 func (e EventConfig) Resource() resources.EventStaticMeta {
+	safeConv := func(u *url.URL) *string {
+		if u == nil {
+			return nil
+		}
+		s := u.String()
+		return &s
+	}
+
 	return resources.EventStaticMeta{
 		Name:             e.Name,
 		Description:      e.Description,
@@ -59,8 +67,8 @@ func (e EventConfig) Resource() resources.EventStaticMeta {
 		Frequency:        e.Frequency.String(),
 		StartsAt:         e.StartsAt,
 		ExpiresAt:        e.ExpiresAt,
-		ActionUrl:        e.ActionURL,
-		Logo:             e.Logo,
+		ActionUrl:        safeConv(e.ActionURL),
+		Logo:             safeConv(e.Logo),
 	}
 }
 
