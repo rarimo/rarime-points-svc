@@ -27,6 +27,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 
 	if balance == nil {
 		if *req.Count == 0 {
+			Log(r).Debugf("Balance %s not found, skipping creation for count=0", req.DID)
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
@@ -38,17 +39,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	var index uint64
-	if balance != nil {
-		index, err = ReferralsQ(r).FilterByUserDID(balance.DID).Count()
-		if err != nil {
-			Log(r).WithError(err).Error("Failed to get referral count for user DID")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-	}
-
-	added, err := adjustReferralsCount(index, req, r)
+	added, err := adjustReferralsCount(req, r)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to adjust referrals count")
 		ape.RenderErr(w, problems.InternalError())
@@ -74,28 +65,40 @@ func prepareReferralsToAdd(did string, count, index uint64) []data.Referral {
 	return refs
 }
 
-func adjustReferralsCount(index uint64, req requests.EditReferralsRequest, r *http.Request) (refsAdded []string, err error) {
-	switch {
-	case *req.Count < index:
-		toConsume := index - *req.Count
+func adjustReferralsCount(req requests.EditReferralsRequest, r *http.Request) (refsAdded []string, err error) {
+	active, err := ReferralsQ(r).FilterByUserDID(req.DID).FilterByIsConsumed(false).Count()
+	if err != nil {
+		return nil, fmt.Errorf("count active referrals: %w", err)
+	}
+
+	if *req.Count == active {
+		Log(r).Infof("No referrals to add or consume for DID %s", req.DID)
+		return
+	}
+
+	if *req.Count < active {
+		toConsume := active - *req.Count
 		if err = ReferralsQ(r).ConsumeFirst(req.DID, toConsume); err != nil {
 			return nil, fmt.Errorf("consume referrals: %w", err)
 		}
 		Log(r).Infof("Consumed %d referrals for DID %s", toConsume, req.DID)
-
-	case *req.Count > index:
-		toAdd := *req.Count - index
-		refsToAdd := prepareReferralsToAdd(req.DID, toAdd, index)
-		if err = ReferralsQ(r).Insert(refsToAdd...); err != nil {
-			return nil, fmt.Errorf("insert referrals: %w", err)
-		}
-		Log(r).Infof("Inserted %d referrals for DID %s", toAdd, req.DID)
-		// while this is deterministic, the codes will be the same
-		refsAdded = referralid.NewMany(req.DID, toAdd, index)
-
-	default:
-		Log(r).Infof("No referrals to add or consume for DID %s", req.DID)
+		return
 	}
 
+	index, err := ReferralsQ(r).FilterByUserDID(req.DID).Count()
+	if err != nil {
+		return nil, fmt.Errorf("count all referrals: %w", err)
+	}
+
+	toAdd := *req.Count - active
+	// balance must exist, according to preceding logic in EditReferrals
+	err = ReferralsQ(r).Insert(prepareReferralsToAdd(req.DID, toAdd, index)...)
+	if err != nil {
+		return nil, fmt.Errorf("insert referrals: %w", err)
+	}
+	Log(r).Infof("Inserted %d referrals for DID %s", toAdd, req.DID)
+
+	// while this is deterministic, the codes will be the same
+	refsAdded = referralid.NewMany(req.DID, toAdd, index)
 	return
 }

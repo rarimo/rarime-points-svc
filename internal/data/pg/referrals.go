@@ -72,7 +72,7 @@ func (q *referrals) ConsumeFirst(did string, count uint64) error {
 		UPDATE %s SET is_consumed = true WHERE id IN (
 			SELECT id FROM %s
 			WHERE user_did = ? AND is_consumed = false
-			ORDER BY created_at ASC LIMIT %d
+			LIMIT %d
 		);
 	`, referralsTable, referralsTable, count)
 
