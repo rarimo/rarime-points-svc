@@ -124,10 +124,10 @@ func runStartingWatchers(ctx context.Context, cfg config.Config) error {
 	log := cfg.Log().WithField("who", "opener[initializer]")
 
 	notStartedEv := cfg.EventTypes().List(func(ev evtypes.EventConfig) bool {
-		return ev.Disabled || !evtypes.FilterNotStarted(ev)
+		return ev.Disabled || !evtypes.FilterNotStarted(ev) || evtypes.FilterExpired(ev)
 	})
 
-	if len(notStartedEv) != 0 {
+	if len(notStartedEv) == 0 {
 		log.Info("No events to open at Start time: all types already opened or there no types with StartAt")
 		return nil
 	}
@@ -155,7 +155,7 @@ func startingWatcher(cfg config.Config, name string) func(context.Context) {
 		var err error
 
 		running.WithThreshold(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
-			if balances, err = pg.NewBalances(cfg.DB().Clone()).FilterDisabled().Select(); err == nil {
+			if balances, err = pg.NewBalances(cfg.DB().Clone()).Select(); err != nil {
 				return false, err
 			}
 			return true, nil
@@ -172,7 +172,7 @@ func startingWatcher(cfg config.Config, name string) func(context.Context) {
 		}
 
 		running.WithThreshold(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
-			if err = pg.NewEvents(cfg.DB().Clone()).Insert(events...); err == nil {
+			if err = pg.NewEvents(cfg.DB().Clone()).Insert(events...); err != nil {
 				return false, err
 			}
 			return true, nil
