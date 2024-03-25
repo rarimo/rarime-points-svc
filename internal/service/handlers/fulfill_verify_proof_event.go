@@ -77,7 +77,7 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = EventsQ(r).Transaction(func() (err error) {
-		passportValid := verifier.PassportHash.Valid && verifier.PassportExpires.Time.Before(time.Now().UTC())
+		passportValid := verifier.PassportHash.Valid && verifier.PassportExpires.Time.After(time.Now().UTC())
 		if passportValid {
 			log.Debugf("Verifier have valid passport.")
 		}
