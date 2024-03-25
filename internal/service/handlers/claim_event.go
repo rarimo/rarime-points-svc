@@ -6,6 +6,7 @@ import (
 
 	"github.com/rarimo/auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
@@ -46,6 +47,15 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		Log(r).Infof("Attempt to claim: event type %s is disabled", event.Type)
 		ape.RenderErr(w, problems.Forbidden())
 		return
+	}
+	if event.Type == evtypes.TypePassportScan {
+		if event.PointsAmount == nil {
+			Log(r).WithError(err).Errorf("PointsAmount can't be nil for event %s",
+				event.Type)
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+		evType.Reward = *event.PointsAmount
 	}
 
 	balance, err := BalancesQ(r).FilterByDID(event.UserDID).FilterDisabled().Get()
