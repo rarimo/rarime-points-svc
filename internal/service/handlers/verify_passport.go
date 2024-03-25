@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -212,11 +211,10 @@ func fulfillPassportScanEvent(r *http.Request, req connector.VerifyPassportReque
 
 	if passportScanEvent != nil {
 		log.Debug("PassportScan event open")
-
 		_, err = EventsQ(r).
 			FilterByUserDID(req.UserDID).
 			FilterByType(evtypes.TypePassportScan).
-			Update(data.EventFulfilled, json.RawMessage(passportScanEvent.Meta), reward)
+			Update(data.EventFulfilled, nil, reward)
 		if err != nil {
 			return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
 		}
