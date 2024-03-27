@@ -31,6 +31,7 @@ func Run(ctx context.Context, cfg config.Config) {
 				r.Route("/{did}", func(r chi.Router) {
 					r.Get("/", handlers.GetBalance)
 					r.Patch("/", handlers.ActivateBalance)
+					r.Patch("/verifypassport", handlers.VerifyPassport)
 					r.Get("/withdrawals", handlers.ListWithdrawals)
 					r.Post("/withdrawals", handlers.Withdraw)
 				})
@@ -46,7 +47,6 @@ func Run(ctx context.Context, cfg config.Config) {
 		})
 		// must be accessible only within the cluster
 		r.Route("/private", func(r chi.Router) {
-			r.Patch("/balances", handlers.VerifyPassport)
 			r.Patch("/events", handlers.FulfillEvent)
 			r.Patch("/proofs", handlers.FulfillVerifyProofEvent)
 			r.Post("/referrals", handlers.EditReferrals)

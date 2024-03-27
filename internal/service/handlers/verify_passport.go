@@ -15,6 +15,12 @@ import (
 )
 
 func VerifyPassport(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNoContent)
+	return
+
+	// TODO: New logic. User go to public endpoint with proof that verify passport
+	// need logic for check proof and accruing points for verification.
+
 	req, err := requests.NewVerifyPassport(r)
 	if err != nil {
 		Log(r).WithError(err).Debug("Bad request")

@@ -81,6 +81,8 @@ func (c *Client) FulfillVerifyProofEvent(ctx context.Context, req FulfillVerifyP
 }
 
 func (c *Client) VerifyPassport(ctx context.Context, req VerifyPassportRequest) error {
+	// Deprecated: VerifyPassport whould be public endpoint
+	// and that connector currently not used
 	if c.disabled {
 		c.log.Info("Points connector disabled")
 		return nil
