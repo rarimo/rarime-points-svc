@@ -99,8 +99,9 @@ func (q *events) Transaction(f func() error) error {
 	return q.db.Transaction(f)
 }
 
-func (q *events) Page(page *pgdb.CursorPageParams) data.EventsQ {
-	q.selector = page.ApplyTo(q.selector, "updated_at")
+func (q *events) Page(page *pgdb.OffsetPageParams) data.EventsQ {
+	ord := fmt.Sprintf("case when status = '%s' then 1 when status = '%s' then 2 when status = '%s' then 3 end", data.EventFulfilled, data.EventOpen, data.EventClaimed)
+	q.selector = page.ApplyTo(q.selector.OrderBy(ord), "updated_at")
 	return q
 }
 

@@ -13,6 +13,7 @@ import (
 )
 
 const retryPeriod = 5 * time.Minute
+const maxRetries = 12
 
 func Run(ctx context.Context, cfg config.Config) {
 	if err := initialRun(cfg); err != nil {
@@ -20,6 +21,11 @@ func Run(ctx context.Context, cfg config.Config) {
 	}
 
 	cron.Init(cfg.Log())
+
+	if err := runStartingWatchers(ctx, cfg); err != nil {
+		panic(fmt.Errorf("reopener: failed to initialize opener: %w", err))
+	}
+
 	atDayStart := gocron.NewAtTimes(gocron.NewAtTime(0, 0, 0))
 
 	daily := newWorker(cfg, evtypes.Daily)

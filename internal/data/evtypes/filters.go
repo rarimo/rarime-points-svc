@@ -10,8 +10,12 @@ func FilterExpired(ev EventConfig) bool {
 	return ev.ExpiresAt != nil && ev.ExpiresAt.Before(time.Now().UTC())
 }
 
+func FilterNotStarted(ev EventConfig) bool {
+	return ev.StartsAt != nil && ev.StartsAt.After(time.Now().UTC())
+}
+
 func FilterInactive(ev EventConfig) bool {
-	return ev.Disabled || FilterExpired(ev)
+	return ev.Disabled || FilterExpired(ev) || FilterNotStarted(ev)
 }
 
 func FilterNotOpenable(ev EventConfig) bool {

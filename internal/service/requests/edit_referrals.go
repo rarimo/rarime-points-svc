@@ -20,6 +20,6 @@ func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
 
 	return req, validation.Errors{
 		"did":   validation.Validate(req.DID, validation.Required),
-		"count": validation.Validate(req.Count, validation.Required),
+		"count": validation.Validate(req.Count, validation.NotNil),
 	}.Filter()
 }

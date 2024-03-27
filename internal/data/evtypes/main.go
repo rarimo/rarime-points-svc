@@ -1,6 +1,7 @@
 package evtypes
 
 import (
+	"net/url"
 	"time"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -34,24 +35,40 @@ const (
 )
 
 type EventConfig struct {
-	Name        string     `fig:"name,required"`
-	Description string     `fig:"description,required"`
-	Reward      int64      `fig:"reward,required"`
-	Title       string     `fig:"title,required"`
-	Frequency   Frequency  `fig:"frequency,required"`
-	ExpiresAt   *time.Time `fig:"expires_at"`
-	NoAutoOpen  bool       `fig:"no_auto_open"`
-	Disabled    bool       `fig:"disabled"`
+	Name             string     `fig:"name,required"`
+	Description      string     `fig:"description,required"`
+	ShortDescription string     `fig:"short_description,required"`
+	Reward           int64      `fig:"reward,required"`
+	Title            string     `fig:"title,required"`
+	Frequency        Frequency  `fig:"frequency,required"`
+	StartsAt         *time.Time `fig:"starts_at"`
+	ExpiresAt        *time.Time `fig:"expires_at"`
+	NoAutoOpen       bool       `fig:"no_auto_open"`
+	Disabled         bool       `fig:"disabled"`
+	ActionURL        *url.URL   `fig:"action_url"`
+	Logo             *url.URL   `fig:"logo"`
 }
 
 func (e EventConfig) Resource() resources.EventStaticMeta {
+	safeConv := func(u *url.URL) *string {
+		if u == nil {
+			return nil
+		}
+		s := u.String()
+		return &s
+	}
+
 	return resources.EventStaticMeta{
-		Name:        e.Name,
-		Description: e.Description,
-		Reward:      e.Reward,
-		Title:       e.Title,
-		Frequency:   e.Frequency.String(),
-		ExpiresAt:   e.ExpiresAt,
+		Name:             e.Name,
+		Description:      e.Description,
+		ShortDescription: e.ShortDescription,
+		Reward:           e.Reward,
+		Title:            e.Title,
+		Frequency:        e.Frequency.String(),
+		StartsAt:         e.StartsAt,
+		ExpiresAt:        e.ExpiresAt,
+		ActionUrl:        safeConv(e.ActionURL),
+		Logo:             safeConv(e.Logo),
 	}
 }
 
@@ -126,13 +143,14 @@ func (t Types) ensureInitialized() {
 	}
 }
 
-func (t Types) CalculatePassportScanReward(sharedFields ...string) (reward int64, success bool) {
+func (t Types) CalculatePassportScanReward(sharedFields ...string) (*int64, bool) {
+	var reward int64
 	for _, field := range sharedFields {
 		val, ok := t.passportRewards[field]
 		if !ok {
-			return 0, false
+			return nil, false
 		}
 		reward += int64(val)
 	}
-	return reward, true
+	return &reward, true
 }

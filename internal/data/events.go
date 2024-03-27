@@ -44,7 +44,7 @@ type EventsQ interface {
 	Delete() (rowsAffected int64, err error)
 	Transaction(func() error) error
 
-	Page(*pgdb.CursorPageParams) EventsQ
+	Page(*pgdb.OffsetPageParams) EventsQ
 	Select() ([]Event, error)
 	Get() (*Event, error)
 	// Count returns the total number of events that match filters. Page is not

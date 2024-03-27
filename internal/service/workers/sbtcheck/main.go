@@ -54,7 +54,11 @@ type extConfig interface {
 
 func Run(ctx context.Context, cfg extConfig) {
 	log := cfg.Log().WithField("who", "sbt-checker")
-	getPoh := cfg.EventTypes().Get(evtypes.TypeGetPoH, evtypes.FilterInactive)
+
+	// FilterInactive filter also events which hasn't start yet. Then we need filter only events which will not be active.
+	// Events with StartsAt will be open in specified time
+	getPoh := cfg.EventTypes().Get(evtypes.TypeGetPoH,
+		func(ev evtypes.EventConfig) bool { return ev.Disabled || evtypes.FilterExpired(ev) })
 	if getPoh == nil {
 		log.Warn("PoH event is disabled or expired, SBT check will not run")
 		return
@@ -69,6 +73,12 @@ func Run(ctx context.Context, cfg extConfig) {
 			log.Warn("PoH event has expired, stopping SBT checkers for all networks")
 			cancel()
 		})
+	}
+
+	if start := getPoh.StartsAt; start != nil && start.After(time.Now().UTC()) {
+		until := start.Sub(time.Now().UTC())
+		timer := time.NewTimer(until)
+		<-timer.C
 	}
 
 	var wg sync.WaitGroup

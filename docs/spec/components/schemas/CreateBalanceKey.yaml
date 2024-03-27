@@ -9,4 +9,4 @@ properties:
     example: "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
   type:
     type: string
-    enum: [ create_balance ]
+    enum: [ create_balance, update_balance ]

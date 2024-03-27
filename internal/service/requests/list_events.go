@@ -10,7 +10,7 @@ import (
 )
 
 type ListEvents struct {
-	page.CursorParams
+	page.OffsetParams
 	FilterDID    *string            `filter:"did"`
 	FilterStatus []data.EventStatus `filter:"status"`
 	FilterType   []string           `filter:"meta.static.name"`
@@ -22,7 +22,7 @@ func NewListEvents(r *http.Request) (req ListEvents, err error) {
 		err = newDecodeError("query", err)
 		return
 	}
-	if err = req.CursorParams.Validate(); err != nil {
+	if err = req.OffsetParams.Validate(); err != nil {
 		return
 	}
 

@@ -58,5 +58,5 @@ func (w *watcher) job(ctx context.Context, evType string) {
 			return false, fmt.Errorf("clean open events: %w", err)
 		}
 		return true, nil
-	}, retryPeriod, retryPeriod, 12)
+	}, retryPeriod, retryPeriod, maxRetries)
 }
