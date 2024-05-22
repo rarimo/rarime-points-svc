@@ -7,11 +7,14 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-func (c *config) PointPrice() int64 {
+type PointsPrice struct {
+	PointPriceURMO int64 `fig:"point_price_urmo,required"`
+	Disabled       bool  `fig:"disabled"`
+}
+
+func (c *config) PointPrice() PointsPrice {
 	return c.pointPrice.Do(func() interface{} {
-		var cfg struct {
-			PointPriceURMO int64 `fig:"point_price_urmo,required"`
-		}
+		var cfg PointsPrice
 
 		err := figure.Out(&cfg).
 			From(kv.MustGetStringMap(c.getter, "withdrawal")).
@@ -20,6 +23,6 @@ func (c *config) PointPrice() int64 {
 			panic(fmt.Errorf("failed to figure out withdrawal point price: %w", err))
 		}
 
-		return cfg.PointPriceURMO
-	}).(int64)
+		return cfg
+	}).(PointsPrice)
 }

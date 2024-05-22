@@ -17,6 +17,12 @@ import (
 )
 
 func Withdraw(w http.ResponseWriter, r *http.Request) {
+
+	if PointPrice(r).Disabled {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
 	req, err := requests.NewWithdraw(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
@@ -131,7 +137,7 @@ func isEligibleToWithdraw(balance *data.Balance, amount int64) error {
 }
 
 func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
-	urmo := req.Data.Attributes.Amount * PointPrice(r)
+	urmo := req.Data.Attributes.Amount * PointPrice(r).PointPriceURMO
 	tx := &bank.MsgSend{
 		FromAddress: Broadcaster(r).Sender(),
 		ToAddress:   req.Data.Attributes.Address,

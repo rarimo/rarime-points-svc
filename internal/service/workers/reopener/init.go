@@ -76,6 +76,10 @@ func (c *initCollector) collect() ([]data.ReopenableEvent, error) {
 func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) ([]data.ReopenableEvent, error) {
 	types := c.types.Names(evtypes.FilterByFrequency(freq), evtypes.FilterInactive)
 
+	if len(types) == 0 {
+		return []data.ReopenableEvent{}, nil
+	}
+
 	res, err := c.q.New().FilterByType(types...).
 		FilterByUpdatedAtBefore(before).
 		SelectReopenable()

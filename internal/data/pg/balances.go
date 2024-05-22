@@ -116,7 +116,7 @@ func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 	SELECT b1.*, COALESCE(b2.rank, 0) AS rank FROM %s AS b1 
 	LEFT JOIN (SELECT nullifier, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM %s WHERE referred_by IS NOT NULL) AS b2 
 	ON b1.nullifier = b2.nullifier
-	WHERE b1.nullifier = ?;
+	WHERE b1.nullifier = ?
 	`, balancesTable, balancesTable)
 
 	if err := q.db.GetRaw(&res, stmt, nullifier); err != nil {

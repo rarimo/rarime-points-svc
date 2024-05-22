@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rarimo/decentralized-auth-svc/resources"
+	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"
@@ -105,12 +106,12 @@ func Broadcaster(r *http.Request) broadcaster.Broadcaster {
 	return r.Context().Value(broadcasterCtxKey).(broadcaster.Broadcaster)
 }
 
-func CtxPointPrice(price int64) func(context.Context) context.Context {
+func CtxPointPrice(price config.PointsPrice) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
 		return context.WithValue(ctx, pointPriceCtxKey, price)
 	}
 }
 
-func PointPrice(r *http.Request) int64 {
-	return r.Context().Value(pointPriceCtxKey).(int64)
+func PointPrice(r *http.Request) config.PointsPrice {
+	return r.Context().Value(pointPriceCtxKey).(config.PointsPrice)
 }
