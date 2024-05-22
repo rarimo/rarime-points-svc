@@ -1059,12 +1059,12 @@
           },
           "action_url": {
             "type": "string",
-            "format": "url.URL",
+            "description": "Page where you can fulfill the event",
             "example": "https://robotornot.rarimo.com"
           },
           "logo": {
             "type": "string",
-            "format": "url.URL",
+            "description": "Event logo",
             "example": "https://logo.com/some_logo.svg"
           }
         }
