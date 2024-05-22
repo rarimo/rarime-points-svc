@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/rarimo/auth-svc/resources"
+	"github.com/rarimo/decentralized-auth-svc/resources"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"

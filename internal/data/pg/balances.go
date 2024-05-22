@@ -113,11 +113,11 @@ func (q *balances) Get() (*data.Balance, error) {
 func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 	var res data.Balance
 	stmt := fmt.Sprintf(`
-	SELECT b1.*, b2.rank FROM balances AS b1 
-	LEFT JOIN (SELECT nullifier, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM balances) AS b2 
-	ON b1.eaddress = b2.eaddress
+	SELECT b1.*, COALESCE(b2.rank, 0) AS rank FROM %s AS b1 
+	LEFT JOIN (SELECT nullifier, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM %s WHERE referred_by IS NOT NULL) AS b2 
+	ON b1.nullifier = b2.nullifier
 	WHERE b1.nullifier = ?;
-	`, balancesTable)
+	`, balancesTable, balancesTable)
 
 	if err := q.db.GetRaw(&res, stmt, nullifier); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

@@ -1217,12 +1217,12 @@ github.com/prometheus/procfs v0.9.0 h1:wzCHvIvM5SxWqYvwgVL7yJY8Lz3PKn49KQtpgMYJf
 github.com/prometheus/procfs v0.9.0/go.mod h1:+pB4zwohETzFnmlpe6yd2lSc+0/46IYZRB/chUwxUZY=
 github.com/rakyll/statik v0.1.7 h1:OF3QCZUuyPxuGEP7B4ypUa7sB/iHtqOTDYZXGM8KOdQ=
 github.com/rakyll/statik v0.1.7/go.mod h1:AlZONWzMtEnMs7W4e/1LURLiI49pIMmp6V9Unghqrcc=
-github.com/rarimo/auth-svc v1.0.0-rc2.0.20240311143312-de1e2258f175 h1:LWfw+633hf9J0unWMA528CEf+taYdzhhoqJVFj3po6Y=
-github.com/rarimo/auth-svc v1.0.0-rc2.0.20240311143312-de1e2258f175/go.mod h1:XtPIuJABJ3QNmhcpmJRlQrxuagPfpIWwFbY0j5SakFg=
 github.com/rarimo/broadcaster-svc v1.0.2 h1:ExQcjjWCRP5+POLDlZHrTD1ffUsBH+Dgv5FAgcP3BXc=
 github.com/rarimo/broadcaster-svc v1.0.2/go.mod h1:lYIHy+X4IqQt4eBdtMN/V352H3EV0/gO8G+32SFwUWI=
 github.com/rarimo/cosmos-sdk v0.46.7 h1:jU2PiWzc+19SF02cXM0O0puKPeH1C6Q6t2lzJ9s1ejc=
 github.com/rarimo/cosmos-sdk v0.46.7/go.mod h1:fqKqz39U5IlEFb4nbQ72951myztsDzFKKDtffYJ63nk=
+github.com/rarimo/decentralized-auth-svc v0.0.0-20240522134350-2694eafa9509 h1:U3gu/Z61tVIVEVoWL1YdwiNzkaXlkgd7cSeEslVfsLI=
+github.com/rarimo/decentralized-auth-svc v0.0.0-20240522134350-2694eafa9509/go.mod h1:V9XSqZSBN/YmLdI6PW6GL2xNeJ94IXAnhcuvyQfVBL8=
 github.com/rarimo/saver-grpc-lib v1.0.0 h1:MGUVjYg7unmodYczVsLqlqZNkT4CIgKqdo6aQtL1qdE=
 github.com/rarimo/saver-grpc-lib v1.0.0/go.mod h1:DpugWK5B7Hi0bdC3MPe/9FD2zCxaRwsyykdwxtF1Zgg=
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 h1:N/ElC8H3+5XpJzTSTfLsJV/mx9Q9g7kxmchpfZyxgzM=
