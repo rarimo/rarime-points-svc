@@ -35,7 +35,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
 		FilterInactiveNotClaimed(inactiveTypes...).
-		Page(&req.CursorPageParams).
+		Page(&req.OffsetPageParams).
 		Select()
 	if err != nil {
 		Log(r).WithError(err).Errorf("Failed to get filtered paginated event list: did=%s status=%v type=%v",
@@ -67,13 +67,8 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var last int32
-	if len(events) > 0 {
-		last = events[len(events)-1].UpdatedAt
-	}
-
 	resp := newEventsResponse(events, meta)
-	resp.Links = req.CursorParams.GetLinks(r, last)
+	resp.Links = req.OffsetParams.GetLinks(r)
 	if req.Count {
 		_ = resp.PutMeta(struct {
 			EventsCount int `json:"events_count"`

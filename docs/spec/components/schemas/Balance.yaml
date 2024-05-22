@@ -42,9 +42,21 @@ allOf:
             format: int
             description: Rank of the user in the full leaderboard. Returned only for the single user.
             example: 294
-          referral_codes:
+          active_referral_codes:
             type: array
-            description: Referral codes used to build a referral link and send it to friends. Required if a balance is created 
+            description: |
+              Referral codes which can be used to build a referral link and send it
+              to friends. Returned only for the single user.
             example: ["zgsScguZ", "jerUsmac"]
             items:
               type: string
+          consumed_referral_codes:
+            type: array
+            description: Referral codes used by invited users. Returned only for the single user.
+            example: ["73k3bdYaFWM", "9csIL7dW65m"]
+            items:
+              type: string
+          is_withdrawal_allowed:
+            type: boolean
+            description: Whether the user can withdraw tokens. Returned only for the single user.
+            example: true

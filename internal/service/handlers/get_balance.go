@@ -44,7 +44,7 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	var referrals []data.Referral
 	if req.ReferralCodes {
-		referrals, err = ReferralsQ(r).FilterByUserDID(req.DID).FilterByIsConsumed(false).Select()
+		referrals, err = ReferralsQ(r).FilterByUserDID(req.DID).Select()
 		if err != nil {
 			Log(r).WithError(err).Error("Failed to get referrals by DID")
 			ape.RenderErr(w, problems.InternalError())
@@ -73,15 +73,24 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 }
 
 func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
-	balanceResponse := resources.BalanceResponse{Data: newBalanceModel(balance)}
+	resp := resources.BalanceResponse{Data: newBalanceModel(balance)}
+	resp.Data.Attributes.IsWithdrawalAllowed = &balance.IsWithdrawalAllowed
+
 	if len(referrals) == 0 {
-		return balanceResponse
+		return resp
 	}
 
-	referralCodes := make([]string, len(referrals))
-	balanceResponse.Data.Attributes.ReferralCodes = &referralCodes
-	for i, referral := range referrals {
-		referralCodes[i] = referral.ID
+	activeCodes, consumedCodes := make([]string, 0, len(referrals)), make([]string, 0, len(referrals))
+	resp.Data.Attributes.ActiveReferralCodes = &activeCodes
+	resp.Data.Attributes.ConsumedReferralCodes = &consumedCodes
+
+	for _, ref := range referrals {
+		if ref.IsConsumed {
+			consumedCodes = append(consumedCodes, ref.ID)
+			continue
+		}
+		activeCodes = append(activeCodes, ref.ID)
 	}
-	return balanceResponse
+
+	return resp
 }

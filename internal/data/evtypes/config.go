@@ -40,6 +40,12 @@ func (c *config) EventTypes() Types {
 			if !checkFreqValue(t.Frequency) {
 				panic(fmt.Errorf("invalid frequency: %s", t.Frequency))
 			}
+
+			if t.ExpiresAt != nil && t.StartsAt != nil && !t.StartsAt.Before(*t.ExpiresAt) {
+				panic(fmt.Errorf("starts_at must be before expires_at: %s > %s",
+					t.StartsAt, t.ExpiresAt))
+			}
+
 			m[t.Name] = t
 		}
 

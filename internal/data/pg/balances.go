@@ -58,13 +58,14 @@ func (q *balances) UpdateAmountBy(points int64) error {
 	return nil
 }
 
-func (q *balances) SetPassport(hash string, exp time.Time) error {
+func (q *balances) SetPassport(hash string, exp time.Time, isWithdrawalAllowed bool) error {
 	stmt := q.updater.
 		Set("passport_hash", hash).
-		Set("passport_expires", exp)
+		Set("passport_expires", exp).
+		Set("is_withdrawal_allowed", isWithdrawalAllowed)
 
 	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set passport hash and expires: %w", err)
+		return fmt.Errorf("set passport hash and expires, and isWithdrawalAllowed: %w", err)
 	}
 
 	return nil
@@ -131,6 +132,10 @@ func (q *balances) GetWithRank(did string) (*data.Balance, error) {
 
 func (q *balances) FilterByDID(did string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"did": did})
+}
+
+func (q *balances) FilterByPassportHash(passportHash string) data.BalancesQ {
+	return q.applyCondition(squirrel.Eq{"passport_hash": passportHash})
 }
 
 func (q *balances) FilterDisabled() data.BalancesQ {

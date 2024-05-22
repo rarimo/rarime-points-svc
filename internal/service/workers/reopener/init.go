@@ -1,14 +1,18 @@
 package reopener
 
 import (
+	"context"
 	"fmt"
 	"time"
 
+	"github.com/go-co-op/gocron/v2"
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/cron"
 	"gitlab.com/distributed_lab/logan/v3"
+	"gitlab.com/distributed_lab/running"
 )
 
 func initialRun(cfg config.Config) error {
@@ -114,4 +118,64 @@ func (c *initCollector) selectAbsent() ([]data.ReopenableEvent, error) {
 
 	log.Infof("%d new (DID, type) pairs to open: %v", len(res), res)
 	return res, nil
+}
+
+func runStartingWatchers(ctx context.Context, cfg config.Config) error {
+	log := cfg.Log().WithField("who", "opener[initializer]")
+
+	notStartedEv := cfg.EventTypes().List(func(ev evtypes.EventConfig) bool {
+		return ev.Disabled || !evtypes.FilterNotStarted(ev) || evtypes.FilterExpired(ev)
+	})
+
+	if len(notStartedEv) == 0 {
+		log.Info("No events to open at Start time: all types already opened or there no types with StartAt")
+		return nil
+	}
+
+	for _, ev := range notStartedEv {
+		_, err := cron.NewJob(
+			gocron.OneTimeJob(gocron.OneTimeJobStartDateTime(*ev.StartsAt)),
+			gocron.NewTask(startingWatcher(cfg, ev.Name), ctx),
+			gocron.WithName(fmt.Sprintf("opener[%s]", ev.Name)),
+		)
+
+		if err != nil {
+			return fmt.Errorf("opener: failed to initialize job: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func startingWatcher(cfg config.Config, name string) func(context.Context) {
+	return func(ctx context.Context) {
+		log := cfg.Log().WithField("who", fmt.Sprintf("opener[%s]", name))
+
+		var balances []data.Balance
+		var err error
+
+		running.WithThreshold(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
+			if balances, err = pg.NewBalances(cfg.DB().Clone()).Select(); err != nil {
+				return false, err
+			}
+			return true, nil
+		}, retryPeriod, retryPeriod, maxRetries)
+
+		events := make([]data.Event, len(balances))
+		status := data.EventOpen
+		if name == evtypes.TypeFreeWeekly {
+			status = data.EventFulfilled
+		}
+
+		for i, balance := range balances {
+			events[i] = data.Event{UserDID: balance.DID, Type: name, Status: status}
+		}
+
+		running.WithThreshold(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {
+			if err = pg.NewEvents(cfg.DB().Clone()).Insert(events...); err != nil {
+				return false, err
+			}
+			return true, nil
+		}, retryPeriod, retryPeriod, maxRetries)
+	}
 }

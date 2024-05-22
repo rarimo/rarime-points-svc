@@ -34,76 +34,39 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Balance should not exist or be inactive
-	if balance != nil && balance.ReferredBy.Valid {
+	if balance != nil {
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
 
 	referral, err := ReferralsQ(r).FilterByIsConsumed(false).Get(req.Data.Attributes.ReferredBy)
-	if referral == nil {
-		ape.RenderErr(w, problems.NotFound())
-		return
-	}
-
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get referral by ID")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	referrals := prepareReferralsToAdd(did, 5, 0)
-
-	if balance == nil {
-		events := prepareEventsWithRef(did, req.Data.Attributes.ReferredBy, r)
-		if err = createBalanceWithEventsAndReferrals(did, req.Data.Attributes.ReferredBy, events, referrals, r); err != nil {
-			Log(r).WithError(err).Error("Failed to create balance with events")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-
-		// We can't return inserted balance in a single query, because we can't calculate
-		// rank in transaction: RANK() is a window function allowed on a set of rows,
-		// while with RETURNING we operate a single one.
-		// Balance will exist cause of previous logic.
-		balance, err = BalancesQ(r).GetWithRank(did)
-		if err != nil {
-			Log(r).WithError(err).Error("Failed to get created balance by DID")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-
-		ape.Render(w, newBalanceResponse(*balance, referrals))
+	if referral == nil {
+		ape.RenderErr(w, problems.NotFound())
 		return
 	}
 
-	err = EventsQ(r).Transaction(func() error {
-		Log(r).Debugf("%s referral code will be added for user_did=%s", req.Data.Attributes.ReferredBy, did)
-		if err = BalancesQ(r).FilterByDID(did).SetReferredBy(req.Data.Attributes.ReferredBy); err != nil {
-			return fmt.Errorf("set referred_by: %w", err)
-		}
+	referrals := prepareReferralsToAdd(did, 5, 0)
 
-		Log(r).Debugf("%d referrals will be added for user_did=%s", len(referrals), did)
-		if err = ReferralsQ(r).Insert(referrals...); err != nil {
-			return fmt.Errorf("add referrals: %w", err)
-		}
-
-		Log(r).Debugf("%s referral will be consumed", req.Data.Attributes.ReferredBy)
-		if _, err = ReferralsQ(r).Consume(req.Data.Attributes.ReferredBy); err != nil {
-			return fmt.Errorf("consume referral: %w", err)
-		}
-		return nil
-	})
-
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to activate balance")
+	events := prepareEventsWithRef(did, req.Data.Attributes.ReferredBy, r)
+	if err = createBalanceWithEventsAndReferrals(did, req.Data.Attributes.ReferredBy, events, referrals, r); err != nil {
+		Log(r).WithError(err).Error("Failed to create balance with events")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
+	// We can't return inserted balance in a single query, because we can't calculate
+	// rank in transaction: RANK() is a window function allowed on a set of rows,
+	// while with RETURNING we operate a single one.
+	// Balance will exist cause of previous logic.
 	balance, err = BalancesQ(r).GetWithRank(did)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID with rank")
+		Log(r).WithError(err).Error("Failed to get created balance by DID")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

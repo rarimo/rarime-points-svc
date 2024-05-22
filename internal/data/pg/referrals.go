@@ -1,6 +1,8 @@
 package pg
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 
 	"github.com/Masterminds/squirrel"
@@ -70,7 +72,7 @@ func (q *referrals) ConsumeFirst(did string, count uint64) error {
 		UPDATE %s SET is_consumed = true WHERE id IN (
 			SELECT id FROM %s
 			WHERE user_did = ? AND is_consumed = false
-			ORDER BY created_at ASC LIMIT %d
+			LIMIT %d
 		);
 	`, referralsTable, referralsTable, count)
 
@@ -95,6 +97,9 @@ func (q *referrals) Get(id string) (*data.Referral, error) {
 	var res data.Referral
 
 	if err := q.db.Get(&res, q.selector.Where(squirrel.Eq{"id": id})); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
 		return nil, fmt.Errorf("get referral by ID: %w", err)
 	}
 

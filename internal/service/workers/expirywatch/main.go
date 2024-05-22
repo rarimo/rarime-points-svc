@@ -12,6 +12,7 @@ import (
 )
 
 const retryPeriod = 1 * time.Minute
+const maxRetries = 12
 
 func Run(ctx context.Context, cfg config.Config) {
 	w := newWatcher(cfg)
