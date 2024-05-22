@@ -112,7 +112,7 @@ func (t Types) Names(filters ...filter) []string {
 	return res
 }
 
-func (t Types) PrepareEvents(userDID string, filters ...filter) []data.Event {
+func (t Types) PrepareEvents(nullifier string, filters ...filter) []data.Event {
 	t.ensureInitialized()
 	const extraCap = 1 // in case we append to the resulting slice outside the function
 	events := make([]data.Event, 0, len(t.list)+extraCap)
@@ -128,9 +128,9 @@ func (t Types) PrepareEvents(userDID string, filters ...filter) []data.Event {
 		}
 
 		events = append(events, data.Event{
-			UserDID: userDID,
-			Type:    et.Name,
-			Status:  status,
+			Nullifier: nullifier,
+			Type:      et.Name,
+			Status:    status,
 		})
 	}
 

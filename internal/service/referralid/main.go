@@ -8,22 +8,22 @@ import (
 
 const bytesCount = 8
 
-// New generates a new deterministic referral ID from DID and index.
-func New(did string, index uint64) string {
-	s := fmt.Sprintf("%s_%d", did, index)
+// New generates a new deterministic referral ID from nullifier and index.
+func New(nullifier string, index uint64) string {
+	s := fmt.Sprintf("%s_%d", nullifier, index)
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	first := hash.Sum(nil)[:bytesCount]
 	return base62Encode(first)
 }
 
-// NewMany generates a bunch of referral IDs for a single DID with incrementing
+// NewMany generates a bunch of referral IDs for a single nullifier with incrementing
 // index. Specify non-zero index argument to start from a specific index, this is
-// useful when you have stored referral IDs for this DID previously.
-func NewMany(did string, count, index uint64) []string {
+// useful when you have stored referral IDs for this nullifier previously.
+func NewMany(nullifier string, count, index uint64) []string {
 	ids := make([]string, 0, count)
 	for i := index; i < count+index; i++ {
-		ids = append(ids, New(did, i))
+		ids = append(ids, New(nullifier, i))
 	}
 	return ids
 }

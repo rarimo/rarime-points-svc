@@ -6,7 +6,7 @@ import (
 
 type Withdrawal struct {
 	ID        string `db:"id"`
-	UserDID   string `db:"user_did"`
+	Nullifier string `db:"nullifier"`
 	Amount    int64  `db:"amount"`
 	Address   string `db:"address"`
 	CreatedAt int32  `db:"created_at"`
@@ -19,5 +19,5 @@ type WithdrawalsQ interface {
 	Page(*pgdb.CursorPageParams) WithdrawalsQ
 	Select() ([]Withdrawal, error)
 
-	FilterByUserDID(string) WithdrawalsQ
+	FilterByNullifier(string) WithdrawalsQ
 }

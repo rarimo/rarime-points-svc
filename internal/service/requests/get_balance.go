@@ -9,20 +9,20 @@ import (
 )
 
 type GetBalance struct {
-	DID           string
+	Nullifier     string
 	Rank          bool `url:"rank"`
 	ReferralCodes bool `url:"referral_codes"`
 }
 
 func NewGetBalance(r *http.Request) (getBalance GetBalance, err error) {
-	getBalance.DID = chi.URLParam(r, "did")
+	getBalance.Nullifier = chi.URLParam(r, "nullifier")
 
 	if err = urlval.Decode(r.URL.Query(), &getBalance); err != nil {
 		err = newDecodeError("query", err)
 		return
 	}
 
-	err = validation.Errors{"did": validation.Validate(getBalance.DID, validation.Required)}.
+	err = validation.Errors{"nullifier": validation.Validate(getBalance.Nullifier, validation.Required)}.
 		Filter()
 	return
 }

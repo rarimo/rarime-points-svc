@@ -21,7 +21,7 @@ func (s EventStatus) String() string {
 
 type Event struct {
 	ID           string         `db:"id"`
-	UserDID      string         `db:"user_did"`
+	Nullifier    string         `db:"nullifier"`
 	Type         string         `db:"type"`
 	Status       EventStatus    `db:"status"`
 	CreatedAt    int32          `db:"created_at"`
@@ -33,8 +33,8 @@ type Event struct {
 
 // ReopenableEvent is a pair that is sufficient to build a new open event with a specific type for a user
 type ReopenableEvent struct {
-	UserDID string `db:"user_did"`
-	Type    string `db:"type"`
+	Nullifier string `db:"nullifier"`
+	Type      string `db:"type"`
 }
 
 type EventsQ interface {
@@ -58,7 +58,7 @@ type EventsQ interface {
 	SelectAbsentTypes(allTypes ...string) ([]ReopenableEvent, error)
 
 	FilterByID(string) EventsQ
-	FilterByUserDID(string) EventsQ
+	FilterByNullifier(string) EventsQ
 	FilterByStatus(...EventStatus) EventsQ
 	FilterByType(...string) EventsQ
 	FilterByUpdatedAtBefore(int64) EventsQ

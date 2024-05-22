@@ -32,7 +32,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(event.UserDID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(event.Nullifier)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
@@ -58,14 +58,14 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		evType.Reward = *event.PointsAmount
 	}
 
-	balance, err := BalancesQ(r).FilterByDID(event.UserDID).FilterDisabled().Get()
+	balance, err := BalancesQ(r).FilterByNullifier(event.Nullifier).FilterDisabled().Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 	if balance == nil {
-		Log(r).Infof("Attempt to claim: balance user_did=%s is disabled", event.UserDID)
+		Log(r).Infof("Attempt to claim: balance nullifier=%s is disabled", event.Nullifier)
 		ape.RenderErr(w, problems.NotFound())
 		return
 	}
@@ -73,15 +73,15 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	event, err = claimEventWithPoints(*event, evType.Reward, r)
 	if err != nil {
 		Log(r).WithError(err).Errorf("Failed to claim event %s and accrue %d points to the balance %s",
-			event.ID, evType.Reward, event.UserDID)
+			event.ID, evType.Reward, event.Nullifier)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	// balance should exist cause of previous logic
-	balance, err = BalancesQ(r).GetWithRank(event.UserDID)
+	balance, err = BalancesQ(r).GetWithRank(event.Nullifier)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID with rank")
+		Log(r).WithError(err).Error("Failed to get balance by nullifier with rank")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -97,7 +97,7 @@ func claimEventWithPoints(event data.Event, reward int64, r *http.Request) (clai
 			return fmt.Errorf("update event status: %w", err)
 		}
 
-		err = BalancesQ(r).FilterByDID(event.UserDID).UpdateAmountBy(reward)
+		err = BalancesQ(r).FilterByNullifier(event.Nullifier).UpdateAmountBy(reward)
 		if err != nil {
 			return fmt.Errorf("update balance amount: %w", err)
 		}
@@ -118,7 +118,7 @@ func newClaimEventResponse(
 	eventModel.Relationships = &resources.EventRelationships{
 		Balance: resources.Relation{
 			Data: &resources.Key{
-				ID:   balance.DID,
+				ID:   balance.Nullifier,
 				Type: resources.BALANCE,
 			},
 		},

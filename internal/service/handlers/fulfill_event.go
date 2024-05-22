@@ -22,7 +22,7 @@ func FulfillEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log := Log(r).WithFields(map[string]any{
-		"user_did":    req.UserDID,
+		"nullifier":   req.Nullifier,
 		"event_type":  req.EventType,
 		"external_id": req.ExternalID,
 	})
@@ -34,21 +34,21 @@ func FulfillEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	internalErr := api.CodeInternalError.JSONAPIError()
-	balance, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
+	balance, err := BalancesQ(r).FilterByNullifier(req.Nullifier).Get()
 	if err != nil {
-		log.WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, internalErr)
 		return
 	}
 
 	if balance == nil {
 		if req.ExternalID != nil {
-			log.Debug("User DID is unknown, while external_id was provided")
-			ape.RenderErr(w, api.CodeDidUnknown.JSONAPIError())
+			log.Debug("User nullifier is unknown, while external_id was provided")
+			ape.RenderErr(w, api.CodeNullifierUnknown.JSONAPIError())
 			return
 		}
 
-		events := EventTypes(r).PrepareEvents(req.UserDID, evtypes.FilterNotOpenable)
+		events := EventTypes(r).PrepareEvents(req.Nullifier, evtypes.FilterNotOpenable)
 		typeExists := false
 		for i, ev := range events {
 			if ev.Type == req.EventType {
@@ -64,7 +64,7 @@ func FulfillEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err = createBalanceWithEvents(req.UserDID, "", events, r); err != nil {
+		if err = createBalanceWithEvents(req.Nullifier, "", events, r); err != nil {
 			log.WithError(err).Error("Failed to create balance with events")
 			ape.RenderErr(w, internalErr)
 			return
@@ -109,7 +109,7 @@ func validateEventType(name string, r *http.Request) *jsonapi.ErrorObject {
 }
 
 func getEventToFulfill(req api.FulfillEventRequest, r *http.Request) (eventID string, err error) {
-	q := EventsQ(r).FilterByUserDID(req.UserDID).
+	q := EventsQ(r).FilterByNullifier(req.Nullifier).
 		FilterByType(req.EventType).
 		FilterByStatus(data.EventOpen)
 	if req.ExternalID != nil {

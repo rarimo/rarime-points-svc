@@ -8,7 +8,7 @@ import (
 )
 
 type Balance struct {
-	DID                 string         `db:"did"`
+	Nullifier           string         `db:"nullifier"`
 	Amount              int64          `db:"amount"`
 	CreatedAt           int32          `db:"created_at"`
 	UpdatedAt           int32          `db:"updated_at"`
@@ -29,10 +29,10 @@ type BalancesQ interface {
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
 	Get() (*Balance, error)
-	// GetWithRank returns balance with rank, filtered by DID. No other filters can be applied.
-	GetWithRank(did string) (*Balance, error)
+	// GetWithRank returns balance with rank, filtered by nullifier. No other filters can be applied.
+	GetWithRank(nullifier string) (*Balance, error)
 
-	FilterByDID(string) BalancesQ
+	FilterByNullifier(string) BalancesQ
 	FilterByPassportHash(string) BalancesQ
 	FilterDisabled() BalancesQ
 }

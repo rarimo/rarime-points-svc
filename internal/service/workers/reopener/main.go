@@ -56,9 +56,9 @@ func prepareForReopening(events []data.ReopenableEvent) []data.Event {
 
 	for i, ev := range events {
 		res[i] = data.Event{
-			UserDID: ev.UserDID,
-			Type:    ev.Type,
-			Status:  data.EventOpen,
+			Nullifier: ev.Nullifier,
+			Type:      ev.Type,
+			Status:    data.EventOpen,
 		}
 
 		if ev.Type == evtypes.TypeFreeWeekly {

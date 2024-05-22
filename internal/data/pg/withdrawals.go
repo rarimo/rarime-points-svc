@@ -29,9 +29,9 @@ func (q *withdrawals) New() data.WithdrawalsQ {
 func (q *withdrawals) Insert(w data.Withdrawal) (*data.Withdrawal, error) {
 	var res data.Withdrawal
 	stmt := squirrel.Insert(withdrawalsTable).SetMap(map[string]interface{}{
-		"user_did": w.UserDID,
-		"amount":   w.Amount,
-		"address":  w.Address,
+		"nullifier": w.Nullifier,
+		"amount":    w.Amount,
+		"address":   w.Address,
 	}).Suffix("RETURNING *")
 
 	if err := q.db.Get(&res, stmt); err != nil {
@@ -56,7 +56,7 @@ func (q *withdrawals) Select() ([]data.Withdrawal, error) {
 	return res, nil
 }
 
-func (q *withdrawals) FilterByUserDID(did string) data.WithdrawalsQ {
-	q.selector = q.selector.Where(squirrel.Eq{"user_did": did})
+func (q *withdrawals) FilterByNullifier(nullifier string) data.WithdrawalsQ {
+	q.selector = q.selector.Where(squirrel.Eq{"nullifier": nullifier})
 	return q
 }

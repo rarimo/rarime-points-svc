@@ -19,16 +19,16 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	did := req.Data.ID
+	nullifier := req.Data.ID
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(did)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
-	balance, err := BalancesQ(r).FilterByDID(did).Get()
+	balance, err := BalancesQ(r).FilterByNullifier(nullifier).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -59,15 +59,15 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	referrals := prepareReferralsToAdd(did, 5, 0)
+	referrals := prepareReferralsToAdd(nullifier, 5, 0)
 
 	err = EventsQ(r).Transaction(func() error {
-		Log(r).Debugf("%s referral code will be set for user_did=%s", req.Data.Attributes.ReferredBy, did)
-		if err = BalancesQ(r).FilterByDID(did).SetReferredBy(req.Data.Attributes.ReferredBy); err != nil {
+		Log(r).Debugf("%s referral code will be set for nullifier=%s", req.Data.Attributes.ReferredBy, nullifier)
+		if err = BalancesQ(r).FilterByNullifier(nullifier).SetReferredBy(req.Data.Attributes.ReferredBy); err != nil {
 			return fmt.Errorf("set referred_by: %w", err)
 		}
 
-		Log(r).Debugf("%d referrals will be added for user_did=%s", len(referrals), did)
+		Log(r).Debugf("%d referrals will be added for nullifier=%s", len(referrals), nullifier)
 		if err = ReferralsQ(r).Insert(referrals...); err != nil {
 			return fmt.Errorf("add referrals: %w", err)
 		}
@@ -85,10 +85,10 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 			}
 
 			err = EventsQ(r).Insert(data.Event{
-				UserDID: referral.UserDID,
-				Type:    evType.Name,
-				Status:  data.EventFulfilled,
-				Meta:    data.Jsonb(fmt.Sprintf(`{"did": "%s"}`, did)),
+				Nullifier: referral.Nullifier,
+				Type:      evType.Name,
+				Status:    data.EventFulfilled,
+				Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, nullifier)),
 			})
 			if err != nil {
 				return fmt.Errorf("add event for referrer: %w", err)
@@ -103,9 +103,9 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err = BalancesQ(r).GetWithRank(did)
+	balance, err = BalancesQ(r).GetWithRank(nullifier)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID with rank")
+		Log(r).WithError(err).Error("Failed to get balance by nullifier with rank")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

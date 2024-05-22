@@ -1,7 +1,0 @@
-in: query
-name: 'filter[did]'
-required: true
-description: Filter by single user DID. Auth is required for this filter.
-schema:
-  type: string
-  example: "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"

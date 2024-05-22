@@ -5,7 +5,7 @@ get:
   description: Returns events for a single user.
   operationId: getEvents
   parameters:
-    - $ref: '#/components/parameters/filterDID'
+    - $ref: '#/components/parameters/filterNullifier'
     - in: query
       name: 'filter[status]'
       description: |

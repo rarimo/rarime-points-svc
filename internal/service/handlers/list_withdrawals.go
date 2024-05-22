@@ -18,14 +18,14 @@ func ListWithdrawals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.DID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Nullifier)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
-	withdrawals, err := WithdrawalsQ(r).FilterByUserDID(req.DID).Page(&req.CursorPageParams).Select()
+	withdrawals, err := WithdrawalsQ(r).FilterByNullifier(req.Nullifier).Page(&req.CursorPageParams).Select()
 	if err != nil {
-		Log(r).WithError(err).Errorf("Failed to get filtered withdrawal list: did=%s", req.DID)
+		Log(r).WithError(err).Errorf("Failed to get filtered withdrawal list: nullifier=%s", req.Nullifier)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

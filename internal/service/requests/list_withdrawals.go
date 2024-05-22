@@ -9,7 +9,7 @@ import (
 )
 
 type ListWithdrawals struct {
-	DID string
+	Nullifier string
 	page.CursorParams
 }
 
@@ -19,6 +19,6 @@ func NewListWithdrawals(r *http.Request) (req ListWithdrawals, err error) {
 		return
 	}
 
-	req.DID = chi.URLParam(r, "did")
+	req.Nullifier = chi.URLParam(r, "nullifier")
 	return req, req.Validate()
 }

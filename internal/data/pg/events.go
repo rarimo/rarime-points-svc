@@ -30,7 +30,7 @@ func NewEvents(db *pgdb.DB) data.EventsQ {
 		updater:    squirrel.Update(eventsTable),
 		deleter:    squirrel.Delete(eventsTable),
 		counter:    squirrel.Select("COUNT(*) AS count").From(eventsTable),
-		reopenable: squirrel.Select("user_did", "type").Distinct().From(eventsTable + " e1"),
+		reopenable: squirrel.Select("nullifier", "type").Distinct().From(eventsTable + " e1"),
 	}
 }
 
@@ -44,13 +44,13 @@ func (q *events) Insert(events ...data.Event) error {
 	}
 
 	stmt := squirrel.Insert(eventsTable).
-		Columns("user_did", "type", "status", "meta", "points_amount", "external_id")
+		Columns("nullifier", "type", "status", "meta", "points_amount", "external_id")
 	for _, event := range events {
 		var meta any
 		if len(event.Meta) != 0 {
 			meta = event.Meta
 		}
-		stmt = stmt.Values(event.UserDID, event.Type, event.Status, meta, event.PointsAmount, event.ExternalID)
+		stmt = stmt.Values(event.Nullifier, event.Type, event.Status, meta, event.PointsAmount, event.ExternalID)
 	}
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -143,7 +143,7 @@ func (q *events) Count() (int, error) {
 func (q *events) SelectReopenable() ([]data.ReopenableEvent, error) {
 	subq := fmt.Sprintf(`NOT EXISTS (
 	SELECT 1 FROM %s e2
-    WHERE e2.user_did = e1.user_did
+    WHERE e2.nullifier = e1.nullifier
     AND e2.type = e1.type
     AND e2.status IN (?, ?))`, eventsTable)
 	stmt := q.reopenable.Where(subq, data.EventOpen, data.EventFulfilled)
@@ -166,18 +166,18 @@ func (q *events) SelectAbsentTypes(allTypes ...string) ([]data.ReopenableEvent, 
 		WITH types(type) AS (
     		VALUES %s
 		)
-		SELECT u.user_did, t.type
+		SELECT u.nullifier, t.type
 		FROM (
-    		SELECT DISTINCT user_did FROM %s
+    		SELECT DISTINCT nullifier FROM %s
 		) u
 		CROSS JOIN types t
-		LEFT JOIN %s e ON e.user_did = u.user_did AND e.type = t.type
+		LEFT JOIN %s e ON e.nullifier = u.nullifier AND e.type = t.type
 		WHERE e.type IS NULL;
 	`, strings.Join(values, ", "), eventsTable, eventsTable)
 
 	var res []data.ReopenableEvent
 	if err := q.db.SelectRaw(&res, query); err != nil {
-		return nil, fmt.Errorf("select absent types for each did: %w", err)
+		return nil, fmt.Errorf("select absent types for each nullifier: %w", err)
 	}
 
 	return res, nil
@@ -187,8 +187,8 @@ func (q *events) FilterByID(id string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"id": id})
 }
 
-func (q *events) FilterByUserDID(did string) data.EventsQ {
-	return q.applyCondition(squirrel.Eq{"user_did": did})
+func (q *events) FilterByNullifier(nullifier string) data.EventsQ {
+	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 
 func (q *events) FilterByStatus(statuses ...data.EventStatus) data.EventsQ {

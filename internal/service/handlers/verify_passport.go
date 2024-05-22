@@ -29,7 +29,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log := Log(r).WithFields(map[string]any{
-		"user_did":    req.UserDID,
+		"nullifier":   req.Nullifier,
 		"hash":        req.Hash,
 		"shared_data": req.SharedData,
 	})
@@ -41,16 +41,16 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if balance != nil && balance.DID != req.UserDID {
+	if balance != nil && balance.Nullifier != req.Nullifier {
 		log.Error("passport_hash already in use")
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
 
 	if balance == nil {
-		balance, err = BalancesQ(r).FilterByDID(req.UserDID).Get()
+		balance, err = BalancesQ(r).FilterByNullifier(req.Nullifier).Get()
 		if err != nil {
-			log.WithError(err).Error("Failed to get balance by DID")
+			log.WithError(err).Error("Failed to get balance by nullifier")
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
@@ -96,7 +96,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = BalancesQ(r).FilterByDID(req.UserDID).SetPassport(balance.PassportHash.String, time.Now().UTC().AddDate(0, 1, 0), !req.IsUSA)
+	err = BalancesQ(r).FilterByNullifier(req.Nullifier).SetPassport(balance.PassportHash.String, time.Now().UTC().AddDate(0, 1, 0), !req.IsUSA)
 	if err != nil {
 		log.WithError(err).Error("Failed to update passport")
 		ape.RenderErr(w, problems.InternalError())
@@ -107,10 +107,10 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 }
 
 func createBalanceWithPassportTx(r *http.Request, req connector.VerifyPassportRequest, reward *int64) error {
-	events := EventTypes(r).PrepareEvents(req.UserDID, evtypes.FilterNotOpenable)
+	events := EventTypes(r).PrepareEvents(req.Nullifier, evtypes.FilterNotOpenable)
 
 	log := Log(r).WithFields(map[string]any{
-		"user_did":    req.UserDID,
+		"nullifier":   req.Nullifier,
 		"hash":        req.Hash,
 		"shared_data": req.SharedData,
 	})
@@ -124,7 +124,7 @@ func createBalanceWithPassportTx(r *http.Request, req connector.VerifyPassportRe
 
 	return EventsQ(r).Transaction(func() (err error) {
 		balance := &data.Balance{
-			DID:                 req.UserDID,
+			Nullifier:           req.Nullifier,
 			PassportHash:        sql.NullString{String: req.Hash, Valid: true},
 			PassportExpires:     sql.NullTime{Time: time.Now().UTC().AddDate(0, 1, 0), Valid: true},
 			IsWithdrawalAllowed: !req.IsUSA,
@@ -134,7 +134,7 @@ func createBalanceWithPassportTx(r *http.Request, req connector.VerifyPassportRe
 			return fmt.Errorf("add balance: %w", err)
 		}
 
-		log.Debugf("%d events will be added for user_did=%s", len(events), req.UserDID)
+		log.Debugf("%d events will be added for nullifier=%s", len(events), req.Nullifier)
 		if err = EventsQ(r).Insert(events...); err != nil {
 			return fmt.Errorf("add open events: %w", err)
 		}
@@ -144,14 +144,14 @@ func createBalanceWithPassportTx(r *http.Request, req connector.VerifyPassportRe
 
 func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, reward *int64, refBy sql.NullString) error {
 	log := Log(r).WithFields(map[string]any{
-		"user_did":    req.UserDID,
+		"nullifier":   req.Nullifier,
 		"hash":        req.Hash,
 		"shared_data": req.SharedData,
 	})
 	return EventsQ(r).Transaction(func() error {
-		err := BalancesQ(r).FilterByDID(req.UserDID).SetPassport(req.Hash, time.Now().UTC().AddDate(0, 1, 0), !req.IsUSA)
+		err := BalancesQ(r).FilterByNullifier(req.Nullifier).SetPassport(req.Hash, time.Now().UTC().AddDate(0, 1, 0), !req.IsUSA)
 		if err != nil {
-			return fmt.Errorf("set passport for balance by DID: %w", err)
+			return fmt.Errorf("set passport for balance by nullifier: %w", err)
 		}
 
 		logMsgScan := "PassportScan event type is disabled or expired, not accruing points"
@@ -185,10 +185,10 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 		}
 
 		err = EventsQ(r).Insert(data.Event{
-			UserDID: ref.UserDID,
-			Type:    evType.Name,
-			Status:  data.EventFulfilled,
-			Meta:    data.Jsonb(fmt.Sprintf(`{"did": "%s"}`, req.UserDID)),
+			Nullifier: ref.Nullifier,
+			Type:      evType.Name,
+			Status:    data.EventFulfilled,
+			Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, req.Nullifier)),
 		})
 		if err != nil {
 			return fmt.Errorf("add event for referrer: %w", err)
@@ -200,29 +200,29 @@ func setBalancePassportTx(r *http.Request, req connector.VerifyPassportRequest, 
 
 func fulfillPassportScanEvent(r *http.Request, req connector.VerifyPassportRequest, reward *int64) error {
 	log := Log(r).WithFields(map[string]any{
-		"user_did":    req.UserDID,
+		"nullifier":   req.Nullifier,
 		"hash":        req.Hash,
 		"shared_data": req.SharedData,
 	})
 
 	passportScanEvent, err := EventsQ(r).
-		FilterByUserDID(req.UserDID).
+		FilterByNullifier(req.Nullifier).
 		FilterByType(evtypes.TypePassportScan).
 		FilterByStatus(data.EventOpen).
 		Get()
 
 	if err != nil {
-		return fmt.Errorf("get passport_scan event by DID: %w", err)
+		return fmt.Errorf("get passport_scan event by nullifier: %w", err)
 	}
 
 	if passportScanEvent != nil {
 		log.Debug("PassportScan event open")
 		_, err = EventsQ(r).
-			FilterByUserDID(req.UserDID).
+			FilterByNullifier(req.Nullifier).
 			FilterByType(evtypes.TypePassportScan).
 			Update(data.EventFulfilled, nil, reward)
 		if err != nil {
-			return fmt.Errorf("update reward for passport_scan event by DID: %w", err)
+			return fmt.Errorf("update reward for passport_scan event by nullifier: %w", err)
 		}
 		log.Debug("PassportScan event reward update successful")
 		return nil

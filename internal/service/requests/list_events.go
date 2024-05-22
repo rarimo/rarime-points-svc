@@ -11,10 +11,10 @@ import (
 
 type ListEvents struct {
 	page.OffsetParams
-	FilterDID    *string            `filter:"did"`
-	FilterStatus []data.EventStatus `filter:"status"`
-	FilterType   []string           `filter:"meta.static.name"`
-	Count        bool               `url:"count"`
+	FilterNullifier *string            `filter:"nullifier"`
+	FilterStatus    []data.EventStatus `filter:"status"`
+	FilterType      []string           `filter:"meta.static.name"`
+	Count           bool               `url:"count"`
 }
 
 func NewListEvents(r *http.Request) (req ListEvents, err error) {
@@ -27,8 +27,8 @@ func NewListEvents(r *http.Request) (req ListEvents, err error) {
 	}
 
 	err = validation.Errors{
-		"filter[did]":    validation.Validate(req.FilterDID, validation.Required),
-		"filter[status]": validation.Validate(req.FilterStatus, validation.Each(validation.In(data.EventOpen, data.EventFulfilled, data.EventClaimed))),
+		"filter[nullifier]": validation.Validate(req.FilterNullifier, validation.Required),
+		"filter[status]":    validation.Validate(req.FilterStatus, validation.Each(validation.In(data.EventOpen, data.EventFulfilled, data.EventClaimed))),
 	}.Filter()
 	return
 }

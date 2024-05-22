@@ -5,7 +5,7 @@ get:
   description: Points withdrawal history of the user
   operationId: getWithdrawalHistory
   parameters:
-    - $ref: '#/components/parameters/pathDID'
+    - $ref: '#/components/parameters/pathNullifier'
     - $ref: '#/components/parameters/pageCursor'
     - $ref: '#/components/parameters/pageLimit'
     - $ref: '#/components/parameters/pageOrder'
@@ -39,7 +39,7 @@ post:
     Updated balance with new rank is returned.
   operationId: withdrawPoints
   parameters:
-    - $ref: '#/components/parameters/pathDID'
+    - $ref: '#/components/parameters/pathNullifier'
   requestBody:
     required: true
     content:

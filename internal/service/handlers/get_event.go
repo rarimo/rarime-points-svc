@@ -37,7 +37,7 @@ func GetEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(event.UserDID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(event.Nullifier)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}

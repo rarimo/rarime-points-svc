@@ -7,7 +7,7 @@ get:
     You should create new balance for the new user by making POST request.
   operationId: getPointsBalance
   parameters:
-    - $ref: '#/components/parameters/pathDID'
+    - $ref: '#/components/parameters/pathNullifier'
     - in: query
       name: 'rank'
       description: 'Specifies whether to return the rank'
@@ -47,10 +47,10 @@ patch:
   summary: Activate points balance
   description: |
     Activate inactive balance. Balance is inactive when referred_by field is null.
-    did in query must match with id in request body
+    nullifier in query must match with id in request body
   operationId: activatePointsBalance
   parameters:
-    - $ref: '#/components/parameters/pathDID'
+    - $ref: '#/components/parameters/pathNullifier'
   requestBody:
     content:
       application/vnd.api+json:

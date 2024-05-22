@@ -10,7 +10,7 @@ import (
 )
 
 func NewWithdraw(r *http.Request) (req resources.WithdrawRequest, err error) {
-	did := chi.URLParam(r, "did")
+	nullifier := chi.URLParam(r, "nullifier")
 
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		err = newDecodeError("body", err)
@@ -18,7 +18,7 @@ func NewWithdraw(r *http.Request) (req resources.WithdrawRequest, err error) {
 	}
 
 	return req, validation.Errors{
-		"data/id":                 validation.Validate(req.Data.ID, validation.Required, validation.In(did)),
+		"data/id":                 validation.Validate(req.Data.ID, validation.Required, validation.In(nullifier)),
 		"data/type":               validation.Validate(req.Data.Type, validation.Required, validation.In(resources.WITHDRAW)),
 		"data/attributes/amount":  validation.Validate(req.Data.Attributes.Amount, validation.Required, validation.Min(1)),
 		"data/attributes/address": validation.Validate(req.Data.Attributes.Address, validation.Required),
