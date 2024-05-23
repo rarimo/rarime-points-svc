@@ -12,7 +12,6 @@ import (
 )
 
 const balancesTable = "balances"
-const balancesRankColumns = ", MAX(amount) as amount, created_at, updated_at, referred_by, passport_hash, passport_expires"
 
 type balances struct {
 	db       *pgdb.DB

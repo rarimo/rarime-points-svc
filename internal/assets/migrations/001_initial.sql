@@ -5,7 +5,7 @@ AS $$ BEGIN NEW.updated_at = EXTRACT('EPOCH' FROM NOW()); RETURN NEW; END; $$;
 
 CREATE TABLE IF NOT EXISTS balances
 (
-    nullifier             CHAR(66) PRIMARY KEY CHECK (nullifier ~ '^0x[0-9a-fA-F]{64}$'),
+    nullifier             TEXT PRIMARY KEY,
     amount                bigint  NOT NULL default 0,
     created_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     updated_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
@@ -26,19 +26,19 @@ EXECUTE FUNCTION trigger_set_updated_at();
 CREATE TABLE IF NOT EXISTS referrals
 (
     id          text PRIMARY KEY,
-    nullifier   CHAR(66)    NOT NULL REFERENCES balances (nullifier),
+    nullifier   TEXT    NOT NULL REFERENCES balances (nullifier),
     is_consumed boolean NOT NULL default false
 );
 
 ALTER TABLE balances ADD CONSTRAINT referred_by_fk FOREIGN KEY (referred_by) REFERENCES referrals (id);
-CREATE INDEX IF NOT EXISTS referrals_user_did_index ON referrals (nullifier);
+CREATE INDEX IF NOT EXISTS referrals_nullifier_index ON referrals (nullifier);
 
 CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed');
 
 CREATE TABLE IF NOT EXISTS events
 (
     id            uuid PRIMARY KEY NOT NULL default gen_random_uuid(),
-    nullifier     CHAR(66)    NOT NULL REFERENCES balances (nullifier),
+    nullifier     TEXT    NOT NULL REFERENCES balances (nullifier),
     type          text             NOT NULL,
     status        event_status     NOT NULL,
     created_at    integer          NOT NULL default EXTRACT('EPOCH' FROM NOW()),
@@ -60,7 +60,7 @@ EXECUTE FUNCTION trigger_set_updated_at();
 CREATE TABLE IF NOT EXISTS withdrawals
 (
     id         uuid PRIMARY KEY default gen_random_uuid(),
-    nullifier  CHAR(66)    NOT NULL REFERENCES balances (nullifier),
+    nullifier  TEXT    NOT NULL REFERENCES balances (nullifier),
     amount     integer NOT NULL,
     address    text    NOT NULL,
     created_at integer NOT NULL default EXTRACT('EPOCH' FROM NOW())

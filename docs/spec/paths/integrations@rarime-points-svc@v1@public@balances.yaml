@@ -39,7 +39,7 @@ post:
     404:
       $ref: '#/components/responses/notFound'
     409:
-      description: Balance already exists for provide nullifier
+      description: Balance already exists for provided nullifier
       content:
         application/vnd.api+json:
           schema:

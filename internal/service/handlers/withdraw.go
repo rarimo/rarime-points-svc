@@ -17,12 +17,6 @@ import (
 )
 
 func Withdraw(w http.ResponseWriter, r *http.Request) {
-
-	if PointPrice(r).Disabled {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-
 	req, err := requests.NewWithdraw(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
@@ -33,6 +27,12 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		"points_amount": req.Data.Attributes.Amount,
 		"dest_address":  req.Data.Attributes.Address,
 	})
+
+	if PointPrice(r).Disabled {
+		log.Debug("Withdrawal disabled!")
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
 
 	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Data.ID)) {
 		ape.RenderErr(w, problems.Unauthorized())
