@@ -179,6 +179,48 @@ paths:
                 $ref: '#/components/schemas/Errors'
         '500':
           $ref: '#/components/responses/internalError'
+  '/integrations/rarime-points-svc/v1/public/balances/{nullifier}/verifypassport':
+    post:
+      tags:
+        - Points balance
+      summary: Verify passport
+      description: |
+        Fulfill verify passport event if it is open
+      operationId: verifyPassport
+      parameters:
+        - $ref: '#/components/parameters/pathNullifier'
+      requestBody:
+        required: true
+        content:
+          application/vnd.api+json:
+            schema:
+              type: object
+              required:
+                - data
+              properties:
+                data:
+                  $ref: '#/components/schemas/VerifyPassport'
+      responses:
+        '204':
+          description: Success
+        '400':
+          $ref: '#/components/responses/invalidParameter'
+        '401':
+          $ref: '#/components/responses/invalidAuth'
+        '404':
+          description: Balance not exists.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/Errors'
+        '429':
+          description: Passport already verified or event absent for user.
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/Errors'
+        '500':
+          $ref: '#/components/responses/internalError'
   '/integrations/rarime-points-svc/v1/public/balances/{nullifier}/withdrawals':
     get:
       tags:
@@ -765,6 +807,38 @@ components:
           type: string
           enum:
             - point_price
+    VerifyPassport:
+      allOf:
+        - $ref: '#/components/schemas/VerifyPassportKey'
+        - type: object
+          x-go-is-request: true
+          required:
+            - attributes
+          properties:
+            attributes:
+              required:
+                - proof
+              type: object
+              properties:
+                proof:
+                  type: object
+                  format: json.RawMessage
+                  description: JSON encoded ZK passport verification proof.
+    VerifyPassportKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          description: Nullifier of the points owner
+          example: 0x123...abc
+          pattern: '^0x[0-9a-fA-F]{64}$'
+        type:
+          type: string
+          enum:
+            - verify_passport
     Withdraw:
       allOf:
         - $ref: '#/components/schemas/WithdrawKey'
