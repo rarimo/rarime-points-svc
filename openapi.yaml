@@ -20,7 +20,7 @@ paths:
         the new account synchronously (to display them right after the request).
 
         If balance already exists, but it is disabled (it was not referred by another user,
-        but has fulfilled some event), you should use PATCH balances/{did} endpoint as well.
+        but has fulfilled some event), you should use PATCH balances/{nullifier} endpoint as well.
       operationId: createPointsBalance
       requestBody:
         content:
@@ -49,7 +49,7 @@ paths:
         '404':
           $ref: '#/components/responses/notFound'
         '409':
-          description: Balance already exists for provided DID
+          description: Balance already exists for provided nullifier
           content:
             application/vnd.api+json:
               schema:
@@ -90,7 +90,7 @@ paths:
                 $ref: '#/components/schemas/Errors'
         '500':
           $ref: '#/components/responses/internalError'
-  '/integrations/rarime-points-svc/v1/public/balances/{did}':
+  '/integrations/rarime-points-svc/v1/public/balances/{nullifier}':
     get:
       tags:
         - Points balance
@@ -100,7 +100,7 @@ paths:
         You should create new balance for the new user by making POST request.
       operationId: getPointsBalance
       parameters:
-        - $ref: '#/components/parameters/pathDID'
+        - $ref: '#/components/parameters/pathNullifier'
         - in: query
           name: rank
           description: Specifies whether to return the rank
@@ -139,10 +139,10 @@ paths:
       summary: Activate points balance
       description: |
         Activate inactive balance. Balance is inactive when referred_by field is null.
-        did in query must match with id in request body
+        nullifier in query must match with id in request body
       operationId: activatePointsBalance
       parameters:
-        - $ref: '#/components/parameters/pathDID'
+        - $ref: '#/components/parameters/pathNullifier'
       requestBody:
         content:
           application/vnd.api+json:
@@ -179,7 +179,7 @@ paths:
                 $ref: '#/components/schemas/Errors'
         '500':
           $ref: '#/components/responses/internalError'
-  '/integrations/rarime-points-svc/v1/public/balances/{did}/withdrawals':
+  '/integrations/rarime-points-svc/v1/public/balances/{nullifier}/withdrawals':
     get:
       tags:
         - Points balance
@@ -187,7 +187,7 @@ paths:
       description: Points withdrawal history of the user
       operationId: getWithdrawalHistory
       parameters:
-        - $ref: '#/components/parameters/pathDID'
+        - $ref: '#/components/parameters/pathNullifier'
         - $ref: '#/components/parameters/pageCursor'
         - $ref: '#/components/parameters/pageLimit'
         - $ref: '#/components/parameters/pageOrder'
@@ -220,7 +220,7 @@ paths:
         Updated balance with new rank is returned.
       operationId: withdrawPoints
       parameters:
-        - $ref: '#/components/parameters/pathDID'
+        - $ref: '#/components/parameters/pathNullifier'
       requestBody:
         required: true
         content:
@@ -263,7 +263,7 @@ paths:
       description: Returns events for a single user.
       operationId: getEvents
       parameters:
-        - $ref: '#/components/parameters/filterDID'
+        - $ref: '#/components/parameters/filterNullifier'
         - in: query
           name: 'filter[status]'
           description: |
@@ -510,8 +510,9 @@ components:
       properties:
         id:
           type: string
-          description: DID of the points owner
-          example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+          description: Nullifier of the points owner
+          example: 0x123...abc
+          pattern: '^0x[0-9a-fA-F]{64}$'
         type:
           type: string
           enum:
@@ -554,8 +555,9 @@ components:
       properties:
         id:
           type: string
-          description: DID of the points owner
-          example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+          description: Nullifier of the points owner
+          example: 0x123...abc
+          pattern: '^0x[0-9a-fA-F]{64}$'
         type:
           type: string
           enum:
@@ -847,8 +849,9 @@ components:
       properties:
         id:
           type: string
-          description: DID of the points owner
-          example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+          description: Nullifier of the points owner
+          example: 0x123...abc
+          pattern: '^0x[0-9a-fA-F]{64}$'
         type:
           type: string
           enum:
@@ -879,14 +882,15 @@ components:
           schema:
             $ref: '#/components/schemas/Errors'
   parameters:
-    filterDID:
+    filterNullifier:
       in: query
-      name: 'filter[did]'
+      name: 'filter[nullifier]'
       required: true
-      description: Filter by single user DID. Auth is required for this filter.
+      description: Filter by single nullifier. Auth is required for this filter.
       schema:
         type: string
-        example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+        example: 0x123...abc
+        pattern: '^0x[0-9a-fA-F]{64}$'
     pageCursor:
       in: query
       name: 'page[cursor]'
@@ -925,10 +929,11 @@ components:
           - desc
         default: desc
         description: Order of records on the page.
-    pathDID:
+    pathNullifier:
       in: path
-      name: did
+      name: nullifier
       required: true
       schema:
         type: string
-        example: 'did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV'
+        example: 0x123...abc
+        pattern: '^0x[0-9a-fA-F]{64}$'

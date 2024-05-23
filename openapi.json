@@ -18,7 +18,7 @@
           "Points balance"
         ],
         "summary": "Create points balance",
-        "description": "Create an empty balance for authorized user who makes the request. Rank is included\nin response.\n\nThis operation might be time-consuming, because `open` events should be added for\nthe new account synchronously (to display them right after the request).\n\nIf balance already exists, but it is disabled (it was not referred by another user,\nbut has fulfilled some event), you should use PATCH balances/{did} endpoint as well.\n",
+        "description": "Create an empty balance for authorized user who makes the request. Rank is included\nin response.\n\nThis operation might be time-consuming, because `open` events should be added for\nthe new account synchronously (to display them right after the request).\n\nIf balance already exists, but it is disabled (it was not referred by another user,\nbut has fulfilled some event), you should use PATCH balances/{nullifier} endpoint as well.\n",
         "operationId": "createPointsBalance",
         "requestBody": {
           "content": {
@@ -63,7 +63,7 @@
             "$ref": "#/components/responses/notFound"
           },
           "409": {
-            "description": "Balance already exists for provided DID",
+            "description": "Balance already exists for provided nullifier",
             "content": {
               "application/vnd.api+json": {
                 "schema": {
@@ -136,7 +136,7 @@
         }
       }
     },
-    "/integrations/rarime-points-svc/v1/public/balances/{did}": {
+    "/integrations/rarime-points-svc/v1/public/balances/{nullifier}": {
       "get": {
         "tags": [
           "Points balance"
@@ -146,7 +146,7 @@
         "operationId": "getPointsBalance",
         "parameters": [
           {
-            "$ref": "#/components/parameters/pathDID"
+            "$ref": "#/components/parameters/pathNullifier"
           },
           {
             "in": "query",
@@ -204,11 +204,11 @@
           "Points balance"
         ],
         "summary": "Activate points balance",
-        "description": "Activate inactive balance. Balance is inactive when referred_by field is null.\ndid in query must match with id in request body\n",
+        "description": "Activate inactive balance. Balance is inactive when referred_by field is null.\nnullifier in query must match with id in request body\n",
         "operationId": "activatePointsBalance",
         "parameters": [
           {
-            "$ref": "#/components/parameters/pathDID"
+            "$ref": "#/components/parameters/pathNullifier"
           }
         ],
         "requestBody": {
@@ -272,7 +272,7 @@
         }
       }
     },
-    "/integrations/rarime-points-svc/v1/public/balances/{did}/withdrawals": {
+    "/integrations/rarime-points-svc/v1/public/balances/{nullifier}/withdrawals": {
       "get": {
         "tags": [
           "Points balance"
@@ -282,7 +282,7 @@
         "operationId": "getWithdrawalHistory",
         "parameters": [
           {
-            "$ref": "#/components/parameters/pathDID"
+            "$ref": "#/components/parameters/pathNullifier"
           },
           {
             "$ref": "#/components/parameters/pageCursor"
@@ -336,7 +336,7 @@
         "operationId": "withdrawPoints",
         "parameters": [
           {
-            "$ref": "#/components/parameters/pathDID"
+            "$ref": "#/components/parameters/pathNullifier"
           }
         ],
         "requestBody": {
@@ -405,7 +405,7 @@
         "operationId": "getEvents",
         "parameters": [
           {
-            "$ref": "#/components/parameters/filterDID"
+            "$ref": "#/components/parameters/filterNullifier"
           },
           {
             "in": "query",
@@ -763,8 +763,9 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "DID of the points owner",
-            "example": "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
+            "description": "Nullifier of the points owner",
+            "example": "0x123...abc",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
           },
           "type": {
             "type": "string",
@@ -831,8 +832,9 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "DID of the points owner",
-            "example": "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
+            "description": "Nullifier of the points owner",
+            "example": "0x123...abc",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
           },
           "type": {
             "type": "string",
@@ -1243,8 +1245,9 @@
         "properties": {
           "id": {
             "type": "string",
-            "description": "DID of the points owner",
-            "example": "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
+            "description": "Nullifier of the points owner",
+            "example": "0x123...abc",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
           },
           "type": {
             "type": "string",
@@ -1298,14 +1301,15 @@
       }
     },
     "parameters": {
-      "filterDID": {
+      "filterNullifier": {
         "in": "query",
-        "name": "filter[did]",
+        "name": "filter[nullifier]",
         "required": true,
-        "description": "Filter by single user DID. Auth is required for this filter.",
+        "description": "Filter by single nullifier. Auth is required for this filter.",
         "schema": {
           "type": "string",
-          "example": "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
+          "example": "0x123...abc",
+          "pattern": "^0x[0-9a-fA-F]{64}$"
         }
       },
       "pageCursor": {
@@ -1355,13 +1359,14 @@
           "description": "Order of records on the page."
         }
       },
-      "pathDID": {
+      "pathNullifier": {
         "in": "path",
-        "name": "did",
+        "name": "nullifier",
         "required": true,
         "schema": {
           "type": "string",
-          "example": "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV"
+          "example": "0x123...abc",
+          "pattern": "^0x[0-9a-fA-F]{64}$"
         }
       }
     }
