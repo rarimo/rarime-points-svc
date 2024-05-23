@@ -122,8 +122,6 @@ func isEligibleToWithdraw(balance *data.Balance, amount int64) error {
 	switch {
 	case !balance.ReferredBy.Valid:
 		return mapValidationErr("is_disabled", "user must be referred to withdraw")
-	case !balance.IsWithdrawalAllowed:
-		return mapValidationErr("is_withdrawal_allowed", "withdrawal ability was disabled for this user")
 	case balance.Amount < amount:
 		return mapValidationErr("data/attributes/amount", "insufficient balance: %d", balance.Amount)
 	}

@@ -8,7 +8,7 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-const proofEventIDValue = ""
+const proofEventIDValue = "TODO"
 
 func (c *config) Verifier() *zk.Verifier {
 	return c.verifier.Do(func() interface{} {

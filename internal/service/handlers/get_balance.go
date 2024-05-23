@@ -72,8 +72,6 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 
 func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
 	resp := resources.BalanceResponse{Data: newBalanceModel(balance)}
-	resp.Data.Attributes.IsWithdrawalAllowed = &balance.IsWithdrawalAllowed
-
 	if len(referrals) == 0 {
 		return resp
 	}

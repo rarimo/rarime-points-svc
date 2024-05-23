@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -47,14 +48,14 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 
 	if !balance.ReferredBy.Valid {
 		Log(r).Debug("Balance inactive")
-		ape.RenderErr(w, problems.BadRequest(errors.New("Balance inactive"))...)
+		ape.RenderErr(w, problems.BadRequest(validation.Errors{"referred_by": errors.New("balance inactive")})...)
 		return
 	}
 
 	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evType == nil {
 		Log(r).Debug("Passport scan event absent, disabled, hasn't start yet or expired")
-		w.WriteHeader(http.StatusNoContent)
+		ape.RenderErr(w, problems.BadRequest(validation.Errors{"passport_scan": errors.New("event disabled or absent")})...)
 		return
 	}
 
@@ -87,8 +88,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = EventsQ(r).
-		FilterByNullifier(nullifier).
-		FilterByType(evtypes.TypePassportScan).
+		FilterByID(event.ID).
 		Update(data.EventFulfilled, nil, nil)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to update passport scan event")

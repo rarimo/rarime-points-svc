@@ -11,7 +11,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/resources"
 )
 
-var NullifierRegexp = regexp.MustCompile("^0x[0-9a-fA-F]{64}$")
+var nullifierRegexp = regexp.MustCompile("^0x[0-9a-fA-F]{64}$")
 
 func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, err error) {
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -25,7 +25,7 @@ func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, er
 		"data/id": validation.Validate(req.Data.ID,
 			validation.Required,
 			validation.In(strings.ToLower(chi.URLParam(r, "nullifier"))),
-			validation.Match(NullifierRegexp)),
+			validation.Match(nullifierRegexp)),
 		"data/type": validation.Validate(req.Data.Type,
 			validation.Required,
 			validation.In(resources.VERIFY_PASSPORT)),

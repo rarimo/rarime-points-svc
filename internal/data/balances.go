@@ -7,20 +7,18 @@ import (
 )
 
 type Balance struct {
-	Nullifier           string         `db:"nullifier"`
-	Amount              int64          `db:"amount"`
-	CreatedAt           int32          `db:"created_at"`
-	UpdatedAt           int32          `db:"updated_at"`
-	ReferredBy          sql.NullString `db:"referred_by"`
-	Rank                *int           `db:"rank"`
-	IsWithdrawalAllowed bool           `db:"is_withdrawal_allowed"`
+	Nullifier  string         `db:"nullifier"`
+	Amount     int64          `db:"amount"`
+	CreatedAt  int32          `db:"created_at"`
+	UpdatedAt  int32          `db:"updated_at"`
+	ReferredBy sql.NullString `db:"referred_by"`
+	Rank       *int           `db:"rank"`
 }
 
 type BalancesQ interface {
 	New() BalancesQ
 	Insert(Balance) error
 	UpdateAmountBy(points int64) error
-	SetIsWithdrawalAllowed(isWithdrawalAllowed bool) error
 	SetReferredBy(referralCode string) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ

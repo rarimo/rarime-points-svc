@@ -54,17 +54,6 @@ func (q *balances) UpdateAmountBy(points int64) error {
 	return nil
 }
 
-func (q *balances) SetIsWithdrawalAllowed(isWithdrawalAllowed bool) error {
-	stmt := q.updater.
-		Set("is_withdrawal_allowed", isWithdrawalAllowed)
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set isWithdrawalAllowed: %w", err)
-	}
-
-	return nil
-}
-
 func (q *balances) SetReferredBy(referralCode string) error {
 	stmt := q.updater.
 		Set("referred_by", referralCode)
