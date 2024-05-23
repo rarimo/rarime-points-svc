@@ -10,8 +10,6 @@ CREATE TABLE IF NOT EXISTS balances
     created_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     updated_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     referred_by           text UNIQUE,
-    passport_hash         text UNIQUE,
-    passport_expires      timestamp without time zone,
     is_withdrawal_allowed boolean NOT NULL default false
 );
 

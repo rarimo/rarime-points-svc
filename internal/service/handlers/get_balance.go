@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -63,7 +62,6 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 		},
 		Attributes: resources.BalanceAttributes{
 			Amount:     balance.Amount,
-			IsVerified: balance.PassportExpires.Time.After(time.Now().UTC()),
 			IsDisabled: !balance.ReferredBy.Valid,
 			CreatedAt:  balance.CreatedAt,
 			UpdatedAt:  balance.UpdatedAt,

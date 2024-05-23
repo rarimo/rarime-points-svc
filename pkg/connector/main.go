@@ -54,6 +54,8 @@ func (c *Client) FulfillEvent(ctx context.Context, req FulfillEventRequest) *Err
 }
 
 func (c *Client) FulfillVerifyProofEvent(ctx context.Context, req FulfillVerifyProofEventRequest) *Error {
+	// Deprecated: We will not share any data
+	// and that connector currently not used
 	if c.disabled {
 		c.log.Info("Points connector disabled")
 		return nil

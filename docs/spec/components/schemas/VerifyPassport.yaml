@@ -1,0 +1,16 @@
+allOf:
+  - $ref: '#/components/schemas/VerifyPassportKey'
+  - type: object
+    x-go-is-request: true
+    required:
+      - attributes
+    properties:
+      attributes:
+        required:
+          - proof
+        type: object
+        properties:
+          proof:
+            type: object
+            format: json.RawMessage
+            description: JSON encoded ZK passport verification proof.

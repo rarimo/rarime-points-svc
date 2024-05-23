@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/Masterminds/squirrel"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -33,11 +32,9 @@ func (q *balances) New() data.BalancesQ {
 
 func (q *balances) Insert(bal data.Balance) error {
 	stmt := squirrel.Insert(balancesTable).SetMap(map[string]interface{}{
-		"nullifier":        bal.Nullifier,
-		"amount":           bal.Amount,
-		"referred_by":      bal.ReferredBy,
-		"passport_hash":    bal.PassportHash,
-		"passport_expires": bal.PassportExpires,
+		"nullifier":   bal.Nullifier,
+		"amount":      bal.Amount,
+		"referred_by": bal.ReferredBy,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -57,14 +54,12 @@ func (q *balances) UpdateAmountBy(points int64) error {
 	return nil
 }
 
-func (q *balances) SetPassport(hash string, exp time.Time, isWithdrawalAllowed bool) error {
+func (q *balances) SetIsWithdrawalAllowed(isWithdrawalAllowed bool) error {
 	stmt := q.updater.
-		Set("passport_hash", hash).
-		Set("passport_expires", exp).
 		Set("is_withdrawal_allowed", isWithdrawalAllowed)
 
 	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set passport hash and expires, and isWithdrawalAllowed: %w", err)
+		return fmt.Errorf("set isWithdrawalAllowed: %w", err)
 	}
 
 	return nil
@@ -130,10 +125,6 @@ func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 
 func (q *balances) FilterByNullifier(nullifier string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
-}
-
-func (q *balances) FilterByPassportHash(passportHash string) data.BalancesQ {
-	return q.applyCondition(squirrel.Eq{"passport_hash": passportHash})
 }
 
 func (q *balances) FilterDisabled() data.BalancesQ {
