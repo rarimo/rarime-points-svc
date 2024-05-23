@@ -125,7 +125,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to add referal event and update verify passport event")
+		Log(r).WithError(err).Error("Failed to add referral event and update verify passport event")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
