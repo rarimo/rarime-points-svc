@@ -119,7 +119,7 @@ func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balan
 
 // Take summary points after claim and calculate new lvls
 func levelsToUp(r *http.Request, level int, points int64) (referralsToAdd int, newLevel int) {
-	var lvls []int
+	lvls := make([]int, 0, len(Levels(r)))
 	for k, v := range Levels(r) {
 		if k <= level {
 			continue
