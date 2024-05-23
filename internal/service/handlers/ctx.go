@@ -9,6 +9,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"
+	zk "github.com/rarimo/zkverifier-kit"
 	"gitlab.com/distributed_lab/logan/v3"
 )
 
@@ -24,6 +25,7 @@ const (
 	userClaimsCtxKey
 	broadcasterCtxKey
 	pointPriceCtxKey
+	verifierCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -114,4 +116,14 @@ func CtxPointPrice(price config.PointsPrice) func(context.Context) context.Conte
 
 func PointPrice(r *http.Request) config.PointsPrice {
 	return r.Context().Value(pointPriceCtxKey).(config.PointsPrice)
+}
+
+func CtxVerifier(verifier *zk.Verifier) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, verifierCtxKey, verifier)
+	}
+}
+
+func Verifier(r *http.Request) *zk.Verifier {
+	return r.Context().Value(verifierCtxKey).(*zk.Verifier)
 }

@@ -9,9 +9,6 @@ listener:
   addr: localhost:8000
 
 event_types:
-  passport_rewards:
-      age: 20
-      nationality: 50
   types:
     - name: passport_scan
       title: Points for passport scan

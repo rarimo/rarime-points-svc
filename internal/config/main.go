@@ -5,6 +5,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"
+	zk "github.com/rarimo/zkverifier-kit"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/kit/pgdb"
@@ -19,6 +20,7 @@ type Config interface {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 
+	Verifier() *zk.Verifier
 	PointPrice() PointsPrice
 }
 
@@ -31,6 +33,7 @@ type config struct {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 
+	verifier   comfig.Once
 	pointPrice comfig.Once
 	getter     kv.Getter
 }

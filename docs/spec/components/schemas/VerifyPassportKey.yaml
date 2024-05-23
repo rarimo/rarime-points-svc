@@ -1,0 +1,13 @@
+type: object
+required:
+  - id
+  - type
+properties:
+  id:
+    type: string
+    description: Nullifier of the points owner
+    example: "0x123...abc"
+    pattern: '^0x[0-9a-fA-F]{64}$'
+  type:
+    type: string
+    enum: [ verify_passport ]

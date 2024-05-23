@@ -1,0 +1,41 @@
+post:
+  tags:
+    - Points balance
+  summary: Verify passport
+  description: |
+    Fulfill verify passport event if it is open
+  operationId: verifyPassport
+  parameters:
+    - $ref: '#/components/parameters/pathNullifier'
+  requestBody:
+    required: true
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/VerifyPassport'
+  responses:
+    204:
+      description: Success
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    404:
+      description: Balance not exists.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    429:
+      description: Passport already verified or event absent for user.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    500:
+      $ref: '#/components/responses/internalError'

@@ -73,9 +73,8 @@ func (e EventConfig) Resource() resources.EventStaticMeta {
 }
 
 type Types struct {
-	m               map[string]EventConfig
-	list            []EventConfig
-	passportRewards map[string]int
+	m    map[string]EventConfig
+	list []EventConfig
 }
 
 func (t Types) Get(name string, filters ...filter) *EventConfig {
@@ -141,16 +140,4 @@ func (t Types) ensureInitialized() {
 	if t.m == nil || t.list == nil {
 		panic("event types are not correctly initialized")
 	}
-}
-
-func (t Types) CalculatePassportScanReward(sharedFields ...string) (*int64, bool) {
-	var reward int64
-	for _, field := range sharedFields {
-		val, ok := t.passportRewards[field]
-		if !ok {
-			return nil, false
-		}
-		reward += int64(val)
-	}
-	return &reward, true
 }

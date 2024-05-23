@@ -5,8 +5,6 @@ import (
 	"net/http"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
-	"github.com/rarimo/rarime-points-svc/internal/data"
-	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -77,23 +75,6 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("consume referral: %w", err)
 		}
 
-		if balance.PassportHash.Valid {
-			evType := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
-			if evType == nil {
-				Log(r).Debug("Referral event type is disabled or expired, not accruing points to referrer")
-				return nil
-			}
-
-			err = EventsQ(r).Insert(data.Event{
-				Nullifier: referral.Nullifier,
-				Type:      evType.Name,
-				Status:    data.EventFulfilled,
-				Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, nullifier)),
-			})
-			if err != nil {
-				return fmt.Errorf("add event for referrer: %w", err)
-			}
-		}
 		return nil
 	})
 
