@@ -20,6 +20,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxEventTypes(cfg.EventTypes()),
 			handlers.CtxBroadcaster(cfg.Broadcaster()),
 			handlers.CtxPointPrice(cfg.PointPrice()),
+			handlers.CtxLevels(cfg.Leveler()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)

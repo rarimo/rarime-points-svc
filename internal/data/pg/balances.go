@@ -65,6 +65,17 @@ func (q *balances) SetReferredBy(referralCode string) error {
 	return nil
 }
 
+func (q *balances) SetLevel(level int) error {
+	stmt := q.updater.
+		Set("level", level)
+
+	if err := q.db.Exec(stmt); err != nil {
+		return fmt.Errorf("set level: %w", err)
+	}
+
+	return nil
+}
+
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
 	q.selector = page.ApplyTo(q.selector, "amount", "updated_at")
 	return q

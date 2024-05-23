@@ -8,20 +8,16 @@ allOf:
         type: object
         required:
           - amount
-          - is_verified
           - is_disabled
           - created_at
           - updated_at
+          - level
         properties:
           amount:
             type: integer
             format: int64
             description: Amount of points
             example: 580
-          is_verified:
-            type: boolean
-            description: Whether the user has scanned passport
-            example: true
           is_disabled:
             type: boolean
             description: |
@@ -56,7 +52,8 @@ allOf:
             example: ["73k3bdYaFWM", "9csIL7dW65m"]
             items:
               type: string
-          is_withdrawal_allowed:
-            type: boolean
-            description: Whether the user can withdraw tokens. Returned only for the single user.
-            example: true
+          level:
+            type: integer
+            format: int
+            description: The level indicates how many possibilities the user has 
+            example: 2           

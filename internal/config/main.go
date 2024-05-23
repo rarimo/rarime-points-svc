@@ -20,6 +20,7 @@ type Config interface {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 
+	Leveler() Levels
 	Verifier() *zk.Verifier
 	PointPrice() PointsPrice
 }
@@ -33,6 +34,7 @@ type config struct {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 
+	leveler    comfig.Once
 	verifier   comfig.Once
 	pointPrice comfig.Once
 	getter     kv.Getter

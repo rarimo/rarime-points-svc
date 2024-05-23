@@ -102,6 +102,21 @@ event_types:
       description: Event that become fulfilled when another user verify you proof nationality (user that verify must have verified passport)
       short_description: Short description
 
+levels:
+  levels:
+    - lvl: 1
+      threshold: 0
+      referrals: 5
+      withdrawal_allowed: false
+    - lvl: 2
+      threshold: 20
+      referrals: 5
+      withdrawal_allowed: true
+    - lvl: 3
+      threshold: 40
+      referrals: 5
+      withdrawal_allowed: true
+
 auth:
   addr: http://rarime-auth
 

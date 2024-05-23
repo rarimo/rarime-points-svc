@@ -15,10 +15,8 @@ type BalanceAttributes struct {
 	CreatedAt int32 `json:"created_at"`
 	// Whether the user was not referred by anybody, but the balance with some events was reserved. It happens when the user fulfills some event before the balance creation.
 	IsDisabled bool `json:"is_disabled"`
-	// Whether the user has scanned passport
-	IsVerified bool `json:"is_verified"`
-	// Whether the user can withdraw tokens. Returned only for the single user.
-	IsWithdrawalAllowed *bool `json:"is_withdrawal_allowed,omitempty"`
+	// The level indicates how many possibilities the user has
+	Level int `json:"level"`
 	// Rank of the user in the full leaderboard. Returned only for the single user.
 	Rank *int `json:"rank,omitempty"`
 	// Unix timestamp of the last points accruing

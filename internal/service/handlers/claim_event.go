@@ -3,14 +3,15 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"slices"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
-	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
+	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
 func ClaimEvent(w http.ResponseWriter, r *http.Request) {
@@ -48,15 +49,6 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
-	if event.Type == evtypes.TypePassportScan {
-		if event.PointsAmount == nil {
-			Log(r).WithError(err).Errorf("PointsAmount can't be nil for event %s",
-				event.Type)
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-		evType.Reward = *event.PointsAmount
-	}
 
 	balance, err := BalancesQ(r).FilterByNullifier(event.Nullifier).FilterDisabled().Get()
 	if err != nil {
@@ -70,7 +62,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err = claimEventWithPoints(*event, evType.Reward, r)
+	event, err = claimEventWithPoints(r, *event, evType.Reward, balance)
 	if err != nil {
 		Log(r).WithError(err).Errorf("Failed to claim event %s and accrue %d points to the balance %s",
 			event.ID, evType.Reward, event.Nullifier)
@@ -90,8 +82,25 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 }
 
 // requires: event exist
-func claimEventWithPoints(event data.Event, reward int64, r *http.Request) (claimed *data.Event, err error) {
+func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balance *data.Balance) (claimed *data.Event, err error) {
 	err = EventsQ(r).Transaction(func() error {
+		refsCount, level := levelsToUp(r, balance.Level, reward+balance.Amount)
+		if level != 0 {
+			count, err := ReferralsQ(r).FilterByNullifier(event.Nullifier).Count()
+			if err != nil {
+				return errors.Wrap(err, "failed to get referral count")
+			}
+
+			refToAdd := prepareReferralsToAdd(event.Nullifier, uint64(refsCount), count)
+			if err = ReferralsQ(r).Insert(refToAdd...); err != nil {
+				return errors.Wrap(err, "failed to insert referrals")
+			}
+
+			if err = BalancesQ(r).FilterByNullifier(event.Nullifier).SetLevel(level); err != nil {
+				return errors.Wrap(err, "failed to update level")
+			}
+		}
+
 		updated, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
 		if err != nil {
 			return fmt.Errorf("update event status: %w", err)
@@ -105,6 +114,25 @@ func claimEventWithPoints(event data.Event, reward int64, r *http.Request) (clai
 		claimed = updated
 		return nil
 	})
+	return
+}
+
+// Take summary points after claim and calculate new lvls
+func levelsToUp(r *http.Request, level int, points int64) (referralsToAdd int, newLevel int) {
+	var lvls []int
+	for k, v := range Levels(r) {
+		if k <= level {
+			continue
+		}
+		if int64(v.Threshold) > points {
+			break
+		}
+
+		referralsToAdd += v.Referrals
+		lvls = append(lvls, k)
+	}
+
+	newLevel = slices.Max(lvls)
 	return
 }
 
