@@ -219,7 +219,7 @@ func (r *runner) handleEvent(evt verifiers.SBTIdentityVerifierSBTIdentityProved)
 }
 
 func (r *runner) createBalanceIfAbsent(did string) error {
-	balance, err := r.balancesQ().FilterByDID(did).Get()
+	balance, err := r.balancesQ().FilterByNullifier(did).Get()
 	if err != nil {
 		return fmt.Errorf("get balance: %w", err)
 	}
@@ -238,7 +238,7 @@ func (r *runner) createBalanceIfAbsent(did string) error {
 
 func (r *runner) findPohEvent(did string) (*data.Event, error) {
 	poh, err := r.eventsQ().
-		FilterByUserDID(did).
+		FilterByNullifier(did).
 		FilterByType(evtypes.TypeGetPoH).
 		Get()
 	if err != nil {
@@ -250,7 +250,7 @@ func (r *runner) findPohEvent(did string) (*data.Event, error) {
 
 	if poh.Status != data.EventOpen {
 		r.log.Infof("User %s is not eligible for another PoH event (id=%s status=%s)",
-			poh.UserDID, poh.ID, poh.Status)
+			poh.Nullifier, poh.ID, poh.Status)
 		return nil, nil
 	}
 
@@ -273,7 +273,7 @@ func (r *runner) fulfillPohEvent(poh data.Event) error {
 
 func (r *runner) createBalance(did string) error {
 	return r.eventsQ().Transaction(func() error {
-		err := r.balancesQ().Insert(data.Balance{DID: did})
+		err := r.balancesQ().Insert(data.Balance{Nullifier: did})
 		if err != nil {
 			return fmt.Errorf("insert balance: %w", err)
 		}

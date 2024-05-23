@@ -10,7 +10,7 @@ post:
     the new account synchronously (to display them right after the request).
     
     If balance already exists, but it is disabled (it was not referred by another user,
-    but has fulfilled some event), you should use PATCH balances/{did} endpoint as well.
+    but has fulfilled some event), you should use PATCH balances/{nullifier} endpoint as well.
   operationId: createPointsBalance
   requestBody:
     content:
@@ -39,7 +39,7 @@ post:
     404:
       $ref: '#/components/responses/notFound'
     409:
-      description: Balance already exists for provided DID
+      description: Balance already exists for provided nullifier
       content:
         application/vnd.api+json:
           schema:

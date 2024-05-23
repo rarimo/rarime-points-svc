@@ -8,7 +8,7 @@ import (
 	cosmos "github.com/cosmos/cosmos-sdk/types"
 	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/rarimo/auth-svc/pkg/auth"
+	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -23,19 +23,25 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	log := Log(r).WithFields(map[string]any{
-		"user_did":      req.Data.ID,
+		"nullifier":     req.Data.ID,
 		"points_amount": req.Data.Attributes.Amount,
 		"dest_address":  req.Data.Attributes.Address,
 	})
+
+	if PointPrice(r).Disabled {
+		log.Debug("Withdrawal disabled!")
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
 
 	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Data.ID)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
-	balance, err := BalancesQ(r).FilterByDID(req.Data.ID).Get()
+	balance, err := BalancesQ(r).FilterByNullifier(req.Data.ID).Get()
 	if err != nil {
-		log.WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -52,15 +58,15 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	var withdrawal *data.Withdrawal
 	err = EventsQ(r).Transaction(func() error {
-		err = BalancesQ(r).FilterByDID(req.Data.ID).UpdateAmountBy(-req.Data.Attributes.Amount)
+		err = BalancesQ(r).FilterByNullifier(req.Data.ID).UpdateAmountBy(-req.Data.Attributes.Amount)
 		if err != nil {
 			return fmt.Errorf("decrease points amount: %w", err)
 		}
 
 		withdrawal, err = WithdrawalsQ(r).Insert(data.Withdrawal{
-			UserDID: req.Data.ID,
-			Amount:  req.Data.Attributes.Amount,
-			Address: req.Data.Attributes.Address,
+			Nullifier: req.Data.ID,
+			Amount:    req.Data.Attributes.Amount,
+			Address:   req.Data.Attributes.Address,
 		})
 		if err != nil {
 			return fmt.Errorf("add withdrawal entry: %w", err)
@@ -81,7 +87,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	// balance should exist cause of previous logic
 	balance, err = BalancesQ(r).GetWithRank(req.Data.ID)
 	if err != nil {
-		log.WithError(err).Error("Failed to get balance by DID with rank")
+		log.WithError(err).Error("Failed to get balance by nullifier with rank")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -94,7 +100,7 @@ func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.Wit
 	wm.Relationships = &resources.WithdrawalRelationships{
 		Balance: resources.Relation{
 			Data: &resources.Key{
-				ID:   balance.DID,
+				ID:   balance.Nullifier,
 				Type: resources.BALANCE,
 			},
 		},
@@ -131,7 +137,7 @@ func isEligibleToWithdraw(balance *data.Balance, amount int64) error {
 }
 
 func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
-	urmo := req.Data.Attributes.Amount * PointPrice(r)
+	urmo := req.Data.Attributes.Amount * PointPrice(r).PointPriceURMO
 	tx := &bank.MsgSend{
 		FromAddress: Broadcaster(r).Sender(),
 		ToAddress:   req.Data.Attributes.Address,

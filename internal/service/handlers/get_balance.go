@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/rarimo/auth-svc/pkg/auth"
+	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -19,20 +19,20 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.DID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(req.Nullifier)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
 	var balance *data.Balance
 	if req.Rank {
-		balance, err = BalancesQ(r).GetWithRank(req.DID)
+		balance, err = BalancesQ(r).GetWithRank(req.Nullifier)
 	} else {
-		balance, err = BalancesQ(r).FilterByDID(req.DID).Get()
+		balance, err = BalancesQ(r).FilterByNullifier(req.Nullifier).Get()
 	}
 
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -44,9 +44,9 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	var referrals []data.Referral
 	if req.ReferralCodes {
-		referrals, err = ReferralsQ(r).FilterByUserDID(req.DID).Select()
+		referrals, err = ReferralsQ(r).FilterByNullifier(req.Nullifier).Select()
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to get referrals by DID")
+			Log(r).WithError(err).Error("Failed to get referrals by nullifier")
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
@@ -58,7 +58,7 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 func newBalanceModel(balance data.Balance) resources.Balance {
 	return resources.Balance{
 		Key: resources.Key{
-			ID:   balance.DID,
+			ID:   balance.Nullifier,
 			Type: resources.BALANCE,
 		},
 		Attributes: resources.BalanceAttributes{

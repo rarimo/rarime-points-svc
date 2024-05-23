@@ -15,7 +15,7 @@ func NewFulfillEvent(r *http.Request) (req connector.FulfillEventRequest, err er
 	}
 
 	return req, validation.Errors{
-		"user_did":   validation.Validate(req.UserDID, validation.Required),
+		"nullifier":  validation.Validate(req.Nullifier, validation.Required),
 		"event_type": validation.Validate(req.EventType, validation.Required),
 	}.Filter()
 }

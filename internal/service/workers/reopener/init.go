@@ -76,6 +76,10 @@ func (c *initCollector) collect() ([]data.ReopenableEvent, error) {
 func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) ([]data.ReopenableEvent, error) {
 	types := c.types.Names(evtypes.FilterByFrequency(freq), evtypes.FilterInactive)
 
+	if len(types) == 0 {
+		return nil, nil
+	}
+
 	res, err := c.q.New().FilterByType(types...).
 		FilterByUpdatedAtBefore(before).
 		SelectReopenable()
@@ -94,7 +98,7 @@ func (c *initCollector) selectReopenable(freq evtypes.Frequency, before int64) (
 		return nil, nil
 	}
 
-	log.Infof("%d (DID, type) pairs to reopen: %v", len(res), res)
+	log.Infof("%d (nullifier, type) pairs to reopen: %v", len(res), res)
 	return res, nil
 }
 
@@ -116,7 +120,7 @@ func (c *initCollector) selectAbsent() ([]data.ReopenableEvent, error) {
 		return nil, nil
 	}
 
-	log.Infof("%d new (DID, type) pairs to open: %v", len(res), res)
+	log.Infof("%d new (nullifier, type) pairs to open: %v", len(res), res)
 	return res, nil
 }
 
@@ -168,7 +172,7 @@ func startingWatcher(cfg config.Config, name string) func(context.Context) {
 		}
 
 		for i, balance := range balances {
-			events[i] = data.Event{UserDID: balance.DID, Type: name, Status: status}
+			events[i] = data.Event{Nullifier: balance.Nullifier, Type: name, Status: status}
 		}
 
 		running.WithThreshold(ctx, log, fmt.Sprintf("opener[%s]", name), func(context.Context) (bool, error) {

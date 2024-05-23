@@ -22,14 +22,14 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log := Log(r).WithFields(map[string]any{
-		"user_did":     req.UserDID,
-		"proof_types":  req.ProofTypes,
-		"verifier_did": req.VerifierDID,
+		"nullifier":          req.Nullifier,
+		"proof_types":        req.ProofTypes,
+		"verifier_nullifier": req.VerifierNullifier,
 	})
 
-	owner, err := BalancesQ(r).FilterByDID(req.UserDID).Get()
+	owner, err := BalancesQ(r).FilterByNullifier(req.Nullifier).Get()
 	if err != nil {
-		log.WithError(err).Error("Failed to get balance by DID")
+		log.WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
 		return
 	}
@@ -41,16 +41,16 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	verifier, err := BalancesQ(r).FilterByDID(req.VerifierDID).Get()
+	verifier, err := BalancesQ(r).FilterByNullifier(req.VerifierNullifier).Get()
 	if err != nil {
-		log.WithError(err).Error("Failed to get verifier balance by DID")
+		log.WithError(err).Error("Failed to get verifier balance by nullifier")
 		ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
 		return
 	}
 
 	// If the verifier does not have a balance, then create it
 	if verifier == nil {
-		events := EventTypes(r).PrepareEvents(req.VerifierDID, evtypes.FilterNotOpenable)
+		events := EventTypes(r).PrepareEvents(req.VerifierNullifier, evtypes.FilterNotOpenable)
 		typeExists := false
 		for i, ev := range events {
 			if eventTypeIsOneOfProofs(ev.Type, req.ProofTypes) {
@@ -66,7 +66,7 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if err = createBalanceWithEvents(req.VerifierDID, "", events, r); err != nil {
+		if err = createBalanceWithEvents(req.VerifierNullifier, "", events, r); err != nil {
 			log.WithError(err).Error("Failed to create balance with events")
 			ape.RenderErr(w, api.CodeInternalError.JSONAPIError())
 			return
@@ -83,14 +83,14 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 		}
 
 		for _, proof := range req.ProofTypes {
-			if err = verifyProofFulfill(r, req, req.VerifierDID, fmt.Sprintf("verify_proof_%s", proof)); err != nil {
+			if err = verifyProofFulfill(r, req, req.VerifierNullifier, fmt.Sprintf("verify_proof_%s", proof)); err != nil {
 				return
 			}
 			if !passportValid {
 				continue
 			}
 			// The verifier must have a verified passport for the owner of the proof to receive points
-			err = verifyProofFulfill(r, req, req.UserDID, fmt.Sprintf("verified_proof_%s", proof))
+			err = verifyProofFulfill(r, req, req.Nullifier, fmt.Sprintf("verified_proof_%s", proof))
 			if err != nil {
 				return
 			}
@@ -107,11 +107,11 @@ func FulfillVerifyProofEvent(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest, did, evType string) (err error) {
+func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest, nullifier, evType string) (err error) {
 	log := Log(r).WithFields(map[string]any{
-		"user_did":     req.UserDID,
-		"event_name":   evType,
-		"verifier_did": req.VerifierDID,
+		"nullifier":          req.Nullifier,
+		"event_name":         evType,
+		"verifier_nullifier": req.VerifierNullifier,
 	})
 
 	eventType := EventTypes(r).Get(evType, evtypes.FilterInactive)
@@ -121,12 +121,12 @@ func verifyProofFulfill(r *http.Request, req api.FulfillVerifyProofEventRequest,
 	}
 
 	event, err := EventsQ(r).
-		FilterByUserDID(did).
+		FilterByNullifier(nullifier).
 		FilterByType(evType).
 		FilterByStatus(data.EventOpen).
 		Get()
 	if err != nil {
-		return fmt.Errorf("get event %s by DID: %w", evType, err)
+		return fmt.Errorf("get event %s by nullifier: %w", evType, err)
 	}
 
 	if event == nil {

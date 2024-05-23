@@ -12,7 +12,6 @@ import (
 )
 
 const balancesTable = "balances"
-const balancesRankColumns = "did, MAX(amount) as amount, created_at, updated_at, referred_by, passport_hash, passport_expires"
 
 type balances struct {
 	db       *pgdb.DB
@@ -34,7 +33,7 @@ func (q *balances) New() data.BalancesQ {
 
 func (q *balances) Insert(bal data.Balance) error {
 	stmt := squirrel.Insert(balancesTable).SetMap(map[string]interface{}{
-		"did":              bal.DID,
+		"nullifier":        bal.Nullifier,
 		"amount":           bal.Amount,
 		"referred_by":      bal.ReferredBy,
 		"passport_hash":    bal.PassportHash,
@@ -110,17 +109,16 @@ func (q *balances) Get() (*data.Balance, error) {
 	return &res, nil
 }
 
-func (q *balances) GetWithRank(did string) (*data.Balance, error) {
+func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 	var res data.Balance
 	stmt := fmt.Sprintf(`
-		SELECT * FROM (
-			SELECT *, RANK() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM (
-				SELECT %s FROM %s GROUP BY did
-			) AS t
-		) AS ranked WHERE did = ?
-	`, balancesRankColumns, balancesTable)
+	SELECT b1.*, COALESCE(b2.rank, 0) AS rank FROM %s AS b1 
+	LEFT JOIN (SELECT nullifier, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM %s WHERE referred_by IS NOT NULL) AS b2 
+	ON b1.nullifier = b2.nullifier
+	WHERE b1.nullifier = ?
+	`, balancesTable, balancesTable)
 
-	if err := q.db.GetRaw(&res, stmt, did); err != nil {
+	if err := q.db.GetRaw(&res, stmt, nullifier); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -130,8 +128,8 @@ func (q *balances) GetWithRank(did string) (*data.Balance, error) {
 	return &res, nil
 }
 
-func (q *balances) FilterByDID(did string) data.BalancesQ {
-	return q.applyCondition(squirrel.Eq{"did": did})
+func (q *balances) FilterByNullifier(nullifier string) data.BalancesQ {
+	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 
 func (q *balances) FilterByPassportHash(passportHash string) data.BalancesQ {

@@ -12,7 +12,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/service"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/expirywatch"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/reopener"
-	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -55,7 +54,6 @@ func Run(args []string) bool {
 
 	switch cmd {
 	case serviceCmd.FullCommand():
-		run(func(context.Context, config.Config) { sbtcheck.Run(ctx, cfg) })
 		run(service.Run)
 		run(reopener.Run)
 		run(expirywatch.Run)

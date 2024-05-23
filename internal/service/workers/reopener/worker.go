@@ -59,7 +59,7 @@ func (w *worker) reopenEvents(types []string) error {
 		log.Info("No events to reopen: no claimed events found for provided types")
 		return nil
 	}
-	log.Infof("%d (DID, type) pairs to reopen: %v", len(events), events)
+	log.Infof("%d (nullifier, type) pairs to reopen: %v", len(events), events)
 
 	err = w.q.New().Insert(prepareForReopening(events)...)
 	if err != nil {

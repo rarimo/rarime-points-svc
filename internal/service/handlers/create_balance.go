@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rarimo/auth-svc/pkg/auth"
+	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
@@ -20,16 +20,16 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	did := req.Data.ID
+	nullifier := req.Data.ID
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(did)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
 
-	balance, err := BalancesQ(r).FilterByDID(did).Get()
+	balance, err := BalancesQ(r).FilterByNullifier(nullifier).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -51,10 +51,10 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	referrals := prepareReferralsToAdd(did, 5, 0)
+	referrals := prepareReferralsToAdd(nullifier, 5, 0)
 
-	events := prepareEventsWithRef(did, req.Data.Attributes.ReferredBy, r)
-	if err = createBalanceWithEventsAndReferrals(did, req.Data.Attributes.ReferredBy, events, referrals, r); err != nil {
+	events := prepareEventsWithRef(nullifier, req.Data.Attributes.ReferredBy, r)
+	if err = createBalanceWithEventsAndReferrals(nullifier, req.Data.Attributes.ReferredBy, events, referrals, r); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance with events")
 		ape.RenderErr(w, problems.InternalError())
 		return
@@ -64,9 +64,9 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	// rank in transaction: RANK() is a window function allowed on a set of rows,
 	// while with RETURNING we operate a single one.
 	// Balance will exist cause of previous logic.
-	balance, err = BalancesQ(r).GetWithRank(did)
+	balance, err = BalancesQ(r).GetWithRank(nullifier)
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get created balance by DID")
+		Log(r).WithError(err).Error("Failed to get created balance by nullifier")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -74,8 +74,8 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
-func prepareEventsWithRef(did, refBy string, r *http.Request) []data.Event {
-	events := EventTypes(r).PrepareEvents(did, evtypes.FilterNotOpenable)
+func prepareEventsWithRef(nullifier, refBy string, r *http.Request) []data.Event {
+	events := EventTypes(r).PrepareEvents(nullifier, evtypes.FilterNotOpenable)
 	if refBy == "" {
 		return events
 	}
@@ -86,20 +86,20 @@ func prepareEventsWithRef(did, refBy string, r *http.Request) []data.Event {
 		return events
 	}
 
-	Log(r).WithFields(map[string]any{"user_did": did, "referred_by": refBy}).
+	Log(r).WithFields(map[string]any{"nullifier": nullifier, "referred_by": refBy}).
 		Debug("`Be referred` event will be added for referee user")
 
 	return append(events, data.Event{
-		UserDID: did,
-		Type:    evtypes.TypeBeReferred,
-		Status:  data.EventFulfilled,
+		Nullifier: nullifier,
+		Type:      evtypes.TypeBeReferred,
+		Status:    data.EventFulfilled,
 	})
 }
 
-func createBalanceWithEvents(did, refBy string, events []data.Event, r *http.Request) error {
+func createBalanceWithEvents(nullifier, refBy string, events []data.Event, r *http.Request) error {
 	return EventsQ(r).Transaction(func() error {
 		err := BalancesQ(r).Insert(data.Balance{
-			DID:        did,
+			Nullifier:  nullifier,
 			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
 		})
 
@@ -107,7 +107,7 @@ func createBalanceWithEvents(did, refBy string, events []data.Event, r *http.Req
 			return fmt.Errorf("add balance: %w", err)
 		}
 
-		Log(r).Debugf("%d events will be added for user_did=%s", len(events), did)
+		Log(r).Debugf("%d events will be added for nullifier=%s", len(events), nullifier)
 		if err = EventsQ(r).Insert(events...); err != nil {
 			return fmt.Errorf("add open events: %w", err)
 		}
@@ -116,10 +116,10 @@ func createBalanceWithEvents(did, refBy string, events []data.Event, r *http.Req
 	})
 }
 
-func createBalanceWithEventsAndReferrals(did, refBy string, events []data.Event, refCodes []data.Referral, r *http.Request) error {
+func createBalanceWithEventsAndReferrals(nullifier, refBy string, events []data.Event, refCodes []data.Referral, r *http.Request) error {
 	return EventsQ(r).Transaction(func() error {
 		err := BalancesQ(r).Insert(data.Balance{
-			DID:        did,
+			Nullifier:  nullifier,
 			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
 		})
 
@@ -127,12 +127,12 @@ func createBalanceWithEventsAndReferrals(did, refBy string, events []data.Event,
 			return fmt.Errorf("add balance: %w", err)
 		}
 
-		Log(r).Debugf("%d events will be added for user_did=%s", len(events), did)
+		Log(r).Debugf("%d events will be added for nullifier=%s", len(events), nullifier)
 		if err = EventsQ(r).Insert(events...); err != nil {
 			return fmt.Errorf("add open events: %w", err)
 		}
 
-		Log(r).Debugf("%d referrals will be added for user_did=%s", len(refCodes), did)
+		Log(r).Debugf("%d referrals will be added for nullifier=%s", len(refCodes), nullifier)
 		if err = ReferralsQ(r).Insert(refCodes...); err != nil {
 			return fmt.Errorf("add referrals: %w", err)
 		}

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/rarimo/auth-svc/pkg/auth"
+	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
@@ -21,7 +21,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(*req.FilterDID)) {
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(*req.FilterNullifier)) {
 		ape.RenderErr(w, problems.Unauthorized())
 		return
 	}
@@ -31,15 +31,15 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	})
 
 	events, err := EventsQ(r).
-		FilterByUserDID(*req.FilterDID).
+		FilterByNullifier(*req.FilterNullifier).
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
 		FilterInactiveNotClaimed(inactiveTypes...).
 		Page(&req.OffsetPageParams).
 		Select()
 	if err != nil {
-		Log(r).WithError(err).Errorf("Failed to get filtered paginated event list: did=%s status=%v type=%v",
-			*req.FilterDID, req.FilterStatus, req.FilterType)
+		Log(r).WithError(err).Errorf("Failed to get filtered paginated event list: nullifier=%s status=%v type=%v",
+			*req.FilterNullifier, req.FilterStatus, req.FilterType)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -47,14 +47,14 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	var eventsCount int
 	if req.Count {
 		eventsCount, err = EventsQ(r).
-			FilterByUserDID(*req.FilterDID).
+			FilterByNullifier(*req.FilterNullifier).
 			FilterByStatus(req.FilterStatus...).
 			FilterByType(req.FilterType...).
 			FilterInactiveNotClaimed(inactiveTypes...).
 			Count()
 		if err != nil {
-			Log(r).WithError(err).Errorf("Failed to count filtered events: did=%s status=%v type=%v",
-				*req.FilterDID, req.FilterStatus, req.FilterType)
+			Log(r).WithError(err).Errorf("Failed to count filtered events: nullifier=%s status=%v type=%v",
+				*req.FilterNullifier, req.FilterStatus, req.FilterType)
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}

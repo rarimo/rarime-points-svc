@@ -37,9 +37,9 @@ func (q *referrals) Insert(referrals ...data.Referral) error {
 		return nil
 	}
 
-	stmt := squirrel.Insert(referralsTable).Columns("id", "user_did")
+	stmt := squirrel.Insert(referralsTable).Columns("id", "nullifier")
 	for _, ref := range referrals {
-		stmt = stmt.Values(ref.ID, ref.UserDID)
+		stmt = stmt.Values(ref.ID, ref.Nullifier)
 	}
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -67,16 +67,16 @@ func (q *referrals) Consume(ids ...string) ([]string, error) {
 	return res.IDs, nil
 }
 
-func (q *referrals) ConsumeFirst(did string, count uint64) error {
+func (q *referrals) ConsumeFirst(nullifier string, count uint64) error {
 	stmt := fmt.Sprintf(`
 		UPDATE %s SET is_consumed = true WHERE id IN (
 			SELECT id FROM %s
-			WHERE user_did = ? AND is_consumed = false
+			WHERE nullifier = ? AND is_consumed = false
 			LIMIT %d
 		);
 	`, referralsTable, referralsTable, count)
 
-	if err := q.db.ExecRaw(stmt, did); err != nil {
+	if err := q.db.ExecRaw(stmt, nullifier); err != nil {
 		return fmt.Errorf("consume first %d referrals: %w", count, err)
 	}
 
@@ -118,8 +118,8 @@ func (q *referrals) Count() (uint64, error) {
 	return res.Count, nil
 }
 
-func (q *referrals) FilterByUserDID(did string) data.ReferralsQ {
-	return q.applyCondition(squirrel.Eq{"user_did": did})
+func (q *referrals) FilterByNullifier(nullifier string) data.ReferralsQ {
+	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 
 func (q *referrals) FilterByIsConsumed(isConsumed bool) data.ReferralsQ {

@@ -18,21 +18,21 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, err := BalancesQ(r).FilterByDID(req.DID).Get()
+	balance, err := BalancesQ(r).FilterByNullifier(req.Nullifier).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by DID")
+		Log(r).WithError(err).Error("Failed to get balance by nullifier")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	if balance == nil {
 		if *req.Count == 0 {
-			Log(r).Debugf("Balance %s not found, skipping creation for count=0", req.DID)
+			Log(r).Debugf("Balance %s not found, skipping creation for count=0", req.Nullifier)
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		events := prepareEventsWithRef(req.DID, "", r)
-		if err = createBalanceWithEvents(req.DID, "", events, r); err != nil {
+		events := prepareEventsWithRef(req.Nullifier, "", r)
+		if err = createBalanceWithEvents(req.Nullifier, "", events, r); err != nil {
 			Log(r).WithError(err).Error("Failed to create balance with events")
 			ape.RenderErr(w, problems.InternalError())
 			return
@@ -51,14 +51,14 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 	}{added})
 }
 
-func prepareReferralsToAdd(did string, count, index uint64) []data.Referral {
-	refCodes := referralid.NewMany(did, count, index)
+func prepareReferralsToAdd(nullifier string, count, index uint64) []data.Referral {
+	refCodes := referralid.NewMany(nullifier, count, index)
 	refs := make([]data.Referral, len(refCodes))
 
 	for i, code := range refCodes {
 		refs[i] = data.Referral{
-			ID:      code,
-			UserDID: did,
+			ID:        code,
+			Nullifier: nullifier,
 		}
 	}
 
@@ -66,39 +66,39 @@ func prepareReferralsToAdd(did string, count, index uint64) []data.Referral {
 }
 
 func adjustReferralsCount(req requests.EditReferralsRequest, r *http.Request) (refsAdded []string, err error) {
-	active, err := ReferralsQ(r).FilterByUserDID(req.DID).FilterByIsConsumed(false).Count()
+	active, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).FilterByIsConsumed(false).Count()
 	if err != nil {
 		return nil, fmt.Errorf("count active referrals: %w", err)
 	}
 
 	if *req.Count == active {
-		Log(r).Infof("No referrals to add or consume for DID %s", req.DID)
+		Log(r).Infof("No referrals to add or consume for nullifier %s", req.Nullifier)
 		return
 	}
 
 	if *req.Count < active {
 		toConsume := active - *req.Count
-		if err = ReferralsQ(r).ConsumeFirst(req.DID, toConsume); err != nil {
+		if err = ReferralsQ(r).ConsumeFirst(req.Nullifier, toConsume); err != nil {
 			return nil, fmt.Errorf("consume referrals: %w", err)
 		}
-		Log(r).Infof("Consumed %d referrals for DID %s", toConsume, req.DID)
+		Log(r).Infof("Consumed %d referrals for nullifier %s", toConsume, req.Nullifier)
 		return
 	}
 
-	index, err := ReferralsQ(r).FilterByUserDID(req.DID).Count()
+	index, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).Count()
 	if err != nil {
 		return nil, fmt.Errorf("count all referrals: %w", err)
 	}
 
 	toAdd := *req.Count - active
 	// balance must exist, according to preceding logic in EditReferrals
-	err = ReferralsQ(r).Insert(prepareReferralsToAdd(req.DID, toAdd, index)...)
+	err = ReferralsQ(r).Insert(prepareReferralsToAdd(req.Nullifier, toAdd, index)...)
 	if err != nil {
 		return nil, fmt.Errorf("insert referrals: %w", err)
 	}
-	Log(r).Infof("Inserted %d referrals for DID %s", toAdd, req.DID)
+	Log(r).Infof("Inserted %d referrals for nullifier %s", toAdd, req.Nullifier)
 
 	// while this is deterministic, the codes will be the same
-	refsAdded = referralid.NewMany(req.DID, toAdd, index)
+	refsAdded = referralid.NewMany(req.Nullifier, toAdd, index)
 	return
 }

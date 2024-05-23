@@ -8,8 +8,8 @@ import (
 )
 
 type EditReferralsRequest struct {
-	DID   string  `json:"did"`
-	Count *uint64 `json:"count"`
+	Nullifier string  `json:"nullifier"`
+	Count     *uint64 `json:"count"`
 }
 
 func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
@@ -19,7 +19,7 @@ func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
 	}
 
 	return req, validation.Errors{
-		"did":   validation.Validate(req.DID, validation.Required),
-		"count": validation.Validate(req.Count, validation.NotNil),
+		"nullifier": validation.Validate(req.Nullifier, validation.Required),
+		"count":     validation.Validate(req.Count, validation.NotNil),
 	}.Filter()
 }

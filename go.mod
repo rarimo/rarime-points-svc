@@ -12,7 +12,7 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/google/jsonapi v1.0.0
 	github.com/iden3/go-iden3-core/v2 v2.0.4
-	github.com/rarimo/auth-svc v1.0.0-rc2.0.20240311143312-de1e2258f175
+	github.com/rarimo/decentralized-auth-svc v0.0.0-20240522134350-2694eafa9509
 	github.com/rarimo/saver-grpc-lib v1.0.0
 	github.com/rubenv/sql-migrate v1.6.1
 	gitlab.com/distributed_lab/ape v1.7.1

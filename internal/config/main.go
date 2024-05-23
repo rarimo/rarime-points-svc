@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/rarimo/auth-svc/pkg/auth"
+	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"
@@ -19,7 +19,7 @@ type Config interface {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 
-	PointPrice() int64
+	PointPrice() PointsPrice
 }
 
 type config struct {

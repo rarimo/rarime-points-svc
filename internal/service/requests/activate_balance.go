@@ -10,14 +10,14 @@ import (
 )
 
 func NewActivateBalance(r *http.Request) (req resources.CreateBalanceRequest, err error) {
-	did := chi.URLParam(r, "did")
+	nullifier := chi.URLParam(r, "nullifier")
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		err = newDecodeError("body", err)
 		return
 	}
 
 	errs := validation.Errors{
-		"data/id":                     validation.Validate(req.Data.ID, validation.Required, validation.In(did)),
+		"data/id":                     validation.Validate(req.Data.ID, validation.Required, validation.In(nullifier)),
 		"data/type":                   validation.Validate(req.Data.Type, validation.Required, validation.In(resources.UPDATE_BALANCE)),
 		"data/attributes/referred_by": validation.Validate(req.Data.Attributes.ReferredBy, validation.Required),
 	}
