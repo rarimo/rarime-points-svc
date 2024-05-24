@@ -82,7 +82,7 @@ func (q *balances) SetLevel(level int) error {
 // ApplyRankedPage is similar to the ApplyTo method for a page,
 // but the sorting values ​​are hardcoded because the fields must
 // be sorted in opposite directions
-func ApplyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) squirrel.SelectBuilder {
+func applyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) squirrel.SelectBuilder {
 	if page.Limit == 0 {
 		page.Limit = 15
 	}
@@ -109,7 +109,7 @@ func ApplyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) sq
 }
 
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
-	q.selector = ApplyRankedPage(page, q.selector)
+	q.selector = applyRankedPage(page, q.selector)
 	return q
 }
 
