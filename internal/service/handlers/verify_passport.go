@@ -88,19 +88,17 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var referralEvent = true
 	evType = EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 	if evType == nil {
 		Log(r).Debug("Referral event type is disabled or expired, not accruing points to referrer")
-		referralEvent = false
 	}
 
 	err = EventsQ(r).Transaction(func() (err error) {
-		if referralEvent {
+		if evType != nil {
 			// ReferredBy always valid because of the previous logic
 			referral, err := ReferralsQ(r).Get(balance.ReferredBy.String)
 			if err != nil {
-				return errors.Wrap(err, "failed to get referral by ID")
+				return fmt.Errorf("failed to get referral by ID: %w", err)
 			}
 
 			err = EventsQ(r).Insert(data.Event{
@@ -110,7 +108,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 				Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, nullifier)),
 			})
 			if err != nil {
-				return errors.Wrap(err, "add event for referrer")
+				return fmt.Errorf("add event for referrer: %w", err)
 			}
 		}
 
@@ -118,7 +116,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			FilterByID(event.ID).
 			Update(data.EventFulfilled, nil, nil)
 		if err != nil {
-			return errors.Wrap(err, "failed to update passport scan event")
+			return fmt.Errorf("failed to update passport scan event: %w", err)
 		}
 
 		return nil

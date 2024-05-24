@@ -101,6 +101,7 @@ func createBalanceWithEvents(nullifier, refBy string, events []data.Event, r *ht
 		err := BalancesQ(r).Insert(data.Balance{
 			Nullifier:  nullifier,
 			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
+			Level:      Levels(r).MinLvl(),
 		})
 
 		if err != nil {
@@ -121,6 +122,7 @@ func createBalanceWithEventsAndReferrals(nullifier, refBy string, events []data.
 		err := BalancesQ(r).Insert(data.Balance{
 			Nullifier:  nullifier,
 			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
+			Level:      Levels(r).MinLvl(),
 		})
 
 		if err != nil {

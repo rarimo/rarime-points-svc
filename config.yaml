@@ -18,26 +18,12 @@ event_types:
       frequency: one-time
       action_url: https://...
       logo: https://...
-    - name: get_poh
-      title: Get PoH credential
-      reward: 50
-      description: Prove that you are human
-      short_description: Short description
-      frequency: one-time
-      expires_at: 2020-01-01T00:00:00Z
     - name: free_weekly
       title: Free weekly points
       reward: 100
       frequency: weekly
       description: Get free points every week by visiting the platform and claiming your reward
       short_description: Short description
-    - name: daily_login
-      title: Daily login
-      reward: 5
-      frequency: daily
-      description: Login every day
-      short_description: Short description
-      disabled: true
     - name: be_referred
       title: Referral welcome bonus
       reward: 5
@@ -45,12 +31,6 @@ event_types:
       description: Be referred by a friend and get a welcome bonus
       short_description: Short description
       no_auto_open: true
-    - name: referral_common
-      title: Refer new users
-      reward: 25
-      frequency: one-time
-      description: Refer friends and get a reward for each friend who verifies the passport
-      short_description: Short description
     - name: referral_specific
       title: Refer user {:did}
       reward: 25
@@ -58,49 +38,6 @@ event_types:
       description: The user {:did} has verified the passport. Claim the reward!
       short_description: Short description
       no_auto_open: true
-    - name: planned
-      title: Planned event
-      reward: 25
-      frequency: unlimited
-      description: Event that start at specified time
-      short_description: Short description
-      starts_at: 2020-01-01T00:00:00Z
-    - name: generate_proof_age
-      title: Generate proof age
-      reward: 25
-      frequency: one-time
-      description: Event that become fulfilled when user create proof that prove age
-      short_description: Short description
-    - name: generate_proof_nationality
-      title: Generate proof nationality
-      reward: 50
-      frequency: one-time
-      description: Event that become fulfilled when user create proof that prove nationality
-      short_description: Short description
-    - name: verify_proof_age
-      title: Verify proof age
-      reward: 25
-      frequency: one-time
-      description: Event that become fulfilled when user verify someone else's proof age
-      short_description: Short description
-    - name: verify_proof_nationality
-      title: Verify proof nationality
-      reward: 50
-      frequency: one-time
-      description: Event that become fulfilled when user verify someone else's proof nationality
-      short_description: Short description
-    - name: verified_proof_age
-      title: Have proof age verified
-      reward: 25
-      frequency: one-time
-      description: Event that become fulfilled when another user verify you proof age (user that verify must have verified passport)
-      short_description: Short description
-    - name: verified_proof_nationality
-      title: Have proof nationality verified
-      reward: 50
-      frequency: one-time
-      description: Event that become fulfilled when another user verify you proof nationality (user that verify must have verified passport)
-      short_description: Short description
 
 levels:
   levels:

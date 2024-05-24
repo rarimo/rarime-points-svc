@@ -35,6 +35,7 @@ func (q *balances) Insert(bal data.Balance) error {
 		"nullifier":   bal.Nullifier,
 		"amount":      bal.Amount,
 		"referred_by": bal.ReferredBy,
+		"level":       bal.Level,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {

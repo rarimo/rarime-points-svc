@@ -55,5 +55,5 @@ allOf:
           level:
             type: integer
             format: int
-            description: The level indicates how many possibilities the user has 
+            description: The level indicates user permissions and features 
             example: 2           

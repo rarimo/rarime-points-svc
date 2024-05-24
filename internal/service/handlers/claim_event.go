@@ -3,7 +3,6 @@ package handlers
 import (
 	"fmt"
 	"net/http"
-	"slices"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -11,7 +10,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
-	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
 func ClaimEvent(w http.ResponseWriter, r *http.Request) {
@@ -84,20 +82,20 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 // requires: event exist
 func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balance *data.Balance) (claimed *data.Event, err error) {
 	err = EventsQ(r).Transaction(func() error {
-		refsCount, level := levelsToUp(r, balance.Level, reward+balance.Amount)
-		if level != 0 {
+		refsCount, level := Levels(r).LvlUp(balance.Level, reward+balance.Amount)
+		if level != balance.Level {
 			count, err := ReferralsQ(r).FilterByNullifier(event.Nullifier).Count()
 			if err != nil {
-				return errors.Wrap(err, "failed to get referral count")
+				return fmt.Errorf("failed to get referral count: %w", err)
 			}
 
 			refToAdd := prepareReferralsToAdd(event.Nullifier, uint64(refsCount), count)
 			if err = ReferralsQ(r).Insert(refToAdd...); err != nil {
-				return errors.Wrap(err, "failed to insert referrals")
+				return fmt.Errorf("failed to insert referrals: %w", err)
 			}
 
 			if err = BalancesQ(r).FilterByNullifier(event.Nullifier).SetLevel(level); err != nil {
-				return errors.Wrap(err, "failed to update level")
+				return fmt.Errorf("failed to update level: %w", err)
 			}
 		}
 
@@ -114,25 +112,6 @@ func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balan
 		claimed = updated
 		return nil
 	})
-	return
-}
-
-// Take summary points after claim and calculate new lvls
-func levelsToUp(r *http.Request, level int, points int64) (referralsToAdd int, newLevel int) {
-	lvls := make([]int, 0, len(Levels(r)))
-	for k, v := range Levels(r) {
-		if k <= level {
-			continue
-		}
-		if int64(v.Threshold) > points {
-			break
-		}
-
-		referralsToAdd += v.Referrals
-		lvls = append(lvls, k)
-	}
-
-	newLevel = slices.Max(lvls)
 	return
 }
 

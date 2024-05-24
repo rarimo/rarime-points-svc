@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS balances
     created_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     updated_at            integer NOT NULL default EXTRACT('EPOCH' FROM NOW()),
     referred_by           text UNIQUE,
-    level                 INT NOT NULL DEFAULT 1
+    level                 INT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS balances_page_index ON balances (amount, updated_at) WHERE referred_by IS NOT NULL;
