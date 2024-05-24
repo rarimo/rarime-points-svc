@@ -26,6 +26,7 @@ const (
 	broadcasterCtxKey
 	pointPriceCtxKey
 	verifierCtxKey
+	levelsCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -126,4 +127,14 @@ func CtxVerifier(verifier *zk.Verifier) func(context.Context) context.Context {
 
 func Verifier(r *http.Request) *zk.Verifier {
 	return r.Context().Value(verifierCtxKey).(*zk.Verifier)
+}
+
+func CtxLevels(levels config.Levels) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, levelsCtxKey, levels)
+	}
+}
+
+func Levels(r *http.Request) config.Levels {
+	return r.Context().Value(levelsCtxKey).(config.Levels)
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/big"
 	"net/http"
 
@@ -87,11 +88,42 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = EventsQ(r).
-		FilterByID(event.ID).
-		Update(data.EventFulfilled, nil, nil)
+	evType = EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+	if evType == nil {
+		Log(r).Debug("Referral event type is disabled or expired, not accruing points to referrer")
+	}
+
+	err = EventsQ(r).Transaction(func() (err error) {
+		if evType != nil {
+			// ReferredBy always valid because of the previous logic
+			referral, err := ReferralsQ(r).Get(balance.ReferredBy.String)
+			if err != nil {
+				return fmt.Errorf("failed to get referral by ID: %w", err)
+			}
+
+			err = EventsQ(r).Insert(data.Event{
+				Nullifier: referral.Nullifier,
+				Type:      evType.Name,
+				Status:    data.EventFulfilled,
+				Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, nullifier)),
+			})
+			if err != nil {
+				return fmt.Errorf("add event for referrer: %w", err)
+			}
+		}
+
+		_, err = EventsQ(r).
+			FilterByID(event.ID).
+			Update(data.EventFulfilled, nil, nil)
+		if err != nil {
+			return fmt.Errorf("failed to update passport scan event: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to update passport scan event")
+		Log(r).WithError(err).Error("Failed to add referral event and update verify passport event")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}

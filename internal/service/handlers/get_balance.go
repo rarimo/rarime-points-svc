@@ -66,6 +66,7 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 			CreatedAt:  balance.CreatedAt,
 			UpdatedAt:  balance.UpdatedAt,
 			Rank:       balance.Rank,
+			Level:      balance.Level,
 		},
 	}
 }

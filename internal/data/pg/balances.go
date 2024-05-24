@@ -35,6 +35,7 @@ func (q *balances) Insert(bal data.Balance) error {
 		"nullifier":   bal.Nullifier,
 		"amount":      bal.Amount,
 		"referred_by": bal.ReferredBy,
+		"level":       bal.Level,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -60,6 +61,17 @@ func (q *balances) SetReferredBy(referralCode string) error {
 
 	if err := q.db.Exec(stmt); err != nil {
 		return fmt.Errorf("set referred_by: %w", err)
+	}
+
+	return nil
+}
+
+func (q *balances) SetLevel(level int) error {
+	stmt := q.updater.
+		Set("level", level)
+
+	if err := q.db.Exec(stmt); err != nil {
+		return fmt.Errorf("set level: %w", err)
 	}
 
 	return nil

@@ -13,6 +13,7 @@ type Balance struct {
 	UpdatedAt  int32          `db:"updated_at"`
 	ReferredBy sql.NullString `db:"referred_by"`
 	Rank       *int           `db:"rank"`
+	Level      int            `db:"level"`
 }
 
 type BalancesQ interface {
@@ -20,6 +21,7 @@ type BalancesQ interface {
 	Insert(Balance) error
 	UpdateAmountBy(points int64) error
 	SetReferredBy(referralCode string) error
+	SetLevel(level int) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
