@@ -73,7 +73,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if proof.PubSignals[zk.Citizenship] == usaAuthorithy {
+	if proof.PubSignals[zk.Citizenship] == "usaAuthorithy" {
 		ape.RenderErr(w, problems.BadRequest(validation.Errors{"authority": errors.New("Incorrect authority")})...)
 		return
 	}

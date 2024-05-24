@@ -61,12 +61,11 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 			Type: resources.BALANCE,
 		},
 		Attributes: resources.BalanceAttributes{
-			Amount:     balance.Amount,
-			IsDisabled: !balance.ReferredBy.Valid,
-			CreatedAt:  balance.CreatedAt,
-			UpdatedAt:  balance.UpdatedAt,
-			Rank:       balance.Rank,
-			Level:      balance.Level,
+			Amount:    balance.Amount,
+			CreatedAt: balance.CreatedAt,
+			UpdatedAt: balance.UpdatedAt,
+			Rank:      balance.Rank,
+			Level:     balance.Level,
 		},
 	}
 }
@@ -80,6 +79,7 @@ func newBalanceResponse(balance data.Balance, referrals []data.Referral) resourc
 	activeCodes, consumedCodes := make([]string, 0, len(referrals)), make([]string, 0, len(referrals))
 	resp.Data.Attributes.ActiveReferralCodes = &activeCodes
 	resp.Data.Attributes.ConsumedReferralCodes = &consumedCodes
+	resp.Data.Attributes.IsDisabled = !balance.ReferredBy.Valid
 
 	for _, ref := range referrals {
 		if ref.IsConsumed {

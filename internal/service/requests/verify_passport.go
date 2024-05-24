@@ -29,5 +29,6 @@ func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, er
 		"data/type": validation.Validate(req.Data.Type,
 			validation.Required,
 			validation.In(resources.VERIFY_PASSPORT)),
+		"data/attributes/proof": validation.Validate(req.Data.Attributes.Proof, validation.Required),
 	}.Filter()
 }
