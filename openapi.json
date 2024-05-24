@@ -750,10 +750,10 @@
                 "type": "object",
                 "required": [
                   "amount",
-                  "is_verified",
                   "is_disabled",
                   "created_at",
-                  "updated_at"
+                  "updated_at",
+                  "level"
                 ],
                 "properties": {
                   "amount": {
@@ -761,11 +761,6 @@
                     "format": "int64",
                     "description": "Amount of points",
                     "example": 580
-                  },
-                  "is_verified": {
-                    "type": "boolean",
-                    "description": "Whether the user has scanned passport",
-                    "example": true
                   },
                   "is_disabled": {
                     "type": "boolean",
@@ -810,10 +805,11 @@
                       "type": "string"
                     }
                   },
-                  "is_withdrawal_allowed": {
-                    "type": "boolean",
-                    "description": "Whether the user can withdraw tokens. Returned only for the single user.",
-                    "example": true
+                  "level": {
+                    "type": "integer",
+                    "format": "int",
+                    "description": "The level indicates user permissions and features",
+                    "example": 2
                   }
                 }
               }
@@ -1253,7 +1249,8 @@
                 "type": "object",
                 "required": [
                   "amount",
-                  "address"
+                  "address",
+                  "proof"
                 ],
                 "properties": {
                   "amount": {
@@ -1266,6 +1263,11 @@
                     "type": "string",
                     "description": "Rarimo address to withdraw to. Can be any valid address.",
                     "example": "rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds"
+                  },
+                  "proof": {
+                    "type": "object",
+                    "format": "json.RawMessage",
+                    "description": "JSON encoded ZK passport verification proof."
                   }
                 }
               }
