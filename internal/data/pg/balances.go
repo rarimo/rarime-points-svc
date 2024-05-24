@@ -16,6 +16,7 @@ type balances struct {
 	db       *pgdb.DB
 	selector squirrel.SelectBuilder
 	updater  squirrel.UpdateBuilder
+	rank     squirrel.SelectBuilder
 }
 
 func NewBalances(db *pgdb.DB) data.BalancesQ {
@@ -23,6 +24,7 @@ func NewBalances(db *pgdb.DB) data.BalancesQ {
 		db:       db,
 		selector: squirrel.Select("*").From(balancesTable),
 		updater:  squirrel.Update(balancesTable),
+		rank:     squirrel.Select("*, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at ASC) AS rank").From(balancesTable),
 	}
 }
 
@@ -77,8 +79,37 @@ func (q *balances) SetLevel(level int) error {
 	return nil
 }
 
+// ApplyRankedPage is similar to the ApplyTo method for a page,
+// but the sorting values ​​are hardcoded because the fields must
+// be sorted in opposite directions
+func applyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) squirrel.SelectBuilder {
+	if page.Limit == 0 {
+		page.Limit = 15
+	}
+	if page.Order == "" {
+		page.Order = pgdb.OrderTypeDesc
+	}
+
+	offset := page.Limit * page.PageNumber
+
+	sql = sql.Limit(page.Limit).Offset(offset)
+
+	switch page.Order {
+	case pgdb.OrderTypeAsc:
+		sql = sql.OrderBy("amount asc")
+		sql = sql.OrderBy("updated_at desc")
+	case pgdb.OrderTypeDesc:
+		sql = sql.OrderBy("amount desc")
+		sql = sql.OrderBy("updated_at asc")
+	default:
+		panic(fmt.Errorf("unexpected order type: %v", page.Order))
+	}
+
+	return sql
+}
+
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
-	q.selector = page.ApplyTo(q.selector, "amount", "updated_at")
+	q.selector = applyRankedPage(page, q.selector)
 	return q
 }
 
@@ -86,6 +117,16 @@ func (q *balances) Select() ([]data.Balance, error) {
 	var res []data.Balance
 
 	if err := q.db.Select(&res, q.selector); err != nil {
+		return nil, fmt.Errorf("select balances: %w", err)
+	}
+
+	return res, nil
+}
+
+func (q *balances) SelectWithRank() ([]data.Balance, error) {
+	var res []data.Balance
+
+	if err := q.db.Select(&res, q.rank); err != nil {
 		return nil, fmt.Errorf("select balances: %w", err)
 	}
 
@@ -109,7 +150,7 @@ func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 	var res data.Balance
 	stmt := fmt.Sprintf(`
 	SELECT b1.*, COALESCE(b2.rank, 0) AS rank FROM %s AS b1 
-	LEFT JOIN (SELECT nullifier, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at DESC) AS rank FROM %s WHERE referred_by IS NOT NULL) AS b2 
+	LEFT JOIN (SELECT nullifier, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at ASC) AS rank FROM %s WHERE referred_by IS NOT NULL) AS b2 
 	ON b1.nullifier = b2.nullifier
 	WHERE b1.nullifier = ?
 	`, balancesTable, balancesTable)
@@ -135,5 +176,6 @@ func (q *balances) FilterDisabled() data.BalancesQ {
 func (q *balances) applyCondition(cond squirrel.Sqlizer) data.BalancesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
+	q.rank = q.rank.Where(cond)
 	return q
 }

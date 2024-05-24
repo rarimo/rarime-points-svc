@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -31,7 +32,7 @@ func (c *config) Levels() Levels {
 		}
 
 		if len(cfg.Lvls) == 0 {
-			panic(fmt.Errorf("no levels provided in config: %w", err))
+			panic(errors.New("no levels provided in config"))
 		}
 
 		res := make(Levels, len(cfg.Lvls))
@@ -43,7 +44,7 @@ func (c *config) Levels() Levels {
 	}).(Levels)
 }
 
-// Calculate new lvl. New lvl always greater then current level
+// LvlUp Calculates new lvl. New lvl always greater then current level
 func (l Levels) LvlUp(currentLevel int, totalAmount int64) (refCoundToAdd int, newLevel int) {
 	lvls := make([]int, 0, len(l))
 	for k, v := range l {
@@ -66,12 +67,12 @@ func (l Levels) LvlUp(currentLevel int, totalAmount int64) (refCoundToAdd int, n
 	return
 }
 
-// slices.Min will not panic because of previous logic
 func (l Levels) MinLvl() int {
 	lvls := make([]int, 0, len(l))
 	for k := range l {
 		lvls = append(lvls, k)
 	}
 
+	// slices.Min will not panic because of previous logic
 	return slices.Min(lvls)
 }

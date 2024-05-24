@@ -28,6 +28,7 @@ type BalancesQ interface {
 	Get() (*Balance, error)
 	// GetWithRank returns balance with rank, filtered by nullifier. No other filters can be applied.
 	GetWithRank(nullifier string) (*Balance, error)
+	SelectWithRank() ([]Balance, error)
 
 	FilterByNullifier(string) BalancesQ
 	FilterDisabled() BalancesQ

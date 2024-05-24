@@ -2,6 +2,7 @@ package requests
 
 import (
 	"net/http"
+	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -26,8 +27,12 @@ func NewListEvents(r *http.Request) (req ListEvents, err error) {
 		return
 	}
 
+	if req.FilterNullifier != nil {
+		*req.FilterNullifier = strings.ToLower(*req.FilterNullifier)
+	}
+
 	err = validation.Errors{
-		"filter[nullifier]": validation.Validate(req.FilterNullifier, validation.Required),
+		"filter[nullifier]": validation.Validate(req.FilterNullifier, validation.Required, validation.Match(nullifierRegexp)),
 		"filter[status]":    validation.Validate(req.FilterStatus, validation.Each(validation.In(data.EventOpen, data.EventFulfilled, data.EventClaimed))),
 	}.Filter()
 	return

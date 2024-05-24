@@ -26,5 +26,6 @@ func NewWithdraw(r *http.Request) (req resources.WithdrawRequest, err error) {
 		"data/type":               validation.Validate(req.Data.Type, validation.Required, validation.In(resources.WITHDRAW)),
 		"data/attributes/amount":  validation.Validate(req.Data.Attributes.Amount, validation.Required, validation.Min(1)),
 		"data/attributes/address": validation.Validate(req.Data.Attributes.Address, validation.Required),
+		"data/attributes/proof":   validation.Validate(req.Data.Attributes.Proof, validation.Required),
 	}.Filter()
 }

@@ -3,6 +3,7 @@ package requests
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -18,8 +19,10 @@ func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
 		return
 	}
 
+	req.Nullifier = strings.ToLower(req.Nullifier)
+
 	return req, validation.Errors{
-		"nullifier": validation.Validate(req.Nullifier, validation.Required),
+		"nullifier": validation.Validate(req.Nullifier, validation.Required, validation.Match(nullifierRegexp)),
 		"count":     validation.Validate(req.Count, validation.NotNil),
 	}.Filter()
 }

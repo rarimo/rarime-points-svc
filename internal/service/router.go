@@ -21,6 +21,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxBroadcaster(cfg.Broadcaster()),
 			handlers.CtxPointPrice(cfg.PointPrice()),
 			handlers.CtxLevels(cfg.Levels()),
+			handlers.CtxVerifier(cfg.Verifier()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)

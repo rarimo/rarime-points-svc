@@ -31,6 +31,12 @@ event_types:
       description: Be referred by a friend and get a welcome bonus
       short_description: Short description
       no_auto_open: true
+    - name: referral_common
+      reward: 25
+      frequency: one-time
+      title: Refer new users
+      short_description: Refer friends and get a reward for each friend who verifies the passport
+      description: Refer friends and get a reward for each friend who verifies the passport
     - name: referral_specific
       title: Refer user {:did}
       reward: 25

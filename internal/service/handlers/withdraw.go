@@ -13,6 +13,7 @@ import (
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
@@ -72,6 +73,66 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
+
+	// Fulfill passport scan event for user and give points for referred
+	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
+	logMsg := "Passport scan event absent, disabled, hasn't start yet or expired"
+	if evType != nil {
+		event, err := EventsQ(r).FilterByNullifier(nullifier).
+			FilterByType(evtypes.TypePassportScan).
+			FilterByStatus(data.EventOpen).Get()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to get passport scan event")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+
+		if event == nil {
+			logMsg = "Passport scan event already fulfilled or absent for user"
+		}
+
+		evType = EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+		if evType == nil {
+			Log(r).Debug("Referral event type is disabled or expired, not accruing points to referrer")
+		}
+
+		err = EventsQ(r).Transaction(func() (err error) {
+			if evType != nil {
+				// ReferredBy always valid because of the previous logic
+				referral, err := ReferralsQ(r).Get(balance.ReferredBy.String)
+				if err != nil {
+					return fmt.Errorf("failed to get referral by ID: %w", err)
+				}
+
+				err = EventsQ(r).Insert(data.Event{
+					Nullifier: referral.Nullifier,
+					Type:      evType.Name,
+					Status:    data.EventFulfilled,
+					Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, nullifier)),
+				})
+				if err != nil {
+					return fmt.Errorf("add event for referrer: %w", err)
+				}
+			}
+
+			_, err = EventsQ(r).
+				FilterByID(event.ID).
+				Update(data.EventFulfilled, nil, nil)
+			if err != nil {
+				return fmt.Errorf("failed to update passport scan event: %w", err)
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to add referral event and update verify passport event")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+
+	}
+	Log(r).Debug(logMsg)
 
 	if proof.PubSignals[zk.Citizenship] == usaAuthorithy {
 		ape.RenderErr(w, problems.BadRequest(validation.Errors{"authority": errors.New("Incorrect authority")})...)

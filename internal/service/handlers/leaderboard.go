@@ -17,7 +17,7 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	leaders, err := BalancesQ(r).FilterDisabled().Page(&req.OffsetPageParams).Select()
+	leaders, err := BalancesQ(r).FilterDisabled().Page(&req.OffsetPageParams).SelectWithRank()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get balance leaders")
 		ape.RenderErr(w, problems.InternalError())

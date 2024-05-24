@@ -8,13 +8,13 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-const proofEventIDValue = "TODO"
+const proofEventIDValue = "211985299740800702300256033401632392934377086534111448880928528431996790315"
 
 func (c *config) Verifier() *zk.Verifier {
 	return c.verifier.Do(func() interface{} {
 		var cfg struct {
-			VerificationKeyPath string `fig:"verification_key_path,required"`
 			AllowedAge          int    `fig:"allowed_age,required"`
+			VerificationKeyPath string `fig:"verification_key_path,required"`
 		}
 
 		err := figure.
