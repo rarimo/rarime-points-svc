@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS balances
 
 CREATE INDEX IF NOT EXISTS balances_page_index ON balances (amount, updated_at) WHERE referred_by IS NOT NULL;
 
+DROP TRIGGER IF EXISTS set_updated_at ON balances;
 CREATE TRIGGER set_updated_at
     BEFORE UPDATE
     ON balances
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS referrals
 ALTER TABLE balances ADD CONSTRAINT referred_by_fk FOREIGN KEY (referred_by) REFERENCES referrals (id);
 CREATE INDEX IF NOT EXISTS referrals_nullifier_index ON referrals (nullifier);
 
+DROP TYPE IF EXISTS event_status;
 CREATE TYPE event_status AS ENUM ('open', 'fulfilled', 'claimed');
 
 CREATE TABLE IF NOT EXISTS events
@@ -49,6 +51,7 @@ CREATE TABLE IF NOT EXISTS events
 
 CREATE INDEX IF NOT EXISTS events_page_index ON events (nullifier, updated_at);
 
+DROP TRIGGER IF EXISTS set_updated_at ON events;
 CREATE TRIGGER set_updated_at
     BEFORE UPDATE
     ON events
