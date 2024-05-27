@@ -43,3 +43,7 @@ import:
     add: /usr/local/bin/rarime-points-svc
     to: /usr/local/bin/rarime-points-svc
     after: setup
+  - image: builder
+    add: /go/src/github.com/rarimo/rarime-points-svc/verification_key.json
+    to: /verification_key.json
+    after: setup
