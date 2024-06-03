@@ -61,7 +61,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 		}
 
 		ape.Render(w, struct {
-			Ref       string `json:"added_referrals"`
+			Ref       string `json:"added_ref"`
 			UsageLeft int    `json:"usage_left"`
 		}{referral, int(*req.Count)})
 		return
