@@ -54,6 +54,8 @@ referrals (if count == 0, do not create)
 b) User exists, `N` > `count` -> add `N - count` active referrals
 c) User exists, `N` < `count` -> consume `count - N` active referrals (not delete!)
 d) User exists, `N` = `count` -> do nothing
+f) Flag `genesis = true` that mean that will be created only one referral with
+`usage_count = count`. Referrals which have `usage_count <= 0` is inactive
 
 Where `N` is the current number of active referrals for the user, `count` is
 query parameter value.

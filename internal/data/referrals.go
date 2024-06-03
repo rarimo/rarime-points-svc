@@ -1,10 +1,9 @@
 package data
 
 type Referral struct {
-	ID         string `db:"id"`
-	Nullifier  string `db:"nullifier"`
-	IsConsumed bool   `db:"is_consumed"`
-	CreatedAt  int32  `db:"created_at"`
+	ID        string `db:"id"`
+	Nullifier string `db:"nullifier"`
+	UsageLeft int32  `db:"usage_left"`
 }
 
 type ReferralsQ interface {
@@ -18,5 +17,5 @@ type ReferralsQ interface {
 	Count() (uint64, error)
 
 	FilterByNullifier(string) ReferralsQ
-	FilterByIsConsumed(bool) ReferralsQ
+	FilterConsumed() ReferralsQ
 }

@@ -82,7 +82,7 @@ func newBalanceResponse(balance data.Balance, referrals []data.Referral) resourc
 	resp.Data.Attributes.IsDisabled = !balance.ReferredBy.Valid
 
 	for _, ref := range referrals {
-		if ref.IsConsumed {
+		if ref.UsageLeft == 0 {
 			consumedCodes = append(consumedCodes, ref.ID)
 			continue
 		}

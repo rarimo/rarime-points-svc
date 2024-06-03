@@ -23,7 +23,7 @@ func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 	return &referrals{
 		db:       db,
 		selector: squirrel.Select("*").From(referralsTable),
-		updater:  squirrel.Update(referralsTable).Set("is_consumed", true),
+		updater:  squirrel.Update(referralsTable).Set("usage_left", squirrel.Expr("usage_left - 1")),
 		counter:  squirrel.Select("COUNT(*) as count").From(referralsTable),
 	}
 }
@@ -37,9 +37,9 @@ func (q *referrals) Insert(referrals ...data.Referral) error {
 		return nil
 	}
 
-	stmt := squirrel.Insert(referralsTable).Columns("id", "nullifier")
+	stmt := squirrel.Insert(referralsTable).Columns("id", "nullifier", "usage_left")
 	for _, ref := range referrals {
-		stmt = stmt.Values(ref.ID, ref.Nullifier)
+		stmt = stmt.Values(ref.ID, ref.Nullifier, ref.UsageLeft)
 	}
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -122,8 +122,8 @@ func (q *referrals) FilterByNullifier(nullifier string) data.ReferralsQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 
-func (q *referrals) FilterByIsConsumed(isConsumed bool) data.ReferralsQ {
-	return q.applyCondition(squirrel.Eq{"is_consumed": isConsumed})
+func (q *referrals) FilterConsumed() data.ReferralsQ {
+	return q.applyCondition(squirrel.Gt{"usage_left": 0})
 }
 
 func (q *referrals) applyCondition(cond squirrel.Sqlizer) data.ReferralsQ {
