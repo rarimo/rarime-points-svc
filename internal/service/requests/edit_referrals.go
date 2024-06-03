@@ -11,6 +11,7 @@ import (
 type EditReferralsRequest struct {
 	Nullifier string  `json:"nullifier"`
 	Count     *uint64 `json:"count"`
+	Genesis   bool    `json:"genesis"`
 }
 
 func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {

@@ -39,6 +39,34 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if req.Genesis {
+		count, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).Count()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to get referrals count")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+
+		referral := referralid.New(req.Nullifier, count)
+
+		err = ReferralsQ(r).Insert(data.Referral{
+			ID:        referral,
+			Nullifier: req.Nullifier,
+			UsageLeft: int32(*req.Count),
+		})
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to insert genesis referral")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+
+		ape.Render(w, struct {
+			Ref       string `json:"added_ref"`
+			UsageLeft int    `json:"usage_left"`
+		}{referral, int(*req.Count)})
+		return
+	}
+
 	added, err := adjustReferralsCount(req, r)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to adjust referrals count")
@@ -59,6 +87,7 @@ func prepareReferralsToAdd(nullifier string, count, index uint64) []data.Referra
 		refs[i] = data.Referral{
 			ID:        code,
 			Nullifier: nullifier,
+			UsageLeft: 1,
 		}
 	}
 
@@ -66,7 +95,7 @@ func prepareReferralsToAdd(nullifier string, count, index uint64) []data.Referra
 }
 
 func adjustReferralsCount(req requests.EditReferralsRequest, r *http.Request) (refsAdded []string, err error) {
-	active, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).FilterByIsConsumed(false).Count()
+	active, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).FilterConsumed().Count()
 	if err != nil {
 		return nil, fmt.Errorf("count active referrals: %w", err)
 	}

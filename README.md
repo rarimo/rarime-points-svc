@@ -39,14 +39,37 @@ not allow it interactions with the system, although it is technically possible
 to do other actions.
 
 Path: `/integrations/rarime-points-svc/v1/private/referrals`
-Query parameters:
-- `did` - user DID to create or edit referrals for
-- `count` - number of referrals to set
-
-Example to set 200 referrals for user `did:example:123`:
-```shell
-curl -X POST "http://localhost/integrations/rarime-points-svc/v1/private/referrals?did=did:example:123&count=200"
+Body:
+```json
+{
+    "nullifier": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "count": 2,
+    "genesis": true
+}
 ```
+Response variants:
+```json
+{
+  "added_ref": "kPRQYQUcWzW",
+  "usage_left": 2
+}
+```
+or
+```json
+{
+  "added_referrals":[
+    "kPRQYQUcWzW",
+    "kPRQYQUcaaa",
+    "kPRQYQUcbbb",
+    "kPRQYQUcccc"
+  ]
+}
+```
+Parameters:
+- `nullifier` - nullifier to create or edit referrals for
+- `count` - number of referrals to set/number of referral usage for genesis
+- `genesis` - specify add many referrals with one usage or one referral with many usage
+
 
 Behavior:
 a) User does not exist -> create a _System user_ with the specified number of
@@ -54,6 +77,8 @@ referrals (if count == 0, do not create)
 b) User exists, `N` > `count` -> add `N - count` active referrals
 c) User exists, `N` < `count` -> consume `count - N` active referrals (not delete!)
 d) User exists, `N` = `count` -> do nothing
+f) Flag `genesis = true` that mean that will be created only one referral with
+`usage_count = count`. Referrals which have `usage_count <= 0` is inactive
 
 Where `N` is the current number of active referrals for the user, `count` is
 query parameter value.

@@ -44,7 +44,7 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	referral, err := ReferralsQ(r).FilterByIsConsumed(false).Get(req.Data.Attributes.ReferredBy)
+	referral, err := ReferralsQ(r).FilterConsumed().Get(req.Data.Attributes.ReferredBy)
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get referral by ID")
 		ape.RenderErr(w, problems.InternalError())
