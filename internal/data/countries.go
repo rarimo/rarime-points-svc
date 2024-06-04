@@ -7,6 +7,7 @@ type CountriesQ interface {
 	Select() ([]Country, error)
 	Get() (*Country, error)
 	FilterByCodes(codes ...string) CountriesQ
+	FilterDisabled(bool) CountriesQ
 }
 
 type Country struct {

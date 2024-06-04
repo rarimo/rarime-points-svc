@@ -97,6 +97,10 @@ func (q *countries) FilterByCodes(codes ...string) data.CountriesQ {
 	return q.applyCondition(squirrel.Eq{"code": codes})
 }
 
+func (q *countries) FilterDisabled(disabled bool) data.CountriesQ {
+	return q.applyCondition(squirrel.Eq{"is_disabled": disabled})
+}
+
 func (q *countries) applyCondition(cond squirrel.Sqlizer) data.CountriesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)

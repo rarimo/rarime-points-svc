@@ -46,6 +46,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			})
 			r.Get("/balances", handlers.Leaderboard)
 			r.Get("/point_price", handlers.GetPointPrice)
+			r.Get("/countries_config", handlers.GetCountriesConfig)
 		})
 		// must be accessible only within the cluster
 		r.Route("/private", func(r chi.Router) {
