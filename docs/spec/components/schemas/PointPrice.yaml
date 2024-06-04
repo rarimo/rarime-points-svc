@@ -4,9 +4,6 @@ allOf:
     required:
       - attributes
     properties:
-      type:
-        type: string
-        enum: [point_price]
       attributes:
         type: object
         required:

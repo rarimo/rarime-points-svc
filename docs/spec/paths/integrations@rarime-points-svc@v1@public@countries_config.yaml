@@ -1,0 +1,20 @@
+get:
+  tags:
+    - Countries
+  summary: Get countries configuration
+  description: List countries where it is allowed to claim or the limit of reservation was reached.
+  operationId: getCountriesConfig
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/CountriesConfig'
+    500:
+      $ref: '#/components/responses/internalError'

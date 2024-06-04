@@ -1,0 +1,25 @@
+allOf:
+  - $ref: '#/components/schemas/CountriesConfigKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - allowed
+          - limit_reached
+        properties:
+          allowed:
+            type: array
+            description: Country codes where users are eligible to claim
+            items:
+              type: string
+              example: 'UKR'
+          limit_reached:
+            type: array
+            description: |
+              Country codes where the limit of reservation was reached, making the claim not allowed
+            items:
+              type: string
+              example: 'USA'
