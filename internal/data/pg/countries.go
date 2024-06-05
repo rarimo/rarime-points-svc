@@ -35,9 +35,10 @@ func (q *countries) Insert(countries ...data.Country) error {
 		return nil
 	}
 
-	stmt := squirrel.Insert(countriesTable).Columns("code", "reserve_limit", "reserved", "withdrawn", "is_disabled")
+	stmt := squirrel.Insert(countriesTable).
+		Columns("code", "reserve_limit", "reserved", "withdrawn", "reserve_allowed", "withdrawal_allowed")
 	for _, c := range countries {
-		stmt = stmt.Values(c.Code, c.ReserveLimit, c.Reserved, c.Withdrawn, c.IsDisabled)
+		stmt = stmt.Values(c.Code, c.ReserveLimit, c.Reserved, c.Withdrawn, c.ReserveAllowed, c.WithdrawalAllowed)
 	}
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -47,24 +48,9 @@ func (q *countries) Insert(countries ...data.Country) error {
 	return nil
 }
 
-func (q *countries) Update(limit, addReserved, addWithdrawn *int64, isDisabled *bool) error {
-	stmt := q.updater
-
-	if limit != nil {
-		stmt = stmt.Set("usage_left", *limit)
-	}
-	if addReserved != nil {
-		stmt = stmt.Set("reserved", squirrel.Expr("reserved + ?", *addReserved))
-	}
-	if addWithdrawn != nil {
-		stmt = stmt.Set("withdrawn", squirrel.Expr("withdrawn + ?", *addWithdrawn))
-	}
-	if isDisabled != nil {
-		stmt = stmt.Set("is_disabled", *isDisabled)
-	}
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("update countries: %w", err)
+func (q *countries) Update(fields map[string]any) error {
+	if err := q.db.Exec(q.updater.SetMap(fields)); err != nil {
+		return fmt.Errorf("update countries [%v]: %w", fields, err)
 	}
 
 	return nil
@@ -95,10 +81,6 @@ func (q *countries) Get() (*data.Country, error) {
 
 func (q *countries) FilterByCodes(codes ...string) data.CountriesQ {
 	return q.applyCondition(squirrel.Eq{"code": codes})
-}
-
-func (q *countries) FilterDisabled(disabled bool) data.CountriesQ {
-	return q.applyCondition(squirrel.Eq{"is_disabled": disabled})
 }
 
 func (q *countries) applyCondition(cond squirrel.Sqlizer) data.CountriesQ {

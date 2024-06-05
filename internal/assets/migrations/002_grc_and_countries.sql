@@ -19,11 +19,12 @@ ALTER TABLE balances
 
 CREATE TABLE IF NOT EXISTS countries
 (
-    code          text PRIMARY KEY,
-    reserve_limit bigint  NOT NULL,
-    reserved      bigint  NOT NULL default 0,
-    withdrawn     bigint  NOT NULL default 0,
-    is_disabled   boolean NOT NULL default false
+    code               text PRIMARY KEY,
+    reserve_limit      bigint  NOT NULL,
+    reserved           bigint  NOT NULL default 0,
+    withdrawn          bigint  NOT NULL default 0,
+    reserve_allowed    boolean NOT NULL,
+    withdrawal_allowed boolean NOT NULL
 );
 
 ALTER TABLE balances

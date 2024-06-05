@@ -9,22 +9,24 @@ import (
 )
 
 func GetCountriesConfig(w http.ResponseWriter, r *http.Request) {
-	countries, err := CountriesQ(r).FilterDisabled(false).Select()
+	countries, err := CountriesQ(r).Select()
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to get enabled countries")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	allowed := make([]string, 0, len(countries))
-	limitReached := make([]string, 0, len(countries))
-
+	cMap := make(map[string]resources.CountryProperties)
 	for _, c := range countries {
-		if c.Reserved < c.ReserveLimit {
-			allowed = append(allowed, c.Code)
-			continue
+		prop := resources.CountryProperties{
+			ReserveAllowed:    c.ReserveAllowed,
+			WithdrawalAllowed: c.WithdrawalAllowed,
 		}
-		limitReached = append(limitReached, c.Code)
+		// when the limit is reached, reserve is not allowed despite the config
+		if c.Reserved < c.ReserveLimit {
+			prop.ReserveAllowed = false
+		}
+		cMap[c.Code] = prop
 	}
 
 	ape.Render(w, resources.CountriesConfigResponse{
@@ -33,8 +35,7 @@ func GetCountriesConfig(w http.ResponseWriter, r *http.Request) {
 				Type: resources.COUNTRIES_CONFIG,
 			},
 			Attributes: resources.CountriesConfigAttributes{
-				Allowed:      make([]string, 0, len(countries)),
-				LimitReached: make([]string, 0, len(countries)),
+				Countries: cMap,
 			},
 		},
 	})

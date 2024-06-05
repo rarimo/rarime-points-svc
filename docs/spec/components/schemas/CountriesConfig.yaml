@@ -7,19 +7,9 @@ allOf:
       attributes:
         type: object
         required:
-          - allowed
-          - limit_reached
+          - countries
         properties:
-          allowed:
-            type: array
-            description: Country codes where users are eligible to claim
-            items:
-              type: string
-              example: 'UKR'
-          limit_reached:
-            type: array
-            description: |
-              Country codes where the limit of reservation was reached, making the claim not allowed
-            items:
-              type: string
-              example: 'USA'
+          countries:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/CountryProperties'
