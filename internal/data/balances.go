@@ -6,6 +6,13 @@ import (
 	"gitlab.com/distributed_lab/kit/pgdb"
 )
 
+const (
+	ColAmount     = "amount"
+	ColReferredBy = "referred_by"
+	ColLevel      = "level"
+	ColCountry    = "country"
+)
+
 type Balance struct {
 	Nullifier  string         `db:"nullifier"`
 	Amount     int64          `db:"amount"`
@@ -14,14 +21,13 @@ type Balance struct {
 	ReferredBy sql.NullString `db:"referred_by"`
 	Rank       *int           `db:"rank"`
 	Level      int            `db:"level"`
+	Country    *string        `db:"country"`
 }
 
 type BalancesQ interface {
 	New() BalancesQ
 	Insert(Balance) error
-	UpdateAmountBy(points int64) error
-	SetReferredBy(referralCode string) error
-	SetLevel(level int) error
+	Update(map[string]any) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)

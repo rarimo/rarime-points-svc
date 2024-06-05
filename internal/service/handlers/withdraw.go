@@ -14,6 +14,7 @@ import (
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
@@ -62,7 +63,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var proof zkptypes.ZKProof
-	if err := json.Unmarshal(req.Data.Attributes.Proof, &proof); err != nil {
+	if err = json.Unmarshal(req.Data.Attributes.Proof, &proof); err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
@@ -146,7 +147,9 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	var withdrawal *data.Withdrawal
 	err = EventsQ(r).Transaction(func() error {
-		err = BalancesQ(r).FilterByNullifier(nullifier).UpdateAmountBy(-req.Data.Attributes.Amount)
+		err = BalancesQ(r).FilterByNullifier(nullifier).Update(map[string]any{
+			data.ColAmount: pg.AddToValue(data.ColAmount, -req.Data.Attributes.Amount),
+		})
 		if err != nil {
 			return fmt.Errorf("decrease points amount: %w", err)
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
@@ -94,7 +95,10 @@ func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balan
 				return fmt.Errorf("failed to insert referrals: %w", err)
 			}
 
-			if err = BalancesQ(r).FilterByNullifier(event.Nullifier).SetLevel(level); err != nil {
+			err = BalancesQ(r).FilterByNullifier(event.Nullifier).Update(map[string]any{
+				data.ColLevel: level,
+			})
+			if err != nil {
 				return fmt.Errorf("failed to update level: %w", err)
 			}
 		}
@@ -104,7 +108,9 @@ func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balan
 			return fmt.Errorf("update event status: %w", err)
 		}
 
-		err = BalancesQ(r).FilterByNullifier(event.Nullifier).UpdateAmountBy(reward)
+		err = BalancesQ(r).FilterByNullifier(event.Nullifier).Update(map[string]any{
+			data.ColAmount: pg.AddToValue(data.ColAmount, reward),
+		})
 		if err != nil {
 			return fmt.Errorf("update balance amount: %w", err)
 		}
@@ -112,7 +118,7 @@ func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balan
 		claimed = updated
 		return nil
 	})
-	return
+	return claimed, err
 }
 
 func newClaimEventResponse(

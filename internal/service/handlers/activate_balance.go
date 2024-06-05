@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
+	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -61,7 +62,11 @@ func ActivateBalance(w http.ResponseWriter, r *http.Request) {
 
 	err = EventsQ(r).Transaction(func() error {
 		Log(r).Debugf("%s referral code will be set for nullifier=%s", req.Data.Attributes.ReferredBy, nullifier)
-		if err = BalancesQ(r).FilterByNullifier(nullifier).SetReferredBy(req.Data.Attributes.ReferredBy); err != nil {
+
+		err = BalancesQ(r).FilterByNullifier(nullifier).Update(map[string]any{
+			data.ColReferredBy: req.Data.Attributes.ReferredBy,
+		})
+		if err != nil {
 			return fmt.Errorf("set referred_by: %w", err)
 		}
 

@@ -38,6 +38,7 @@ func (q *balances) Insert(bal data.Balance) error {
 		"amount":      bal.Amount,
 		"referred_by": bal.ReferredBy,
 		"level":       bal.Level,
+		"country":     bal.Country,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -47,40 +48,16 @@ func (q *balances) Insert(bal data.Balance) error {
 	return nil
 }
 
-func (q *balances) UpdateAmountBy(points int64) error {
-	stmt := q.updater.Set("amount", squirrel.Expr("amount + ?", points))
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("update amount by %d points: %w", points, err)
-	}
-
-	return nil
-}
-
-func (q *balances) SetReferredBy(referralCode string) error {
-	stmt := q.updater.
-		Set("referred_by", referralCode)
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set referred_by: %w", err)
-	}
-
-	return nil
-}
-
-func (q *balances) SetLevel(level int) error {
-	stmt := q.updater.
-		Set("level", level)
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set level: %w", err)
+func (q *balances) Update(fields map[string]any) error {
+	if err := q.db.Exec(q.updater.SetMap(fields)); err != nil {
+		return fmt.Errorf("update balance: %w", err)
 	}
 
 	return nil
 }
 
 // ApplyRankedPage is similar to the ApplyTo method for a page,
-// but the sorting values ​​are hardcoded because the fields must
+// but the sorting values are hardcoded because the fields must
 // be sorted in opposite directions
 func applyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) squirrel.SelectBuilder {
 	if page.Limit == 0 {
