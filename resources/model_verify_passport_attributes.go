@@ -4,9 +4,9 @@
 
 package resources
 
-import "encoding/json"
+import "github.com/iden3/go-rapidsnark/types"
 
 type VerifyPassportAttributes struct {
-	// JSON encoded ZK passport verification proof.
-	Proof json.RawMessage `json:"proof"`
+	// Iden3 ZK passport verification proof.
+	Proof types.ZKProof `json:"proof"`
 }

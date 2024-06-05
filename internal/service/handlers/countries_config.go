@@ -23,7 +23,7 @@ func GetCountriesConfig(w http.ResponseWriter, r *http.Request) {
 			WithdrawalAllowed: c.WithdrawalAllowed,
 		}
 		// when the limit is reached, reserve is not allowed despite the config
-		if c.Reserved < c.ReserveLimit {
+		if c.Reserved >= c.ReserveLimit {
 			prop.ReserveAllowed = false
 		}
 		cMap[c.Code] = prop

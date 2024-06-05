@@ -12,5 +12,5 @@ allOf:
         properties:
           proof:
             type: object
-            format: json.RawMessage
-            description: JSON encoded ZK passport verification proof.
+            format: types.ZKProof
+            description: Iden3 ZK passport verification proof.

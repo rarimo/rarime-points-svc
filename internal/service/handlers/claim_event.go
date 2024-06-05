@@ -44,7 +44,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if evType.Disabled {
-		Log(r).Infof("Attempt to claim: event type %s is disabled", event.Type)
+		Log(r).Infof("Event type %s is disabled", event.Type)
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
@@ -55,9 +55,30 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
-	if balance == nil {
-		Log(r).Infof("Attempt to claim: balance nullifier=%s is disabled", event.Nullifier)
-		ape.RenderErr(w, problems.NotFound())
+	if balance == nil || balance.Country == nil {
+		msg := "did not verify passport"
+		if balance == nil {
+			msg = "is disabled"
+		}
+		Log(r).Infof("Balance nullifier=%s %s", event.Nullifier, msg)
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
+
+	country, err := CountriesQ(r).FilterByCodes(*balance.Country).Get()
+	if err != nil || country == nil { // country must exist if no errors
+		Log(r).WithError(err).Error("Failed to get country by code")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if !country.ReserveAllowed {
+		Log(r).Infof("Reserve is not allowed for country=%s", *balance.Country)
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
+	if country.Reserved >= country.ReserveLimit {
+		Log(r).Infof("Reserve limit is reached for country=%s", *balance.Country)
+		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
