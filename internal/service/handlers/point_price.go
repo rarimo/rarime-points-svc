@@ -14,7 +14,8 @@ func GetPointPrice(w http.ResponseWriter, r *http.Request) {
 				Type: resources.POINT_PRICE,
 			},
 			Attributes: resources.PointPriceAttributes{
-				Urmo: PointPrice(r).PointPriceURMO,
+				Urmo:              PointPrice(r).PointPriceURMO,
+				WithdrawalAllowed: !PointPrice(r).Disabled,
 			},
 		},
 	})
