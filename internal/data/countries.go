@@ -9,6 +9,9 @@ type CountriesQ interface {
 	New() CountriesQ
 	Insert(countries ...Country) error
 	Update(map[string]any) error
+
+	// Update many update only reserve_limit, reserve_allowed and withdrawal_allowed
+	UpdateMany([]Country) error
 	Select() ([]Country, error)
 	Get() (*Country, error)
 	FilterByCodes(codes ...string) CountriesQ

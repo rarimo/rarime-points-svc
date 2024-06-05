@@ -94,6 +94,22 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = EventsQ(r).Transaction(func() (err error) {
+		countryCode := decodeInt(proof.PubSignals[zk.Citizenship])
+		if country, ok := Countries(r)[countryCode]; !ok {
+			err = CountriesQ(r).Insert(data.Country{Code: countryCode,
+				ReserveLimit:      country.ReserveLimit,
+				ReserveAllowed:    country.ReserveAllowed,
+				WithdrawalAllowed: country.WithdrawalAllowed})
+			if err != nil {
+				return fmt.Errorf("failed to inser new country: %w", err)
+			}
+		}
+		if err = BalancesQ(r).
+			FilterByNullifier(nullifier).
+			Update(map[string]any{"country": countryCode}); err != nil {
+			return fmt.Errorf("failed to update country: %w", err)
+		}
+
 		if evType != nil {
 			// ReferredBy always valid because of the previous logic
 			referral, err := ReferralsQ(r).Get(balance.ReferredBy.String)
@@ -129,4 +145,12 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func decodeInt(s string) string {
+	b, ok := new(big.Int).SetString(s, 10)
+	if !ok {
+		b = new(big.Int)
+	}
+	return string(b.Bytes())
 }

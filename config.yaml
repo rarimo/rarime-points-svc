@@ -60,6 +60,21 @@ levels:
       referrals: 5
       withdrawal_allowed: true
 
+countries:
+  countries:
+    - code: "UKR"
+      reserve_limit: 100000
+      reserve_allowed: true
+      withdrawal_allowed: true
+    - code: "USA"
+      reserve_limit: 100000
+      reserve_allowed: false
+      withdrawal_allowed: true
+    - code: "default"
+      reserve_limit: 100000
+      reserve_allowed: true
+      withdrawal_allowed: true
+
 auth:
   addr: http://rarime-auth
 

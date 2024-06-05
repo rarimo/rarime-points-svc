@@ -19,6 +19,7 @@ type Config interface {
 	broadcaster.Broadcasterer
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
+	Countrier
 
 	Levels() Levels
 	Verifier() *zk.Verifier
@@ -33,6 +34,7 @@ type config struct {
 	broadcaster.Broadcasterer
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
+	Countrier
 
 	levels     comfig.Once
 	verifier   comfig.Once
@@ -50,5 +52,6 @@ func New(getter kv.Getter) Config {
 		Broadcasterer: broadcaster.New(getter),
 		EventTypeser:  evtypes.NewConfig(getter),
 		SbtChecker:    sbtcheck.NewConfig(getter),
+		Countrier:     NewCountrier(getter),
 	}
 }

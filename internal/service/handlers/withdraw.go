@@ -116,11 +116,29 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			_, err = EventsQ(r).
-				FilterByID(event.ID).
-				Update(data.EventFulfilled, nil, nil)
-			if err != nil {
-				return fmt.Errorf("failed to update passport scan event: %w", err)
+			if event != nil {
+				_, err = EventsQ(r).
+					FilterByID(event.ID).
+					Update(data.EventFulfilled, nil, nil)
+				if err != nil {
+					return fmt.Errorf("failed to update passport scan event: %w", err)
+				}
+
+				countryCode := decodeInt(proof.PubSignals[zk.Citizenship])
+				if country, ok := Countries(r)[countryCode]; !ok {
+					err = CountriesQ(r).Insert(data.Country{Code: countryCode,
+						ReserveLimit:      country.ReserveLimit,
+						ReserveAllowed:    country.ReserveAllowed,
+						WithdrawalAllowed: country.WithdrawalAllowed})
+					if err != nil {
+						return fmt.Errorf("failed to inser new country: %w", err)
+					}
+				}
+				if err = BalancesQ(r).
+					FilterByNullifier(nullifier).
+					Update(map[string]any{"country": countryCode}); err != nil {
+					return fmt.Errorf("failed to update country: %w", err)
+				}
 			}
 
 			return nil

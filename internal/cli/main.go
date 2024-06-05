@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/kingpin"
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/service"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/countrier"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/expirywatch"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/reopener"
 	"gitlab.com/distributed_lab/kit/kv"
@@ -57,6 +58,7 @@ func Run(args []string) bool {
 		run(service.Run)
 		run(reopener.Run)
 		run(expirywatch.Run)
+		run(countrier.Run)
 	case migrateUpCmd.FullCommand():
 		err = MigrateUp(cfg)
 	case migrateDownCmd.FullCommand():
