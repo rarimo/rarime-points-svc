@@ -13,10 +13,10 @@ import (
 
 // Config exists only to Run countrier with provided country list
 type Config struct {
-	m map[string]country
+	m map[string]countryParams
 }
 
-type country struct {
+type countryParams struct {
 	Code              string `fig:"code,required"`
 	ReserveLimit      int64  `fig:"reserve_limit,required"`
 	ReserveAllowed    bool   `fig:"reserve_allowed,required"`
@@ -39,7 +39,7 @@ func NewConfig(getter kv.Getter) Countrier {
 func (c *config) Countries() Config {
 	return c.once.Do(func() interface{} {
 		var cfg struct {
-			Countries []country `fig:"countries,required"`
+			Countries []countryParams `fig:"countries,required"`
 		}
 
 		err := figure.Out(&cfg).
@@ -49,22 +49,22 @@ func (c *config) Countries() Config {
 			panic(fmt.Errorf("failed to figure out countries: %s", err))
 		}
 
-		countries := make(map[string]country, len(cfg.Countries))
-		for _, cou := range cfg.Countries {
+		countries := make(map[string]countryParams, len(cfg.Countries))
+		for _, country := range cfg.Countries {
 			err = validation.Errors{
 				"code": validation.Validate(
-					cou.Code,
+					country.Code,
 					validation.Required,
-					validation.When(cou.Code != data.DefaultCountryCode, is.CountryCode3),
+					validation.When(country.Code != data.DefaultCountryCode, is.CountryCode3),
 				),
-				"reserve_limit": validation.Validate(cou.ReserveLimit, validation.Min(0)),
+				"reserve_limit": validation.Validate(country.ReserveLimit, validation.Min(0)),
 			}.Filter()
 
 			if err != nil {
-				panic(fmt.Errorf("invalid country %s: %w", cou.Code, err))
+				panic(fmt.Errorf("invalid country %s: %w", country.Code, err))
 			}
 
-			countries[cou.Code] = cou
+			countries[country.Code] = country
 		}
 
 		if _, ok := countries[data.DefaultCountryCode]; !ok {

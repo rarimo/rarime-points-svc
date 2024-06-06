@@ -50,36 +50,37 @@ func compareCountries(cfgCountries Config, dbCountries []data.Country) (toUpdate
 	toUpdate = make([]data.Country, 0, len(cfgCountries.m)+len(dbCountries))
 	toInsert = make([]data.Country, 0, len(cfgCountries.m)+len(dbCountries))
 	dbCodes := make(map[string]string, len(dbCountries))
-	for _, v := range dbCountries {
-		dbCodes[v.Code] = ""
-		c := cfgCountries.m[data.DefaultCountryCode]
-		if _, ok := cfgCountries.m[v.Code]; ok {
-			c = cfgCountries.m[v.Code]
+
+	for _, dbCountry := range dbCountries {
+		dbCodes[dbCountry.Code] = ""
+		country := cfgCountries.m[data.DefaultCountryCode]
+		if _, ok := cfgCountries.m[dbCountry.Code]; ok {
+			country = cfgCountries.m[dbCountry.Code]
 		}
 
-		if v.ReserveLimit != c.ReserveLimit ||
-			v.ReserveAllowed != c.ReserveAllowed ||
-			v.WithdrawalAllowed != c.WithdrawalAllowed {
+		if dbCountry.ReserveLimit != country.ReserveLimit ||
+			dbCountry.ReserveAllowed != country.ReserveAllowed ||
+			dbCountry.WithdrawalAllowed != country.WithdrawalAllowed {
 
 			toUpdate = append(toUpdate, data.Country{
-				Code:              v.Code,
-				ReserveLimit:      c.ReserveLimit,
-				ReserveAllowed:    c.ReserveAllowed,
-				WithdrawalAllowed: c.WithdrawalAllowed,
+				Code:              dbCountry.Code,
+				ReserveLimit:      country.ReserveLimit,
+				ReserveAllowed:    country.ReserveAllowed,
+				WithdrawalAllowed: country.WithdrawalAllowed,
 			})
 		}
 	}
 
-	for code, cou := range cfgCountries.m {
+	for code, country := range cfgCountries.m {
 		if code == data.DefaultCountryCode {
 			continue
 		}
 		if _, ok := dbCodes[code]; !ok {
 			toInsert = append(toInsert, data.Country{
 				Code:              code,
-				ReserveLimit:      cou.ReserveLimit,
-				ReserveAllowed:    cou.ReserveAllowed,
-				WithdrawalAllowed: cou.WithdrawalAllowed,
+				ReserveLimit:      country.ReserveLimit,
+				ReserveAllowed:    country.ReserveAllowed,
+				WithdrawalAllowed: country.WithdrawalAllowed,
 			})
 		}
 	}
