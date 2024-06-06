@@ -101,22 +101,23 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newClaimEventResponse(*event, evType.Resource(), *balance))
 }
 
-// requires: event exist
+// claimEventWithPoints requires event to exist
 func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balance *data.Balance) (claimed *data.Event, err error) {
 	err = EventsQ(r).Transaction(func() error {
+		// Upgrade level logic when threshold is reached
 		refsCount, level := Levels(r).LvlUp(balance.Level, reward+balance.Amount)
 		if level != balance.Level {
-			count, err := ReferralsQ(r).FilterByNullifier(event.Nullifier).Count()
+			count, err := ReferralsQ(r).FilterByNullifier(balance.Nullifier).Count()
 			if err != nil {
 				return fmt.Errorf("failed to get referral count: %w", err)
 			}
 
-			refToAdd := prepareReferralsToAdd(event.Nullifier, uint64(refsCount), count)
+			refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
 			if err = ReferralsQ(r).Insert(refToAdd...); err != nil {
 				return fmt.Errorf("failed to insert referrals: %w", err)
 			}
 
-			err = BalancesQ(r).FilterByNullifier(event.Nullifier).Update(map[string]any{
+			err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
 				data.ColLevel: level,
 			})
 			if err != nil {
@@ -124,22 +125,29 @@ func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balan
 			}
 		}
 
-		updated, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
+		claimed, err = EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
 		if err != nil {
 			return fmt.Errorf("update event status: %w", err)
 		}
 
-		err = BalancesQ(r).FilterByNullifier(event.Nullifier).Update(map[string]any{
+		err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
 			data.ColAmount: pg.AddToValue(data.ColAmount, reward),
 		})
 		if err != nil {
 			return fmt.Errorf("update balance amount: %w", err)
 		}
 
-		claimed = updated
+		err = CountriesQ(r).FilterByCodes(*balance.Country).Update(map[string]any{
+			data.ColReserved: pg.AddToValue(data.ColReserved, reward),
+		})
+		if err != nil {
+			return fmt.Errorf("increase country reserve: %w", err)
+		}
+
 		return nil
 	})
-	return claimed, err
+
+	return claimed, nil
 }
 
 func newClaimEventResponse(

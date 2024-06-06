@@ -76,6 +76,13 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 			return fmt.Errorf("decrease points amount: %w", err)
 		}
 
+		err = CountriesQ(r).FilterByCodes(*balance.Country).Update(map[string]any{
+			data.ColWithdrawn: pg.AddToValue(data.ColWithdrawn, req.Data.Attributes.Amount),
+		})
+		if err != nil {
+			return fmt.Errorf("increase country withdrawn: %w", err)
+		}
+
 		withdrawal, err = WithdrawalsQ(r).Insert(data.Withdrawal{
 			Nullifier: nullifier,
 			Amount:    req.Data.Attributes.Amount,

@@ -14,7 +14,7 @@ type dbaser struct {
 	db *pgdb.DB
 }
 
-func Run(ctx context.Context, cfg config.Config) {
+func Run(_ context.Context, cfg config.Config) {
 	log := cfg.Log().WithField("who", "countrier")
 	db := dbaser{cfg.DB().Clone()}
 
