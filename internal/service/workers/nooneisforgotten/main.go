@@ -20,7 +20,7 @@ func Run(_ context.Context, cfg config.Config) {
 
 	evType = cfg.EventTypes().Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 	if evType != nil {
-		if err := updateReferrUserEvents(cfg); err != nil {
+		if err := updateReferralUserEvents(cfg); err != nil {
 			panic(err)
 		}
 	}
@@ -63,19 +63,19 @@ func updatePassportScanEvents(cfg config.Config) error {
 	return nil
 }
 
-func updateReferrUserEvents(cfg config.Config) error {
-	referrs, err := pg.NewBalances(cfg.DB().Clone()).WithoutReferralEvent()
+func updateReferralUserEvents(cfg config.Config) error {
+	refPairs, err := pg.NewBalances(cfg.DB().Clone()).WithoutReferralEvent()
 	if err != nil {
 		return fmt.Errorf("failed to select balances without points for referred users: %w", err)
 	}
 
-	toInsert := make([]data.Event, 0, len(referrs))
-	for _, referr := range referrs {
+	toInsert := make([]data.Event, 0, len(refPairs))
+	for _, ref := range refPairs {
 		toInsert = append(toInsert, data.Event{
-			Nullifier: referr.Referrer,
+			Nullifier: ref.Referrer,
 			Type:      evtypes.TypeReferralSpecific,
 			Status:    data.EventFulfilled,
-			Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, referr.Referred)),
+			Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, ref.Referred)),
 		})
 	}
 
