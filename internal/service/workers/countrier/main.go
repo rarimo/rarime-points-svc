@@ -1,7 +1,6 @@
 package countrier
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -18,7 +17,7 @@ type extConfig interface {
 	Countrier
 }
 
-func Run(_ context.Context, cfg extConfig) {
+func Run(cfg extConfig, sig chan struct{}) {
 	log := cfg.Log().WithField("who", "countrier")
 	q := pg.NewCountries(cfg.DB().Clone())
 
@@ -43,7 +42,9 @@ func Run(_ context.Context, cfg extConfig) {
 	if err != nil {
 		panic(fmt.Errorf("failed to insert countries: %w", err))
 	}
+
 	log.Infof("%d countries config was inserted", len(toInsert))
+	sig <- struct{}{}
 }
 
 func compareCountries(cfgCountries Config, dbCountries []data.Country) (toUpdate []data.Country, toInsert []data.Country) {

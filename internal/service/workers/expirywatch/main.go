@@ -14,11 +14,12 @@ import (
 const retryPeriod = 1 * time.Minute
 const maxRetries = 12
 
-func Run(ctx context.Context, cfg config.Config) {
+func Run(ctx context.Context, cfg config.Config, sig chan struct{}) {
 	w := newWatcher(cfg)
 	if err := w.initialRun(); err != nil {
 		panic(fmt.Errorf("expiry-watcher: initial run failed: %w", err))
 	}
+	sig <- struct{}{}
 
 	cron.Init(cfg.Log())
 	expirable := w.types.List(func(ev evtypes.EventConfig) bool {

@@ -9,11 +9,6 @@ import (
 
 	"github.com/alecthomas/kingpin"
 	"github.com/rarimo/rarime-points-svc/internal/config"
-	"github.com/rarimo/rarime-points-svc/internal/service"
-	"github.com/rarimo/rarime-points-svc/internal/service/workers/countrier"
-	"github.com/rarimo/rarime-points-svc/internal/service/workers/expirywatch"
-	"github.com/rarimo/rarime-points-svc/internal/service/workers/nooneisforgotten"
-	"github.com/rarimo/rarime-points-svc/internal/service/workers/reopener"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -44,25 +39,11 @@ func Run(args []string) bool {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-
 	var wg sync.WaitGroup
-	run := func(f func(context.Context, config.Config)) {
-		wg.Add(1)
-		go func() {
-			f(ctx, cfg)
-			wg.Done()
-		}()
-	}
 
 	switch cmd {
 	case serviceCmd.FullCommand():
-		run(service.Run)
-		run(func(ctx context.Context, cfg config.Config) {
-			nooneisforgotten.Run(ctx, cfg)
-			reopener.Run(ctx, cfg)
-		})
-		run(expirywatch.Run)
-		run(func(context.Context, config.Config) { countrier.Run(ctx, cfg) })
+		runServices(ctx, cfg, &wg)
 	case migrateUpCmd.FullCommand():
 		err = MigrateUp(cfg)
 	case migrateDownCmd.FullCommand():

@@ -15,10 +15,11 @@ import (
 const retryPeriod = 5 * time.Minute
 const maxRetries = 12
 
-func Run(ctx context.Context, cfg config.Config) {
+func Run(ctx context.Context, cfg config.Config, sig chan struct{}) {
 	if err := initialRun(cfg); err != nil {
 		panic(fmt.Errorf("reopener: initial run failed: %w", err))
 	}
+	sig <- struct{}{}
 
 	cron.Init(cfg.Log())
 

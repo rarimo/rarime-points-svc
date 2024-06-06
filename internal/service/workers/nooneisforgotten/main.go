@@ -1,60 +1,52 @@
 package nooneisforgotten
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"gitlab.com/distributed_lab/kit/pgdb"
 )
 
-func Run(_ context.Context, cfg config.Config) {
+func Run(cfg config.Config, sig chan struct{}) {
+	db := cfg.DB().Clone()
+
 	evType := cfg.EventTypes().Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evType != nil {
-		if err := updatePassportScanEvents(cfg); err != nil {
+		if err := updatePassportScanEvents(db); err != nil {
 			panic(err)
 		}
 	}
 
 	evType = cfg.EventTypes().Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 	if evType != nil {
-		if err := updateReferralUserEvents(cfg); err != nil {
+		if err := updateReferralUserEvents(db); err != nil {
 			panic(err)
 		}
 	}
+	sig <- struct{}{}
 }
 
-func updatePassportScanEvents(cfg config.Config) error {
-	balances, err := pg.NewBalances(cfg.DB().Clone()).WithoutPassportEvent()
+func updatePassportScanEvents(db *pgdb.DB) error {
+	balances, err := pg.NewBalances(db).WithoutPassportEvent()
 	if err != nil {
 		return fmt.Errorf("failed to select balances without points for passport scan: %w", err)
 	}
 
-	toInsert := make([]data.Event, 0, len(balances))
 	toUpdate := make([]string, 0, len(balances))
 	for _, balance := range balances {
 		if balance.EventID != nil {
 			toUpdate = append(toUpdate, *balance.EventID)
 			continue
 		}
-
-		toInsert = append(toInsert, data.Event{
-			Nullifier: balance.Nullifier,
-			Type:      evtypes.TypePassportScan,
-			Status:    data.EventFulfilled,
-		})
-	}
-	if len(toInsert) != 0 {
-		err = pg.NewEvents(cfg.DB().Clone()).Insert(toInsert...)
-		if err != nil {
-			return fmt.Errorf("failed to insert passport scan events: %w", err)
-		}
 	}
 
 	if len(toUpdate) != 0 {
-		_, err = pg.NewEvents(cfg.DB().Clone()).FilterByID(toUpdate...).Update(data.EventFulfilled, nil, nil)
+		_, err = pg.NewEvents(db).
+			FilterByID(toUpdate...).
+			Update(data.EventFulfilled, nil, nil)
 		if err != nil {
 			return fmt.Errorf("failed to update passport scan events: %w", err)
 		}
@@ -63,8 +55,8 @@ func updatePassportScanEvents(cfg config.Config) error {
 	return nil
 }
 
-func updateReferralUserEvents(cfg config.Config) error {
-	refPairs, err := pg.NewBalances(cfg.DB().Clone()).WithoutReferralEvent()
+func updateReferralUserEvents(db *pgdb.DB) error {
+	refPairs, err := pg.NewBalances(db).WithoutReferralEvent()
 	if err != nil {
 		return fmt.Errorf("failed to select balances without points for referred users: %w", err)
 	}
@@ -80,7 +72,7 @@ func updateReferralUserEvents(cfg config.Config) error {
 	}
 
 	if len(toInsert) != 0 {
-		err = pg.NewEvents(cfg.DB().Clone()).Insert(toInsert...)
+		err = pg.NewEvents(db).Insert(toInsert...)
 		if err != nil {
 			return fmt.Errorf("failed to insert referred user events: %w", err)
 		}
