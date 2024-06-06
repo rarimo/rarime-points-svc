@@ -42,7 +42,6 @@ type config struct {
 	levels     comfig.Once
 	verifier   comfig.Once
 	pointPrice comfig.Once
-	countries  comfig.Once
 	getter     kv.Getter
 }
 

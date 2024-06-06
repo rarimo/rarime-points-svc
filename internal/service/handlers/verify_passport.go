@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
-	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/jsonapi"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
@@ -54,7 +54,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 
 // getAndVerifyBalanceEligibility provides shared logic to verify that the user
 // is eligible to verify passport or withdraw. Some extra checks still exist in
-// the flows.
+// the flows. You may provide nil proof to handle its verification outside.
 func getAndVerifyBalanceEligibility(
 	r *http.Request,
 	nullifier string,
@@ -74,9 +74,13 @@ func getAndVerifyBalanceEligibility(
 	if errs = checkVerificationEligibility(r, balance); len(errs) > 0 {
 		return nil, errs
 	}
+	// for withdrawal
+	if proof == nil {
+		return balance, nil
+	}
 
-	// MustDecode will never panic, because of the previous logic of request validation
-	proof.PubSignals[zk.Nullifier] = new(big.Int).SetBytes(hexutil.MustDecode(nullifier)).String()
+	// never panics because of request validation
+	proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
 	err = Verifier(r).VerifyProof(*proof)
 	if err != nil {
 		return nil, problems.BadRequest(err)
@@ -194,13 +198,9 @@ func addEventForReferrer(r *http.Request, balance data.Balance) error {
 }
 
 func getOrCreateCountry(q data.CountriesQ, proof zkptypes.ZKProof) (*data.Country, error) {
-	code := extractCountry(proof)
-	if code == "" {
-		return nil, errors.New("country pub signal is not decimal big integer")
-	}
-
-	if len(code) != 3 || code != strings.ToUpper(code) {
-		return nil, errors.New("country pub signal is not valid country code")
+	code, err := extractCountry(proof)
+	if err != nil {
+		return nil, fmt.Errorf("extract country: %w", err)
 	}
 
 	c, err := q.FilterByCodes(code).Get()
@@ -234,10 +234,22 @@ func getOrCreateCountry(q data.CountriesQ, proof zkptypes.ZKProof) (*data.Countr
 }
 
 // extractCountry extracts 3-letter country code from the proof.
-func extractCountry(proof zkptypes.ZKProof) string {
+func extractCountry(proof zkptypes.ZKProof) (string, error) {
 	b, ok := new(big.Int).SetString(proof.PubSignals[zk.Citizenship], 10)
 	if !ok {
 		b = new(big.Int)
 	}
-	return string(b.Bytes())
+
+	code := string(b.Bytes())
+
+	return code, validation.Errors{
+		"code": validation.Validate(
+			code,
+			validation.Required,
+			validation.When(code != data.DefaultCountryCode, is.CountryCode3),
+		)}.Filter()
+}
+
+func mustHexToInt(s string) string {
+	return new(big.Int).SetBytes(hexutil.MustDecode(s)).String()
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
+	zk "github.com/rarimo/zkverifier-kit"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
@@ -39,9 +40,20 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		proof     = req.Data.Attributes.Proof
 	)
 
-	balance, errs := getAndVerifyBalanceEligibility(r, nullifier, &proof)
+	balance, errs := getAndVerifyBalanceEligibility(r, nullifier, nil)
 	if len(errs) > 0 {
 		ape.RenderErr(w, errs...)
+		return
+	}
+
+	// validated in requests.NewWithdraw
+	addr, _ := cosmos.AccAddressFromBech32(req.Data.Attributes.Address)
+	// never panics because of request validation
+	proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
+
+	err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr))
+	if err != nil {
+		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
 

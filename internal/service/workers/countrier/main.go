@@ -70,16 +70,16 @@ func compareCountries(cfgCountries Config, dbCountries []data.Country) (toUpdate
 		}
 	}
 
-	for code, country := range cfgCountries.m {
+	for code, cou := range cfgCountries.m {
 		if code == data.DefaultCountryCode {
 			continue
 		}
 		if _, ok := dbCodes[code]; !ok {
 			toInsert = append(toInsert, data.Country{
 				Code:              code,
-				ReserveLimit:      country.ReserveLimit,
-				ReserveAllowed:    country.ReserveAllowed,
-				WithdrawalAllowed: country.WithdrawalAllowed,
+				ReserveLimit:      cou.ReserveLimit,
+				ReserveAllowed:    cou.ReserveAllowed,
+				WithdrawalAllowed: cou.WithdrawalAllowed,
 			})
 		}
 	}
