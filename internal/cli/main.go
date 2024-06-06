@@ -57,10 +57,12 @@ func Run(args []string) bool {
 	switch cmd {
 	case serviceCmd.FullCommand():
 		run(service.Run)
-		run(reopener.Run)
+		run(func(ctx context.Context, cfg config.Config) {
+			nooneisforgotten.Run(ctx, cfg)
+			reopener.Run(ctx, cfg)
+		})
 		run(expirywatch.Run)
 		run(func(context.Context, config.Config) { countrier.Run(ctx, cfg) })
-		run(nooneisforgotten.Run)
 	case migrateUpCmd.FullCommand():
 		err = MigrateUp(cfg)
 	case migrateDownCmd.FullCommand():
