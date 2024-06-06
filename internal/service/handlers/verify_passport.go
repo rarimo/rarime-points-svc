@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -198,6 +199,10 @@ func getOrCreateCountry(q data.CountriesQ, proof zkptypes.ZKProof) (*data.Countr
 		return nil, errors.New("country pub signal is not decimal big integer")
 	}
 
+	if len(code) != 3 || code != strings.ToUpper(code) {
+		return nil, errors.New("country pub signal is not valid country code")
+	}
+
 	c, err := q.FilterByCodes(code).Get()
 	if err != nil {
 		return nil, fmt.Errorf("get country by code: %w", err)
@@ -229,11 +234,6 @@ func getOrCreateCountry(q data.CountriesQ, proof zkptypes.ZKProof) (*data.Countr
 }
 
 // extractCountry extracts 3-letter country code from the proof.
-//
-// TODO: think about some validation and case normalization, because we don't
-// know what values we may encounter, resulting to applying default settings when
-// we must not do it. For example, if we specify 'USA' in forbidden countries,
-// but the proof contains 'usa', this situation is unpleasant.
 func extractCountry(proof zkptypes.ZKProof) string {
 	b, ok := new(big.Int).SetString(proof.PubSignals[zk.Citizenship], 10)
 	if !ok {

@@ -142,6 +142,52 @@ func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 	return &res, nil
 }
 
+func (q *balances) WithoutPassportEvent() ([]data.WithoutPassportEventBalance, error) {
+	var res []data.WithoutPassportEventBalance
+	stmt := fmt.Sprintf(`
+	SELECT b.*, e.id AS event_id 
+		FROM %s AS b LEFT JOIN %s AS e
+		ON b.nullifier = e.nullifier AND e.type='passport_scan' 
+		WHERE (e.status NOT IN ('fulfilled', 'claimed') OR e.nullifier IS NULL) 
+		AND b.referred_by IS NOT NULL
+		AND b.country IS NOT NULL
+	`, balancesTable, eventsTable)
+
+	if err := q.db.SelectRaw(&res, stmt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("select balances without passport events: %w", err)
+	}
+
+	return res, nil
+}
+
+func (q *balances) WithoutReferralEvent() ([]data.ReferredReferrer, error) {
+	var res []data.ReferredReferrer
+	stmt := fmt.Sprintf(`
+	SELECT b.nullifier AS referred, r.nullifier AS referrer 
+		FROM %s AS b INNER JOIN %s AS r 
+		ON r.id = b.referred_by 
+		WHERE b.nullifier NOT IN 
+			(SELECT b.nullifier 
+				FROM %s AS b INNER JOIN %s AS e 
+				ON e.meta->>'nullifier' = b.nullifier) 
+		AND b.referred_by IS NOT NULL 
+		AND b.country IS NOT NULL
+	`, balancesTable, referralsTable, balancesTable, eventsTable)
+
+	if err := q.db.SelectRaw(&res, stmt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("select balances without referred events: %w", err)
+	}
+
+	return res, nil
+
+}
+
 func (q *balances) FilterByNullifier(nullifier string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }

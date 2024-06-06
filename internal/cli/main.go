@@ -12,6 +12,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/service"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/countrier"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/expirywatch"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/nooneisforgotten"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/reopener"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -59,6 +60,7 @@ func Run(args []string) bool {
 		run(reopener.Run)
 		run(expirywatch.Run)
 		run(countrier.Run)
+		run(nooneisforgotten.Run)
 	case migrateUpCmd.FullCommand():
 		err = MigrateUp(cfg)
 	case migrateDownCmd.FullCommand():
