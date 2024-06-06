@@ -59,7 +59,7 @@ func Run(args []string) bool {
 		run(service.Run)
 		run(reopener.Run)
 		run(expirywatch.Run)
-		run(countrier.Run)
+		run(func(context.Context, config.Config) { countrier.Run(ctx, cfg) })
 		run(nooneisforgotten.Run)
 	case migrateUpCmd.FullCommand():
 		err = MigrateUp(cfg)
