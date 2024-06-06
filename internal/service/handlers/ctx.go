@@ -28,7 +28,6 @@ const (
 	pointPriceCtxKey
 	verifierCtxKey
 	levelsCtxKey
-	countriesCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -149,14 +148,4 @@ func CtxLevels(levels config.Levels) func(context.Context) context.Context {
 
 func Levels(r *http.Request) config.Levels {
 	return r.Context().Value(levelsCtxKey).(config.Levels)
-}
-
-func CtxCountries(countries config.Countries) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		return context.WithValue(ctx, countriesCtxKey, countries)
-	}
-}
-
-func Countries(r *http.Request) config.Countries {
-	return r.Context().Value(countriesCtxKey).(config.Countries)
 }

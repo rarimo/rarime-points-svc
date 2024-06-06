@@ -8,13 +8,18 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-const proofEventIDValue = "211985299740800702300256033401632392934377086534111448880928528431996790315"
+const (
+	proofEventIDValue  = "211985299740800702300256033401632392934377086534111448880928528431996790315"
+	proofSelectorValue = "23073"
+	maxIdentityCount   = 0
+)
 
 func (c *config) Verifier() *zk.Verifier {
 	return c.verifier.Do(func() interface{} {
 		var cfg struct {
-			AllowedAge          int    `fig:"allowed_age,required"`
-			VerificationKeyPath string `fig:"verification_key_path,required"`
+			AllowedAge               int    `fig:"allowed_age,required"`
+			VerificationKeyPath      string `fig:"verification_key_path,required"`
+			AllowedIdentityTimestamp int64  `fig:"allowed_identity_timestamp,required"`
 		}
 
 		err := figure.
@@ -28,7 +33,11 @@ func (c *config) Verifier() *zk.Verifier {
 		v, err := zk.NewPassportVerifier(nil,
 			zk.WithVerificationKeyFile(cfg.VerificationKeyPath),
 			zk.WithAgeAbove(cfg.AllowedAge),
+			zk.WithIdentityVerifier(c.ProvideVerifier()),
+			zk.WithProofSelectorValue(proofSelectorValue),
 			zk.WithEventID(proofEventIDValue),
+			zk.WithIdentitiesCounter(maxIdentityCount),
+			zk.WithIdentitiesCreationTimestampLimit(cfg.AllowedIdentityTimestamp),
 		)
 
 		if err != nil {

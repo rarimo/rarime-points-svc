@@ -2,7 +2,8 @@ get:
   tags:
     - Countries
   summary: Get countries configuration
-  description: List countries where it is allowed to claim or the limit of reservation was reached.
+  description: |
+    List countries and their properties: whether it is allowed to reserve and withdraw tokens
   operationId: getCountriesConfig
   responses:
     200:

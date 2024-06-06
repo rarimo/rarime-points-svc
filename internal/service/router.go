@@ -22,7 +22,6 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxPointPrice(cfg.PointPrice()),
 			handlers.CtxLevels(cfg.Levels()),
 			handlers.CtxVerifier(cfg.Verifier()),
-			handlers.CtxCountries(cfg.Countries()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)

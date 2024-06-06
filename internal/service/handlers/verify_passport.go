@@ -19,8 +19,6 @@ import (
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
-const proofSelectorValue = "23073"
-
 func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.NewVerifyPassport(r)
 	if err != nil {
@@ -53,7 +51,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// getAndVerifyBalanceEligibility provides common logic to verify that the user
+// getAndVerifyBalanceEligibility provides shared logic to verify that the user
 // is eligible to verify passport or withdraw. Some extra checks still exist in
 // the flows.
 func getAndVerifyBalanceEligibility(
@@ -78,7 +76,7 @@ func getAndVerifyBalanceEligibility(
 
 	// MustDecode will never panic, because of the previous logic of request validation
 	proof.PubSignals[zk.Nullifier] = new(big.Int).SetBytes(hexutil.MustDecode(nullifier)).String()
-	err = Verifier(r).VerifyProof(*proof, zk.WithProofSelectorValue(proofSelectorValue))
+	err = Verifier(r).VerifyProof(*proof)
 	if err != nil {
 		return nil, problems.BadRequest(err)
 	}
