@@ -113,3 +113,39 @@ empty, otherwise only `Build and Publish` job will be passed.
 ### Database
 For services, we do use ***PostgresSQL*** database. 
 You can [install it locally](https://www.postgresql.org/download/) or use [docker image](https://hub.docker.com/_/postgres/).
+
+## Testing
+To run tests need to mock some logic in handlers/middleware:
+```go
+func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// claims, err := auth.ValidateJWT(r)
+			// if err != nil {
+			// 	log.WithError(err).Info("Got invalid auth or validation error")
+			// 	ape.RenderErr(w, problems.Unauthorized())
+			// 	return
+			// }
+
+			// if len(claims) == 0 {
+			// 	ape.RenderErr(w, problems.Unauthorized())
+			// 	return
+			// }
+
+			ctx := CtxUserClaims([]resources.Claim{{Nullifier: r.Header.Get("nullifier")}})(r.Context())
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+```
+and in handlers/verify_passport:
+```go
+	// never panics because of request validation
+	// proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
+	// err = Verifier(r).VerifyProof(*proof)
+	// if err != nil {
+	// 	return nil, problems.BadRequest(err)
+	// }
+```
+
+Run service with standart config (you need to configure db url only) and run tests.

@@ -12,7 +12,7 @@ event_types:
   types:
     - name: passport_scan
       title: Points for passport scan
-      reward: 200
+      reward: 5
       description: Get points for scan passport and share data
       short_description: Short description
       frequency: one-time
@@ -20,26 +20,26 @@ event_types:
       logo: https://...
     - name: free_weekly
       title: Free weekly points
-      reward: 100
+      reward: 1
       frequency: weekly
       description: Get free points every week by visiting the platform and claiming your reward
       short_description: Short description
     - name: be_referred
       title: Referral welcome bonus
-      reward: 5
+      reward: 1
       frequency: one-time
       description: Be referred by a friend and get a welcome bonus
       short_description: Short description
       no_auto_open: true
     - name: referral_common
-      reward: 25
+      reward: 1
       frequency: one-time
       title: Refer new users
       short_description: Refer friends and get a reward for each friend who verifies the passport
       description: Refer friends and get a reward for each friend who verifies the passport
     - name: referral_specific
       title: Refer user {:did}
-      reward: 25
+      reward: 1
       frequency: unlimited
       description: The user {:did} has verified the passport. Claim the reward!
       short_description: Short description
@@ -52,11 +52,11 @@ levels:
       referrals: 5
       withdrawal_allowed: false
     - lvl: 2
-      threshold: 20
+      threshold: 5
       referrals: 5
       withdrawal_allowed: true
     - lvl: 3
-      threshold: 40
+      threshold: 6
       referrals: 5
       withdrawal_allowed: true
 
@@ -67,11 +67,15 @@ countries:
       reserve_allowed: true
       withdrawal_allowed: true
     - code: "USA"
-      reserve_limit: 100000
+      reserve_limit: 5
+      reserve_allowed: true
+      withdrawal_allowed: true
+    - code: "GBR"
+      reserve_limit: 5
       reserve_allowed: false
       withdrawal_allowed: true
     - code: "default"
-      reserve_limit: 100000
+      reserve_limit: 5
       reserve_allowed: true
       withdrawal_allowed: true
 

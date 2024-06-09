@@ -73,9 +73,6 @@ func compareCountries(cfgCountries Config, dbCountries []data.Country) (toUpdate
 	}
 
 	for code, country := range cfgCountries.m {
-		if code == data.DefaultCountryCode {
-			continue
-		}
 		if _, ok := dbCodes[code]; !ok {
 			toInsert = append(toInsert, data.Country{
 				Code:              code,
