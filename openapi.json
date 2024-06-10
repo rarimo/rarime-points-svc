@@ -462,6 +462,39 @@
         }
       }
     },
+    "/integrations/rarime-points-svc/v1/public/countries_config": {
+      "get": {
+        "tags": [
+          "Countries"
+        ],
+        "summary": "Get countries configuration",
+        "description": "List countries and their properties: whether it is allowed to reserve and withdraw tokens\n",
+        "operationId": "getCountriesConfig",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CountriesConfig"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/internalError"
+          }
+        }
+      }
+    },
     "/integrations/rarime-points-svc/v1/public/events": {
       "get": {
         "tags": [
@@ -857,6 +890,67 @@
           }
         }
       },
+      "CountriesConfig": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CountriesConfigKey"
+          },
+          {
+            "type": "object",
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "type": "object",
+                "required": [
+                  "countries"
+                ],
+                "properties": {
+                  "countries": {
+                    "type": "object",
+                    "description": "Map from country codes to their properties.\nEach code is ISO 3166-1 alpha-3 code (3-letter uppercase).\n",
+                    "additionalProperties": {
+                      "$ref": "#/components/schemas/CountryProperties"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "CountriesConfigKey": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "countries_config"
+            ]
+          }
+        }
+      },
+      "CountryProperties": {
+        "type": "object",
+        "required": [
+          "reserve_allowed",
+          "withdrawal_allowed"
+        ],
+        "properties": {
+          "reserve_allowed": {
+            "type": "boolean",
+            "description": "Whether the users of country are allowed to reserve (claim) tokens"
+          },
+          "withdrawal_allowed": {
+            "type": "boolean",
+            "description": "Whether the users of country are allowed to withdraw tokens"
+          }
+        }
+      },
       "CreateBalance": {
         "allOf": [
           {
@@ -1145,16 +1239,11 @@
               "attributes"
             ],
             "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "point_price"
-                ]
-              },
               "attributes": {
                 "type": "object",
                 "required": [
-                  "urmo"
+                  "urmo",
+                  "withdrawal_allowed"
                 ],
                 "properties": {
                   "urmo": {
@@ -1162,6 +1251,11 @@
                     "format": "int64",
                     "description": "Amount of `urmo` tokens for one point",
                     "example": 1000
+                  },
+                  "withdrawal_allowed": {
+                    "type": "bool",
+                    "description": "Specify if user can withdraw points",
+                    "example": true
                   }
                 }
               }
@@ -1203,8 +1297,8 @@
                 "properties": {
                   "proof": {
                     "type": "object",
-                    "format": "json.RawMessage",
-                    "description": "JSON encoded ZK passport verification proof."
+                    "format": "types.ZKProof",
+                    "description": "Iden3 ZK passport verification proof."
                   }
                 }
               }
@@ -1266,8 +1360,8 @@
                   },
                   "proof": {
                     "type": "object",
-                    "format": "json.RawMessage",
-                    "description": "JSON encoded ZK passport verification proof."
+                    "format": "types.ZKProof",
+                    "description": "Iden3 ZK passport verification proof."
                   }
                 }
               }
