@@ -23,5 +23,5 @@ allOf:
             example: rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds
           proof:
             type: object
-            format: json.RawMessage
-            description: JSON encoded ZK passport verification proof.
+            format: types.ZKProof
+            description: Iden3 ZK passport verification proof.

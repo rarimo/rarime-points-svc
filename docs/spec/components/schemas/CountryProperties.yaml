@@ -1,0 +1,11 @@
+type: object
+required:
+  - reserve_allowed
+  - withdrawal_allowed
+properties:
+  reserve_allowed:
+    type: boolean
+    description: Whether the users of country are allowed to reserve (claim) tokens
+  withdrawal_allowed:
+    type: boolean
+    description: Whether the users of country are allowed to withdraw tokens

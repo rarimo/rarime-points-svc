@@ -21,6 +21,7 @@ const (
 	balancesQCtxKey
 	withdrawalsQCtxKey
 	referralsQCtxKey
+	countriesQCtxKey
 	eventTypesCtxKey
 	userClaimsCtxKey
 	broadcasterCtxKey
@@ -77,6 +78,16 @@ func CtxReferralsQ(q data.ReferralsQ) func(context.Context) context.Context {
 
 func ReferralsQ(r *http.Request) data.ReferralsQ {
 	return r.Context().Value(referralsQCtxKey).(data.ReferralsQ).New()
+}
+
+func CtxCountriesQ(q data.CountriesQ) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, countriesQCtxKey, q)
+	}
+}
+
+func CountriesQ(r *http.Request) data.CountriesQ {
+	return r.Context().Value(countriesQCtxKey).(data.CountriesQ).New()
 }
 
 func CtxEventTypes(types evtypes.Types) func(context.Context) context.Context {

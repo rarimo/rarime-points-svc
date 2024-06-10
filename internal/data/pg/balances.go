@@ -38,6 +38,7 @@ func (q *balances) Insert(bal data.Balance) error {
 		"amount":      bal.Amount,
 		"referred_by": bal.ReferredBy,
 		"level":       bal.Level,
+		"country":     bal.Country,
 	})
 
 	if err := q.db.Exec(stmt); err != nil {
@@ -47,40 +48,16 @@ func (q *balances) Insert(bal data.Balance) error {
 	return nil
 }
 
-func (q *balances) UpdateAmountBy(points int64) error {
-	stmt := q.updater.Set("amount", squirrel.Expr("amount + ?", points))
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("update amount by %d points: %w", points, err)
-	}
-
-	return nil
-}
-
-func (q *balances) SetReferredBy(referralCode string) error {
-	stmt := q.updater.
-		Set("referred_by", referralCode)
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set referred_by: %w", err)
-	}
-
-	return nil
-}
-
-func (q *balances) SetLevel(level int) error {
-	stmt := q.updater.
-		Set("level", level)
-
-	if err := q.db.Exec(stmt); err != nil {
-		return fmt.Errorf("set level: %w", err)
+func (q *balances) Update(fields map[string]any) error {
+	if err := q.db.Exec(q.updater.SetMap(fields)); err != nil {
+		return fmt.Errorf("update balance: %w", err)
 	}
 
 	return nil
 }
 
 // ApplyRankedPage is similar to the ApplyTo method for a page,
-// but the sorting values ​​are hardcoded because the fields must
+// but the sorting values are hardcoded because the fields must
 // be sorted in opposite directions
 func applyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) squirrel.SelectBuilder {
 	if page.Limit == 0 {
@@ -163,6 +140,52 @@ func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 	}
 
 	return &res, nil
+}
+
+func (q *balances) WithoutPassportEvent() ([]data.WithoutPassportEventBalance, error) {
+	var res []data.WithoutPassportEventBalance
+	stmt := fmt.Sprintf(`
+	SELECT b.*, e.id AS event_id 
+		FROM %s AS b LEFT JOIN %s AS e
+		ON b.nullifier = e.nullifier AND e.type='passport_scan' 
+		WHERE (e.status NOT IN ('fulfilled', 'claimed') OR e.nullifier IS NULL) 
+		AND b.referred_by IS NOT NULL
+		AND b.country IS NOT NULL
+	`, balancesTable, eventsTable)
+
+	if err := q.db.SelectRaw(&res, stmt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("select balances without passport events: %w", err)
+	}
+
+	return res, nil
+}
+
+func (q *balances) WithoutReferralEvent() ([]data.ReferredReferrer, error) {
+	var res []data.ReferredReferrer
+	stmt := fmt.Sprintf(`
+	SELECT b.nullifier AS referred, r.nullifier AS referrer 
+		FROM %s AS b INNER JOIN %s AS r 
+		ON r.id = b.referred_by 
+		WHERE b.nullifier NOT IN 
+			(SELECT b.nullifier 
+				FROM %s AS b INNER JOIN %s AS e 
+				ON e.meta->>'nullifier' = b.nullifier) 
+		AND b.referred_by IS NOT NULL 
+		AND b.country IS NOT NULL
+	`, balancesTable, referralsTable, balancesTable, eventsTable)
+
+	if err := q.db.SelectRaw(&res, stmt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("select balances without referred events: %w", err)
+	}
+
+	return res, nil
+
 }
 
 func (q *balances) FilterByNullifier(nullifier string) data.BalancesQ {

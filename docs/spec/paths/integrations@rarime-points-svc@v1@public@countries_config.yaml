@@ -1,0 +1,21 @@
+get:
+  tags:
+    - Countries
+  summary: Get countries configuration
+  description: |
+    List countries and their properties: whether it is allowed to reserve and withdraw tokens
+  operationId: getCountriesConfig
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/CountriesConfig'
+    500:
+      $ref: '#/components/responses/internalError'

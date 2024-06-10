@@ -1,0 +1,18 @@
+allOf:
+  - $ref: '#/components/schemas/CountriesConfigKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - countries
+        properties:
+          countries:
+            type: object
+            description: |
+              Map from country codes to their properties.
+              Each code is ISO 3166-1 alpha-3 code (3-letter uppercase).
+            additionalProperties:
+              $ref: '#/components/schemas/CountryProperties'

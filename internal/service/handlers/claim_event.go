@@ -6,6 +6,7 @@ import (
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
@@ -43,7 +44,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if evType.Disabled {
-		Log(r).Infof("Attempt to claim: event type %s is disabled", event.Type)
+		Log(r).Infof("Event type %s is disabled", event.Type)
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
@@ -54,9 +55,30 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
-	if balance == nil {
-		Log(r).Infof("Attempt to claim: balance nullifier=%s is disabled", event.Nullifier)
-		ape.RenderErr(w, problems.NotFound())
+	if balance == nil || balance.Country == nil {
+		msg := "did not verify passport"
+		if balance == nil {
+			msg = "is disabled"
+		}
+		Log(r).Infof("Balance nullifier=%s %s", event.Nullifier, msg)
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
+
+	country, err := CountriesQ(r).FilterByCodes(*balance.Country).Get()
+	if err != nil || country == nil { // country must exist if no errors
+		Log(r).WithError(err).Error("Failed to get country by code")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if !country.ReserveAllowed {
+		Log(r).Infof("Reserve is not allowed for country=%s", *balance.Country)
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
+	if country.Reserved >= country.ReserveLimit {
+		Log(r).Infof("Reserve limit is reached for country=%s", *balance.Country)
+		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
@@ -79,40 +101,53 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newClaimEventResponse(*event, evType.Resource(), *balance))
 }
 
-// requires: event exist
+// claimEventWithPoints requires event to exist
 func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balance *data.Balance) (claimed *data.Event, err error) {
 	err = EventsQ(r).Transaction(func() error {
+		// Upgrade level logic when threshold is reached
 		refsCount, level := Levels(r).LvlUp(balance.Level, reward+balance.Amount)
 		if level != balance.Level {
-			count, err := ReferralsQ(r).FilterByNullifier(event.Nullifier).Count()
+			count, err := ReferralsQ(r).FilterByNullifier(balance.Nullifier).Count()
 			if err != nil {
 				return fmt.Errorf("failed to get referral count: %w", err)
 			}
 
-			refToAdd := prepareReferralsToAdd(event.Nullifier, uint64(refsCount), count)
+			refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
 			if err = ReferralsQ(r).Insert(refToAdd...); err != nil {
 				return fmt.Errorf("failed to insert referrals: %w", err)
 			}
 
-			if err = BalancesQ(r).FilterByNullifier(event.Nullifier).SetLevel(level); err != nil {
+			err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
+				data.ColLevel: level,
+			})
+			if err != nil {
 				return fmt.Errorf("failed to update level: %w", err)
 			}
 		}
 
-		updated, err := EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
+		claimed, err = EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
 		if err != nil {
 			return fmt.Errorf("update event status: %w", err)
 		}
 
-		err = BalancesQ(r).FilterByNullifier(event.Nullifier).UpdateAmountBy(reward)
+		err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
+			data.ColAmount: pg.AddToValue(data.ColAmount, reward),
+		})
 		if err != nil {
 			return fmt.Errorf("update balance amount: %w", err)
 		}
 
-		claimed = updated
+		err = CountriesQ(r).FilterByCodes(*balance.Country).Update(map[string]any{
+			data.ColReserved: pg.AddToValue(data.ColReserved, reward),
+		})
+		if err != nil {
+			return fmt.Errorf("increase country reserve: %w", err)
+		}
+
 		return nil
 	})
-	return
+
+	return claimed, nil
 }
 
 func newClaimEventResponse(

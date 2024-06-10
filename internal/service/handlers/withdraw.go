@@ -1,28 +1,21 @@
 package handlers
 
 import (
-	"encoding/json"
 	"fmt"
-	"math/big"
 	"net/http"
 
 	cosmos "github.com/cosmos/cosmos-sdk/types"
 	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	zkptypes "github.com/iden3/go-rapidsnark/types"
-	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
+	"github.com/google/jsonapi"
 	"github.com/rarimo/rarime-points-svc/internal/data"
-	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
-	"gitlab.com/distributed_lab/logan/v3/errors"
 )
-
-const usaAuthorithy = "8571562"
 
 func Withdraw(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.NewWithdraw(r)
@@ -37,118 +30,69 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if PointPrice(r).Disabled {
-		log.Debug("Withdrawal disabled!")
+		log.Debug("Withdrawal is disabled")
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
-	nullifier := req.Data.ID
+	var (
+		nullifier = req.Data.ID
+		proof     = req.Data.Attributes.Proof
+	)
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) {
-		ape.RenderErr(w, problems.Unauthorized())
+	balance, errs := getAndVerifyBalanceEligibility(r, nullifier, nil)
+	if len(errs) > 0 {
+		ape.RenderErr(w, errs...)
 		return
 	}
 
-	balance, err := BalancesQ(r).FilterByNullifier(nullifier).Get()
+	// validated in requests.NewWithdraw
+	addr, _ := cosmos.AccAddressFromBech32(req.Data.Attributes.Address)
+	// never panics because of request validation
+	proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
+
+	err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr))
 	if err != nil {
-		log.WithError(err).Error("Failed to get balance by nullifier")
+		ape.RenderErr(w, problems.BadRequest(err)...)
+		return
+	}
+
+	country, err := getOrCreateCountry(CountriesQ(r), proof) // +1 query is not critical
+	if err != nil {
+		log.WithError(err).Error("Failed to get or create country")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	if balance == nil {
-		ape.RenderErr(w, problems.NotFound())
-		return
-	}
-
-	var proof zkptypes.ZKProof
-	if err := json.Unmarshal(req.Data.Attributes.Proof, &proof); err != nil {
-		ape.RenderErr(w, problems.BadRequest(err)...)
-		return
-	}
-
-	// MustDecode will never panic, because of the previous logic
-	proof.PubSignals[zk.Nullifier] = new(big.Int).SetBytes(hexutil.MustDecode(nullifier)).String()
-	if err := Verifier(r).VerifyProof(proof, zk.WithProofSelectorValue("23073")); err != nil {
-		ape.RenderErr(w, problems.BadRequest(err)...)
-		return
-	}
-
-	// Fulfill passport scan event for user and give points for referred
-	evType := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
-	logMsg := "Passport scan event absent, disabled, hasn't start yet or expired"
-	if evType != nil {
-		event, err := EventsQ(r).FilterByNullifier(nullifier).
-			FilterByType(evtypes.TypePassportScan).
-			FilterByStatus(data.EventOpen).Get()
-		if err != nil {
-			Log(r).WithError(err).Error("Failed to get passport scan event")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-
-		if event == nil {
-			logMsg = "Passport scan event already fulfilled or absent for user"
-		}
-
-		evType = EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
-		if evType == nil {
-			Log(r).Debug("Referral event type is disabled or expired, not accruing points to referrer")
-		}
-
-		err = EventsQ(r).Transaction(func() (err error) {
-			if evType != nil {
-				// ReferredBy always valid because of the previous logic
-				referral, err := ReferralsQ(r).Get(balance.ReferredBy.String)
-				if err != nil {
-					return fmt.Errorf("failed to get referral by ID: %w", err)
-				}
-
-				err = EventsQ(r).Insert(data.Event{
-					Nullifier: referral.Nullifier,
-					Type:      evType.Name,
-					Status:    data.EventFulfilled,
-					Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, nullifier)),
-				})
-				if err != nil {
-					return fmt.Errorf("add event for referrer: %w", err)
-				}
-			}
-
-			_, err = EventsQ(r).
-				FilterByID(event.ID).
-				Update(data.EventFulfilled, nil, nil)
-			if err != nil {
-				return fmt.Errorf("failed to update passport scan event: %w", err)
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			Log(r).WithError(err).Error("Failed to add referral event and update verify passport event")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-
-	}
-	Log(r).Debug(logMsg)
-
-	if proof.PubSignals[zk.Citizenship] == usaAuthorithy {
-		ape.RenderErr(w, problems.BadRequest(validation.Errors{"authority": errors.New("Incorrect authority")})...)
-		return
-	}
-
-	if err = isEligibleToWithdraw(r, balance, req.Data.Attributes.Amount); err != nil {
-		ape.RenderErr(w, problems.BadRequest(err)...)
+	errs = isEligibleToWithdraw(r, balance, req.Data.Attributes.Amount, *country)
+	if len(errs) > 0 {
+		ape.RenderErr(w, errs...)
 		return
 	}
 
 	var withdrawal *data.Withdrawal
 	err = EventsQ(r).Transaction(func() error {
-		err = BalancesQ(r).FilterByNullifier(nullifier).UpdateAmountBy(-req.Data.Attributes.Amount)
+		// If user hasn't provided passport proof yet, do all the necessary updates to
+		// potentially reduce the number of proofs in UX
+		if balance.Country == nil {
+			if err = doPassportScanUpdates(r, *balance, req.Data.Attributes.Proof); err != nil {
+				return fmt.Errorf("do passport scan updates: %w", err)
+			}
+			log.Debug("Successfully performed passport scan updates for the first time")
+		}
+
+		err = BalancesQ(r).FilterByNullifier(nullifier).Update(map[string]any{
+			data.ColAmount: pg.AddToValue(data.ColAmount, -req.Data.Attributes.Amount),
+		})
 		if err != nil {
 			return fmt.Errorf("decrease points amount: %w", err)
+		}
+
+		err = CountriesQ(r).FilterByCodes(*balance.Country).Update(map[string]any{
+			data.ColWithdrawn: pg.AddToValue(data.ColWithdrawn, req.Data.Attributes.Amount),
+		})
+		if err != nil {
+			return fmt.Errorf("increase country withdrawn: %w", err)
 		}
 
 		withdrawal, err = WithdrawalsQ(r).Insert(data.Withdrawal{
@@ -163,6 +107,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		if err = broadcastWithdrawalTx(req, r); err != nil {
 			return fmt.Errorf("broadcast transfer tx: %w", err)
 		}
+
 		return nil
 	})
 
@@ -201,20 +146,28 @@ func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.Wit
 	return &resp
 }
 
-func isEligibleToWithdraw(r *http.Request, balance *data.Balance, amount int64) error {
-	mapValidationErr := func(field, format string, a ...any) validation.Errors {
-		return validation.Errors{
+func isEligibleToWithdraw(
+	r *http.Request,
+	balance *data.Balance,
+	amount int64,
+	country data.Country,
+) []*jsonapi.ErrorObject {
+
+	mapValidationErr := func(field, format string, a ...any) []*jsonapi.ErrorObject {
+		return problems.BadRequest(validation.Errors{
 			field: fmt.Errorf(format, a...),
-		}
+		})
 	}
 
 	switch {
-	case !balance.ReferredBy.Valid:
-		return mapValidationErr("is_disabled", "user must be referred to withdraw")
 	case balance.Amount < amount:
 		return mapValidationErr("data/attributes/amount", "insufficient balance: %d", balance.Amount)
+	case !country.WithdrawalAllowed:
+		return mapValidationErr("country", "withdrawal is not allowed for country=%s", country.Code)
 	case !Levels(r)[balance.Level].WithdrawalAllowed:
-		return mapValidationErr("withdrawal not allowed", "user must up level to have withdraw ability")
+		return mapValidationErr("level", "must up level to have withdraw ability")
+	case balance.Country != nil && *balance.Country != country.Code:
+		return mapValidationErr("country", "country mismatch in proof and balance: %s", *balance.Country)
 	}
 
 	return nil

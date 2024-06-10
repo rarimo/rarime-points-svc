@@ -57,7 +57,7 @@ type EventsQ interface {
 	// this type for a specific user. Filters are not applied to this selection.
 	SelectAbsentTypes(allTypes ...string) ([]ReopenableEvent, error)
 
-	FilterByID(string) EventsQ
+	FilterByID(...string) EventsQ
 	FilterByNullifier(string) EventsQ
 	FilterByStatus(...EventStatus) EventsQ
 	FilterByType(...string) EventsQ

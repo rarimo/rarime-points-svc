@@ -55,8 +55,9 @@ type extConfig interface {
 func Run(ctx context.Context, cfg extConfig) {
 	log := cfg.Log().WithField("who", "sbt-checker")
 
-	// FilterInactive filter also events which hasn't start yet. Then we need filter only events which will not be active.
-	// Events with StartsAt will be open in specified time
+	// FilterInactive filter also events which haven't started yet. Then we need
+	// filter only events which will not be active. Events with StartsAt will be open
+	// in specified time
 	getPoh := cfg.EventTypes().Get(evtypes.TypeGetPoH,
 		func(ev evtypes.EventConfig) bool { return ev.Disabled || evtypes.FilterExpired(ev) })
 	if getPoh == nil {
@@ -302,9 +303,9 @@ func parseDidFromUint256(raw *big.Int) (string, error) {
 }
 
 func (r *runner) balancesQ() data.BalancesQ {
-	return pg.NewBalances(r.db.Clone())
+	return pg.NewBalances(r.db)
 }
 
 func (r *runner) eventsQ() data.EventsQ {
-	return pg.NewEvents(r.db.Clone())
+	return pg.NewEvents(r.db)
 }

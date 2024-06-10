@@ -4,16 +4,18 @@ allOf:
     required:
       - attributes
     properties:
-      type:
-        type: string
-        enum: [point_price]
       attributes:
         type: object
         required:
           - urmo
+          - withdrawal_allowed
         properties:
           urmo:
             type: integer
             format: int64
             description: Amount of `urmo` tokens for one point
             example: 1000
+          withdrawal_allowed:
+            type: bool
+            description: Specify if user can withdraw points
+            example: true

@@ -183,8 +183,11 @@ func (q *events) SelectAbsentTypes(allTypes ...string) ([]data.ReopenableEvent, 
 	return res, nil
 }
 
-func (q *events) FilterByID(id string) data.EventsQ {
-	return q.applyCondition(squirrel.Eq{"id": id})
+func (q *events) FilterByID(ids ...string) data.EventsQ {
+	if len(ids) == 0 {
+		return q
+	}
+	return q.applyCondition(squirrel.Eq{"id": ids})
 }
 
 func (q *events) FilterByNullifier(nullifier string) data.EventsQ {
