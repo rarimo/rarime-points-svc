@@ -908,9 +908,9 @@
                 ],
                 "properties": {
                   "countries": {
-                    "type": "object",
-                    "description": "Map from country codes to their properties.\nEach code is ISO 3166-1 alpha-3 code (3-letter uppercase).\n",
-                    "additionalProperties": {
+                    "type": "array",
+                    "description": "Array of codes and their properties.\nEach code is ISO 3166-1 alpha-3 code (3-letter uppercase).\n",
+                    "items": {
                       "$ref": "#/components/schemas/CountryProperties"
                     }
                   }
@@ -937,10 +937,15 @@
       "CountryProperties": {
         "type": "object",
         "required": [
+          "code",
           "reserve_allowed",
           "withdrawal_allowed"
         ],
         "properties": {
+          "code": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-3 country code"
+          },
           "reserve_allowed": {
             "type": "boolean",
             "description": "Whether the users of country are allowed to reserve (claim) tokens"
