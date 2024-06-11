@@ -188,7 +188,7 @@ func (q *balances) WithoutReferralEvent() ([]data.ReferredReferrer, error) {
 
 }
 
-func (q *balances) FilterByNullifier(nullifier string) data.BalancesQ {
+func (q *balances) FilterByNullifier(nullifier ...string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 

@@ -40,6 +40,7 @@ type ReopenableEvent struct {
 type EventsQ interface {
 	New() EventsQ
 	Insert(...Event) error
+	InsertOne(Event) (*Event, error)
 	Update(status EventStatus, meta json.RawMessage, points *int64) (*Event, error)
 	Delete() (rowsAffected int64, err error)
 	Transaction(func() error) error

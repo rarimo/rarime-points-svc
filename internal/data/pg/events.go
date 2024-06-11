@@ -60,6 +60,25 @@ func (q *events) Insert(events ...data.Event) error {
 	return nil
 }
 
+func (q *events) InsertOne(event data.Event) (*data.Event, error) {
+	var res data.Event
+	var meta any
+	if len(event.Meta) != 0 {
+		meta = event.Meta
+	}
+
+	stmt := squirrel.Insert(withdrawalsTable).
+		Columns("nullifier", "type", "status", "meta", "points_amount", "external_id").
+		Values(event.Nullifier, event.Type, event.Status, meta, event.PointsAmount, event.ExternalID).
+		Suffix("RETURNING *")
+
+	if err := q.db.Get(&res, stmt); err != nil {
+		return nil, fmt.Errorf("insert event [%+v]: %w", event, err)
+	}
+
+	return &res, nil
+}
+
 func (q *events) Update(status data.EventStatus, meta json.RawMessage, points *int64) (*data.Event, error) {
 	umap := map[string]any{
 		"status": status,

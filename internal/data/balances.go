@@ -40,7 +40,7 @@ type BalancesQ interface {
 	WithoutPassportEvent() ([]WithoutPassportEventBalance, error)
 	WithoutReferralEvent() ([]ReferredReferrer, error)
 
-	FilterByNullifier(string) BalancesQ
+	FilterByNullifier(...string) BalancesQ
 	FilterDisabled() BalancesQ
 }
 
