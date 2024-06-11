@@ -12,7 +12,7 @@ allOf:
           countries:
             type: array
             description: |
-              Map from country codes to their properties.
+              Array of codes and their properties.
               Each code is ISO 3166-1 alpha-3 code (3-letter uppercase).
             items:
               $ref: '#/components/schemas/CountryProperties'

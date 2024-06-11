@@ -16,7 +16,7 @@ func GetCountriesConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	codes := make([]resources.CountryProperties, len(countries))
+	properties := make([]resources.CountryProperties, 0, len(countries))
 	for _, c := range countries {
 		prop := resources.CountryProperties{
 			Code:              c.Code,
@@ -27,7 +27,7 @@ func GetCountriesConfig(w http.ResponseWriter, r *http.Request) {
 		if c.Reserved >= c.ReserveLimit {
 			prop.ReserveAllowed = false
 		}
-		codes = append(codes, prop)
+		properties = append(properties, prop)
 	}
 
 	ape.Render(w, resources.CountriesConfigResponse{
@@ -36,7 +36,7 @@ func GetCountriesConfig(w http.ResponseWriter, r *http.Request) {
 				Type: resources.COUNTRIES_CONFIG,
 			},
 			Attributes: resources.CountriesConfigAttributes{
-				Countries: codes,
+				Countries: properties,
 			},
 		},
 	})
