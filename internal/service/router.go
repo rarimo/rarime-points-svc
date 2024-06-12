@@ -30,7 +30,6 @@ func Run(ctx context.Context, cfg config.Config) {
 			r.Route("/balances/{nullifier}", func(r chi.Router) {
 				r.Use(handlers.AuthMiddleware(cfg.Auth(), cfg.Log()))
 				r.Get("/", handlers.GetBalance)
-				r.Patch("/", handlers.ActivateBalance)
 				r.Post("/verifypassport", handlers.VerifyPassport)
 				r.Get("/withdrawals", handlers.ListWithdrawals)
 				r.Post("/withdrawals", handlers.Withdraw)
