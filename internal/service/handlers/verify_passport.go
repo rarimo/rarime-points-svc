@@ -116,6 +116,9 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 		Log(r).Infof("User %s scanned passport which country has restrictions: %+v", balance.Nullifier, country)
 	}
 
+	// because for claim event must be country code
+	balance.Country = &country.Code
+
 	if err = fulfillPassportScanEvent(r, balance, *country); err != nil {
 		return fmt.Errorf("fulfill passport scan event: %w", err)
 	}
@@ -215,7 +218,7 @@ func claimReferralSpecificEvents(r *http.Request, balance data.Balance, autoClai
 	}
 
 	if len(events) == 0 {
-		return errors.New("inconsistent state: event type is active, but no open event was found")
+		return nil
 	}
 
 	if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {

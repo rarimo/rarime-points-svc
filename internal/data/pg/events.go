@@ -67,7 +67,7 @@ func (q *events) InsertOne(event data.Event) (*data.Event, error) {
 		meta = event.Meta
 	}
 
-	stmt := squirrel.Insert(withdrawalsTable).
+	stmt := squirrel.Insert(eventsTable).
 		Columns("nullifier", "type", "status", "meta", "points_amount", "external_id").
 		Values(event.Nullifier, event.Type, event.Status, meta, event.PointsAmount, event.ExternalID).
 		Suffix("RETURNING *")
