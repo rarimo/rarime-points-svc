@@ -194,9 +194,12 @@ func fulfillPassportScanEvent(r *http.Request, balance data.Balance, country dat
 	event, err = EventsQ(r).
 		FilterByID(event.ID).
 		Update(data.EventFulfilled, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to update event: %w", err)
+	}
 
 	if !evTypePassport.AutoClaim || !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
-		return err
+		return nil
 	}
 
 	_, err = claimEventWithPoints(r, *event, evTypePassport.Reward, &balance)
