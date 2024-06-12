@@ -29,6 +29,12 @@ get:
           type: string
           example: "create_org"
     - in: query
+      name: 'filter[has_expiration]'
+      description: Filter events by type which has or hasn't expiration.
+      required: false
+      schema:
+        type: boolean
+    - in: query
       name: count
       description: Count total number of events for a single user, applying filters.
       required: false

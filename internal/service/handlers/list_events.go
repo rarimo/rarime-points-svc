@@ -26,6 +26,13 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.FilterHasExpiration != nil {
+		expirable := EventTypes(r).Names(func(ev evtypes.EventConfig) bool {
+			return ev.ExpiresAt == nil
+		})
+		req.FilterType = append(req.FilterType, expirable...)
+	}
+
 	inactiveTypes := EventTypes(r).Names(func(ev evtypes.EventConfig) bool {
 		return !evtypes.FilterInactive(ev)
 	})
@@ -99,8 +106,9 @@ func newEventModel(event data.Event, meta resources.EventStaticMeta) resources.E
 			Type: resources.EVENT,
 		},
 		Attributes: resources.EventAttributes{
-			CreatedAt: event.CreatedAt,
-			UpdatedAt: event.UpdatedAt,
+			CreatedAt:     event.CreatedAt,
+			UpdatedAt:     event.UpdatedAt,
+			HasExpiration: meta.ExpiresAt != nil,
 			Meta: resources.EventMeta{
 				Static:  meta,
 				Dynamic: (*json.RawMessage)(&event.Meta),

@@ -12,10 +12,11 @@ import (
 
 type ListEvents struct {
 	page.OffsetParams
-	FilterNullifier *string            `filter:"nullifier"`
-	FilterStatus    []data.EventStatus `filter:"status"`
-	FilterType      []string           `filter:"meta.static.name"`
-	Count           bool               `url:"count"`
+	FilterNullifier     *string            `filter:"nullifier"`
+	FilterStatus        []data.EventStatus `filter:"status"`
+	FilterType          []string           `filter:"meta.static.name"`
+	FilterHasExpiration *bool              `filter:"has_expiration"`
+	Count               bool               `url:"count"`
 }
 
 func NewListEvents(r *http.Request) (req ListEvents, err error) {
