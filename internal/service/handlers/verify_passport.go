@@ -14,6 +14,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
+	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
@@ -49,7 +50,21 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	event, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
+		FilterByType(evtypes.TypePassportScan).
+		FilterByStatus(data.EventClaimed).Get()
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get claimed event")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	var res resources.PassportEventStateResponse
+	res.Data.ID = req.Data.ID
+	res.Data.Type = resources.PASSPORT_EVENT_STATE
+	res.Data.Attributes.Claimed = (event != nil)
+
+	ape.Render(w, res)
 }
 
 // getAndVerifyBalanceEligibility provides shared logic to verify that the user
