@@ -61,6 +61,9 @@ properties:
         - not_started: Event are not available yet, see `starts_at`
         - expired: Event is not available, as it has already expired, see `expires_at`
         - disabled: Event is disabled in the system
+      
+      If event is disabled, it doesn't matter if it's expired or not started:
+      it has `disabled` flag.
     enum:
       - active
       - not_started

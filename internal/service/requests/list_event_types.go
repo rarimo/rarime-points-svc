@@ -20,12 +20,12 @@ func NewListEventTypes(r *http.Request) (req ListExpiredEvents, err error) {
 	}
 
 	err = val.Errors{
-		"filter[flag]": val.Validate(req.FilterName, val.In(
+		"filter[flag]": val.Validate(req.FilterFlag, val.Each(val.In(
 			evtypes.FlagActive,
 			evtypes.FlagNotStarted,
 			evtypes.FlagExpired,
 			evtypes.FlagDisabled,
-		))}.Filter()
+		)))}.Filter()
 
 	return
 }

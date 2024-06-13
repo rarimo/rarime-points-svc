@@ -1,7 +1,7 @@
 get:
   tags:
     - Events
-  summary: Event types
+  summary: List event types
   description: |
     Returns public configuration of all event types.
     Basically, it is event static metadata (model `EventStaticMeta`)
