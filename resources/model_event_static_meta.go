@@ -13,6 +13,8 @@ type EventStaticMeta struct {
 	Description string  `json:"description"`
 	// General event expiration date (UTC RFC3339)
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
+	// Event configuration flag:   - active: Events can be opened, fulfilled, claimed   - not_started: Event are not available yet, see `starts_at`   - expired: Event is not available, as it has already expired, see `expires_at`   - disabled: Event is disabled in the system
+	Flag string `json:"flag"`
 	// Event frequency, which means how often you can fulfill certain task and claim the reward.
 	Frequency string `json:"frequency"`
 	// Event logo

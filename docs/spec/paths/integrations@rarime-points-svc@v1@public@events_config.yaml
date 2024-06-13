@@ -1,0 +1,45 @@
+get:
+  tags:
+    - Events
+  summary: Events configuration
+  description: Returns public configuration of all event types present in config.
+  operationId: getEventsConfig
+  parameters:
+    - in: query
+      name: 'filter[name]'
+      description: Filter by type name. Possible values should be hard-coded in the client.
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          example: "passport_scan"
+    - in: query
+      name: 'filter[flag]'
+      description: Filter by configuration flags. Values are disjunctive (OR).
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - active
+            - not_started
+            - expired
+            - disabled
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventType'
+    500:
+      $ref: '#/components/responses/internalError'
