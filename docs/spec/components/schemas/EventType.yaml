@@ -6,5 +6,7 @@ allOf:
       - attributes
     properties:
       attributes:
+        # helps to both display good doc and generate convenient model
         type: object
         format: EventStaticMeta
+        $ref: '#/components/schemas/EventStaticMeta'

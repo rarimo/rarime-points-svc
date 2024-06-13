@@ -13,7 +13,7 @@ type ListExpiredEvents struct {
 	FilterFlag []string `filter:"flag"`
 }
 
-func NewGetEventsConfig(r *http.Request) (req ListExpiredEvents, err error) {
+func NewListEventTypes(r *http.Request) (req ListExpiredEvents, err error) {
 	if err = urlval.Decode(r.URL.Query(), &req); err != nil {
 		err = newDecodeError("query", err)
 		return

@@ -1,9 +1,12 @@
 get:
   tags:
     - Events
-  summary: Events configuration
-  description: Returns public configuration of all event types present in config.
-  operationId: getEventsConfig
+  summary: Event types
+  description: |
+    Returns public configuration of all event types.
+    Basically, it is event static metadata (model `EventStaticMeta`)
+    for each event type in the system.
+  operationId: getEventTypes
   parameters:
     - in: query
       name: 'filter[name]'

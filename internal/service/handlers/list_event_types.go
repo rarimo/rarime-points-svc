@@ -10,8 +10,8 @@ import (
 	"gitlab.com/distributed_lab/ape/problems"
 )
 
-func GetEventsConfig(w http.ResponseWriter, r *http.Request) {
-	req, err := requests.NewGetEventsConfig(r)
+func ListEventTypes(w http.ResponseWriter, r *http.Request) {
+	req, err := requests.NewListEventTypes(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
