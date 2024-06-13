@@ -2,149 +2,170 @@ package nooneisforgotten
 
 import (
 	"fmt"
+	"math"
+	"sort"
 
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
-	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"gitlab.com/distributed_lab/kit/pgdb"
 )
 
 func Run(cfg config.Config, sig chan struct{}) {
 	db := cfg.DB().Clone()
-
-	evType := cfg.EventTypes().Get(evtypes.TypePassportScan, evtypes.FilterInactive)
-	if evType != nil {
-		if err := updatePassportScanEvents(db); err != nil {
-			panic(err)
-		}
-
-		if evType.AutoClaim {
-			err := claimPassportScanEvents(cfg)
-			if err != nil {
-				panic(err)
-			}
-		}
+	if err := pg.NewEvents(db).Transaction(func() error {
+		return updatePassportScanEvents(db, cfg.EventTypes(), cfg.Levels())
+	}); err != nil {
+		panic(fmt.Errorf("failed to update passport scan events: %w", err))
 	}
 
-	evType = cfg.EventTypes().Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
-	if evType != nil {
-		if err := updateReferralUserEvents(db); err != nil {
-			panic(err)
-		}
+	if err := pg.NewEvents(db).Transaction(func() error {
+		return updateReferralUserEvents(db, cfg.EventTypes())
+	}); err != nil {
+		panic(fmt.Errorf("failed to update referral user events"))
 	}
+
+	if err := pg.NewEvents(db).Transaction(func() error {
+		return claimReferralSpecificEvents(db, cfg.EventTypes(), cfg.Levels())
+	}); err != nil {
+		panic(fmt.Errorf("failed to claim referral specific events"))
+	}
+
 	sig <- struct{}{}
 }
 
-func updatePassportScanEvents(db *pgdb.DB) error {
+func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Levels) error {
+	evType := types.Get(evtypes.TypePassportScan)
+	if evType == nil {
+		return nil
+	}
+
+	if !evType.AutoClaim && evtypes.FilterInactive(*evType) {
+		return nil
+	}
+
 	balances, err := pg.NewBalances(db).WithoutPassportEvent()
 	if err != nil {
 		return fmt.Errorf("failed to select balances without points for passport scan: %w", err)
 	}
 
-	toUpdate := make([]string, 0, len(balances))
+	toFulfill := make([]string, 0, len(balances))
+	countriesBalancesMap := make(map[string][]data.WithoutPassportEventBalance, len(balances))
+	countriesList := make([]string, 0, len(balances))
 	for _, balance := range balances {
-		if balance.EventID != nil {
-			toUpdate = append(toUpdate, *balance.EventID)
-			continue
+		if balance.EventStatus == data.EventOpen {
+			toFulfill = append(toFulfill, balance.EventID)
 		}
+
+		// country must exist because of db query logic
+		if _, ok := countriesBalancesMap[*balance.Country]; !ok {
+			countriesList = append(countriesList, *balance.Country)
+			countriesBalancesMap[*balance.Country] = make([]data.WithoutPassportEventBalance, 0, len(balances))
+		}
+		countriesBalancesMap[*balance.Country] = append(countriesBalancesMap[*balance.Country], balance)
 	}
 
-	if len(toUpdate) != 0 {
-		_, err = pg.NewEvents(db).
-			FilterByID(toUpdate...).
-			Update(data.EventFulfilled, nil, nil)
-		if err != nil {
-			return fmt.Errorf("failed to update passport scan events: %w", err)
+	if !evType.AutoClaim {
+		if len(toFulfill) != 0 {
+			_, err = pg.NewEvents(db).
+				FilterByID(toFulfill...).
+				Update(data.EventFulfilled, nil, nil)
+			if err != nil {
+				return fmt.Errorf("failed to update passport scan events: %w", err)
+			}
 		}
-	}
 
-	return nil
-}
-
-func claimPassportScanEvents(cfg config.Config) error {
-	evType := cfg.EventTypes().Get(evtypes.TypePassportScan, evtypes.FilterInactive)
-	if evType == nil {
 		return nil
 	}
 
-	db := cfg.DB().Clone()
-	events, err := pg.NewEvents(db).FilterByType(evtypes.TypePassportScan).FilterByStatus(data.EventFulfilled).Select()
+	countries, err := pg.NewCountries(db).FilterByCodes(countriesList...).Select()
 	if err != nil {
-		return fmt.Errorf("failed to select passport scan events: %w", err)
+		return fmt.Errorf("failed to select countries: %w", err)
 	}
 
-	if len(events) == 0 {
-		return nil
-	}
-
-	eventsMap := make(map[string]data.Event, len(events))
-	nullifiers := make([]string, len(events))
-	for i, event := range events {
-		nullifiers[i] = event.Nullifier
-		eventsMap[event.Nullifier] = event
-	}
-
-	balances, err := pg.NewBalances(db).FilterByNullifier(nullifiers...).FilterDisabled().Select()
-	if err != nil {
-		return fmt.Errorf("failed to select balances for claim passport scan event: %w", err)
-	}
-
-	if len(balances) == 0 {
-		return nil
-	}
-
-	countryCodesMap := make(map[string]int64, len(balances))
-	for _, balance := range balances {
-		// normally should never happen
-		if balance.Country == nil {
-			return fmt.Errorf("balance have fulfilled passport scan event, but have no country")
-		}
-		if _, ok := countryCodesMap[*balance.Country]; !ok {
-			countryCodesMap[*balance.Country] = 0
-		}
-	}
-
-	countryCodesSlice := make([]string, 0, len(countryCodesMap))
-	for k := range countryCodesMap {
-		countryCodesSlice = append(countryCodesSlice, k)
-	}
-
-	countries, err := pg.NewCountries(db).FilterByCodes(countryCodesSlice...).Select()
-	if err != nil {
-		return fmt.Errorf("failed to select countries for claim passport scan events: %w", err)
-	}
-
+	// we need sort, because firstly claim already fulfilled event
+	// and then open events
 	for _, country := range countries {
 		if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
-			delete(countryCodesMap, country.Code)
 			continue
 		}
-		countryCodesMap[country.Code] = country.ReserveLimit - country.Reserved
+
+		sort.SliceStable(countriesBalancesMap[country.Code], func(i, j int) bool {
+			if countriesBalancesMap[country.Code][i].EventStatus == countriesBalancesMap[country.Code][j].EventStatus {
+				return false
+			}
+			if countriesBalancesMap[country.Code][i].EventStatus == data.EventOpen {
+				return true
+			}
+			return false
+		})
+
+		countToClaim := int(math.Min(
+			float64(len(countriesBalancesMap[country.Code])),
+			math.Ceil(float64(country.ReserveLimit-country.Reserved)/float64(evType.Reward))))
+
+		for i := 0; i < countToClaim; i++ {
+			// if event is inactive we claim only fulfilled events
+			if countriesBalancesMap[country.Code][i].EventStatus == data.EventOpen && evtypes.FilterInactive(*evType) {
+				break
+			}
+
+			eventID := countriesBalancesMap[country.Code][i].EventID
+			_, err = pg.NewEvents(db).FilterByID(eventID).Update(data.EventClaimed, nil, &evType.Reward)
+			if err != nil {
+				return fmt.Errorf("update event status: %w", err)
+			}
+
+			err = handlers.DoClaimEventUpdates(
+				levels,
+				pg.NewReferrals(db),
+				pg.NewBalances(db),
+				pg.NewCountries(db),
+				countriesBalancesMap[country.Code][i].Balance,
+				evType.Reward)
+			if err != nil {
+				return fmt.Errorf("failed to do claim event updates for passport scan: %w", err)
+			}
+
+			countriesBalancesMap[country.Code][i].EventStatus = data.EventClaimed
+		}
 	}
 
-	for _, balance := range balances {
-		// country should exists because of previous validation
-		if _, ok := countryCodesMap[*balance.Country]; !ok {
-			continue
-		}
+	if evtypes.FilterInactive(*evType) {
+		return nil
+	}
 
-		countryCodesMap[*balance.Country] -= evType.Reward
-		if countryCodesMap[*balance.Country] <= 0 {
-			delete(countryCodesMap, *balance.Country)
+	toFulfill = make([]string, 0, len(balances))
+	for _, balances := range countriesBalancesMap {
+		for _, balance := range balances {
+			if balance.EventStatus == data.EventOpen {
+				toFulfill = append(toFulfill, balance.EventID)
+			}
 		}
+	}
 
-		_, err = claimEventWithPoints(cfg, eventsMap[balance.Nullifier], evType.Reward, &balance)
-		if err != nil {
-			return fmt.Errorf("failed to claim passport scan event: %w", err)
-		}
+	if len(toFulfill) == 0 {
+		return nil
+	}
+
+	_, err = pg.NewEvents(db).
+		FilterByID(toFulfill...).
+		Update(data.EventFulfilled, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to update passport scan events: %w", err)
 	}
 
 	return nil
 }
 
-func updateReferralUserEvents(db *pgdb.DB) error {
+func updateReferralUserEvents(db *pgdb.DB, types evtypes.Types) error {
+	evTypeRef := types.Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+	if evTypeRef == nil {
+		return nil
+	}
+
 	refPairs, err := pg.NewBalances(db).WithoutReferralEvent()
 	if err != nil {
 		return fmt.Errorf("failed to select balances without points for referred users: %w", err)
@@ -160,23 +181,26 @@ func updateReferralUserEvents(db *pgdb.DB) error {
 		})
 	}
 
-	if len(toInsert) != 0 {
-		err = pg.NewEvents(db).Insert(toInsert...)
-		if err != nil {
-			return fmt.Errorf("failed to insert referred user events: %w", err)
-		}
+	if len(toInsert) == 0 {
+		return nil
+	}
+
+	if err = pg.NewEvents(db).Insert(toInsert...); err != nil {
+		return fmt.Errorf("failed to insert referred user events: %w", err)
 	}
 
 	return nil
 }
 
-func claimReferralSpecificEvents(cfg config.Config) error {
-	evType := cfg.EventTypes().Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config.Levels) error {
+	evType := types.Get(evtypes.TypeReferralSpecific)
 	if evType == nil {
 		return nil
 	}
+	if !evType.AutoClaim {
+		return nil
+	}
 
-	db := cfg.DB().Clone()
 	events, err := pg.NewEvents(db).FilterByType(evtypes.TypeReferralSpecific).FilterByStatus(data.EventFulfilled).Select()
 	if err != nil {
 		return fmt.Errorf("failed to select passport scan events: %w", err)
@@ -186,135 +210,80 @@ func claimReferralSpecificEvents(cfg config.Config) error {
 		return nil
 	}
 
-	eventsMap := make(map[string][]data.Event, len(events))
-	nullifiers := make([]string, len(events))
-	for i, event := range events {
-		nullifiers[i] = event.Nullifier
-		eventsMap[event.Nullifier] = append(eventsMap[event.Nullifier], event)
+	nullifiersEventsMap := make(map[string][]data.Event, len(events))
+	nullifiers := make([]string, 0, len(events))
+	for _, event := range events {
+		if _, ok := nullifiersEventsMap[event.Nullifier]; !ok {
+			nullifiersEventsMap[event.Nullifier] = make([]data.Event, 0, len(events))
+			nullifiers = append(nullifiers, event.Nullifier)
+		}
+		nullifiersEventsMap[event.Nullifier] = append(nullifiersEventsMap[event.Nullifier], event)
 	}
 
 	balances, err := pg.NewBalances(db).FilterByNullifier(nullifiers...).FilterDisabled().Select()
 	if err != nil {
 		return fmt.Errorf("failed to select balances for claim passport scan event: %w", err)
 	}
-
 	if len(balances) == 0 {
-		return nil
+		return fmt.Errorf("critical: events present, but no balances with nullifier")
 	}
 
-	countryCodesMap := make(map[string]int64, len(balances))
+	countriesBalancesMap := make(map[string][]data.Balance, len(balances))
 	for _, balance := range balances {
-		// normally should never happen
-		if balance.Country == nil {
-			return fmt.Errorf("balance have fulfilled passport scan event, but have no country")
+		// country can't be nil because of db query logic
+		if _, ok := countriesBalancesMap[*balance.Country]; !ok {
+			countriesBalancesMap[*balance.Country] = make([]data.Balance, 0, len(balances))
 		}
-		if _, ok := countryCodesMap[*balance.Country]; !ok {
-			countryCodesMap[*balance.Country] = 0
-		}
+
+		countriesBalancesMap[*balance.Country] = append(countriesBalancesMap[*balance.Country], balance)
 	}
 
-	countryCodesSlice := make([]string, 0, len(countryCodesMap))
-	for k := range countryCodesMap {
-		countryCodesSlice = append(countryCodesSlice, k)
+	countryCodes := make([]string, 0, len(countriesBalancesMap))
+	for k := range countriesBalancesMap {
+		countryCodes = append(countryCodes, k)
 	}
 
-	countries, err := pg.NewCountries(db).FilterByCodes(countryCodesSlice...).Select()
+	countries, err := pg.NewCountries(db).FilterByCodes(countryCodes...).Select()
 	if err != nil {
 		return fmt.Errorf("failed to select countries for claim passport scan events: %w", err)
 	}
 
+	toClaim := make([]string, 0, len(events))
 	for _, country := range countries {
 		if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
-			delete(countryCodesMap, country.Code)
-			continue
-		}
-		countryCodesMap[country.Code] = country.ReserveLimit - country.Reserved
-	}
-
-	for _, balance := range balances {
-		// country should exists because of previous validation
-		if _, ok := countryCodesMap[*balance.Country]; !ok {
 			continue
 		}
 
-		countryCodesMap[*balance.Country] -= evType.Reward
-		if countryCodesMap[*balance.Country] <= 0 {
-			delete(countryCodesMap, *balance.Country)
-		}
-
-		for _, event := range eventsMap[balance.Nullifier] {
-			_, err = claimEventWithPoints(cfg, event, evType.Reward, &balance)
-			if err != nil {
-				return fmt.Errorf("failed to claim passport scan event: %w", err)
+		limit := country.ReserveLimit - country.Reserved
+		for _, balance := range countriesBalancesMap[country.Code] {
+			if limit <= 0 {
+				break
 			}
 
+			toAccrue := int64(0)
+			for _, event := range nullifiersEventsMap[balance.Nullifier] {
+				limit -= evType.Reward
+				toClaim = append(toClaim, event.ID)
+				toAccrue += evType.Reward
+			}
+
+			err = handlers.DoClaimEventUpdates(
+				levels,
+				pg.NewReferrals(db),
+				pg.NewBalances(db),
+				pg.NewCountries(db),
+				balance,
+				evType.Reward)
+			if err != nil {
+				return fmt.Errorf("failed to do claim event updates for referral specific event: %w", err)
+			}
 		}
+	}
+
+	_, err = pg.NewEvents(db).FilterByID(toClaim...).Update(data.EventClaimed, nil, &evType.Reward)
+	if err != nil {
+		return fmt.Errorf("update event status: %w", err)
 	}
 
 	return nil
-}
-
-// claimEventWithPoints requires event to exist
-func claimEventWithPoints(cfg config.Config, event data.Event, reward int64, balance *data.Balance) (claimed *data.Event, err error) {
-	err = pg.NewEvents(cfg.DB().Clone()).Transaction(func() error {
-		db := cfg.DB().Clone()
-		// Upgrade level logic when threshold is reached
-		refsCount, level := cfg.Levels().LvlUp(balance.Level, reward+balance.Amount)
-		if level != balance.Level {
-			count, err := pg.NewReferrals(db).FilterByNullifier(balance.Nullifier).Count()
-			if err != nil {
-				return fmt.Errorf("failed to get referral count: %w", err)
-			}
-
-			refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
-			if err = pg.NewReferrals(db).Insert(refToAdd...); err != nil {
-				return fmt.Errorf("failed to insert referrals: %w", err)
-			}
-
-			err = pg.NewBalances(db).FilterByNullifier(balance.Nullifier).Update(map[string]any{
-				data.ColLevel: level,
-			})
-			if err != nil {
-				return fmt.Errorf("failed to update level: %w", err)
-			}
-		}
-
-		claimed, err = pg.NewEvents(db).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
-		if err != nil {
-			return fmt.Errorf("update event status: %w", err)
-		}
-
-		err = pg.NewBalances(db).FilterByNullifier(balance.Nullifier).Update(map[string]any{
-			data.ColAmount: pg.AddToValue(data.ColAmount, reward),
-		})
-		if err != nil {
-			return fmt.Errorf("update balance amount: %w", err)
-		}
-
-		err = pg.NewCountries(db).FilterByCodes(*balance.Country).Update(map[string]any{
-			data.ColReserved: pg.AddToValue(data.ColReserved, reward),
-		})
-		if err != nil {
-			return fmt.Errorf("increase country reserve: %w", err)
-		}
-
-		return nil
-	})
-
-	return claimed, nil
-}
-
-func prepareReferralsToAdd(nullifier string, count, index uint64) []data.Referral {
-	refCodes := referralid.NewMany(nullifier, count, index)
-	refs := make([]data.Referral, len(refCodes))
-
-	for i, code := range refCodes {
-		refs[i] = data.Referral{
-			ID:        code,
-			Nullifier: nullifier,
-			UsageLeft: 1,
-		}
-	}
-
-	return refs
 }

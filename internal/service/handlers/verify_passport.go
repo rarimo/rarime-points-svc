@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 	"net/http"
 
@@ -134,16 +135,27 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 	// because for claim event must be country code
 	balance.Country = &country.Code
 
-	if err = fulfillPassportScanEvent(r, balance, *country); err != nil {
+	if err = fulfillOrClaimPassportScanEvent(r, balance, *country); err != nil {
 		return fmt.Errorf("fulfill passport scan event: %w", err)
 	}
 
-	if err = addEventForReferrer(r, balance); err != nil {
-		return fmt.Errorf("add event for referrer: %w", err)
+	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific)
+	if evTypeRef == nil {
+		Log(r).Debug("Referral specific event type is inactive")
+		return nil
 	}
 
-	if err = claimReferralSpecificEvents(r, balance, true); err != nil {
+	if err = claimReferralSpecificEvents(r, evTypeRef, balance.Nullifier); err != nil {
 		return fmt.Errorf("failed to claim referral specific events: %w", err)
+	}
+
+	if evtypes.FilterInactive(*evTypeRef) {
+		Log(r).Debug("Referral specific event type is inactive: event not added")
+		return nil
+	}
+
+	if err = addEventForReferrer(r, evTypeRef, balance); err != nil {
+		return fmt.Errorf("add event for referrer: %w", err)
 	}
 
 	return nil
@@ -173,7 +185,7 @@ func updateBalanceCountry(r *http.Request, balance data.Balance, proof zkptypes.
 	return country, nil
 }
 
-func fulfillPassportScanEvent(r *http.Request, balance data.Balance, country data.Country) error {
+func fulfillOrClaimPassportScanEvent(r *http.Request, balance data.Balance, country data.Country) error {
 	evTypePassport := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evTypePassport == nil {
 		Log(r).Debug("Passport scan event type is inactive")
@@ -191,41 +203,61 @@ func fulfillPassportScanEvent(r *http.Request, balance data.Balance, country dat
 		return errors.New("inconsistent state: balance has no country, event type is active, but no open event was found")
 	}
 
-	event, err = EventsQ(r).
-		FilterByID(event.ID).
-		Update(data.EventFulfilled, nil, nil)
-	if err != nil {
-		return fmt.Errorf("failed to update event: %w", err)
-	}
-
 	if !evTypePassport.AutoClaim || !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
+		_, err = EventsQ(r).
+			FilterByID(event.ID).
+			Update(data.EventFulfilled, nil, nil)
+		if err != nil {
+			return fmt.Errorf("failed to update event: %w", err)
+		}
+
 		return nil
 	}
 
-	_, err = claimEventWithPoints(r, *event, evTypePassport.Reward, &balance)
-	return err
+	_, err = EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &evTypePassport.Reward)
+	if err != nil {
+		return fmt.Errorf("update event status: %w", err)
+	}
+
+	err = DoClaimEventUpdates(
+		Levels(r),
+		ReferralsQ(r),
+		BalancesQ(r),
+		CountriesQ(r),
+		balance,
+		evTypePassport.Reward)
+	if err != nil {
+		return fmt.Errorf("failed to do claim event updates for passport scan: %w", err)
+	}
+
+	return nil
 }
 
-// if autoClaim true - events will be claimed if autoclaim enabled for event
-// if false - claim events without check if autoclaim enabled
-func claimReferralSpecificEvents(r *http.Request, balance data.Balance, autoClaim bool) error {
-	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig, nullifier string) error {
 	if evTypeRef == nil {
 		Log(r).Debug("Referral specific event type is inactive")
 		return nil
 	}
-
-	if autoClaim && !evTypeRef.AutoClaim {
+	if !evTypeRef.AutoClaim {
+		Log(r).Debugf("auto claim for referral specific disabled")
 		return nil
 	}
 
+	// balance can't be nil because of previous logic
+	balance, err := BalancesQ(r).FilterByNullifier(nullifier).FilterDisabled().Get()
+	if err != nil {
+		return fmt.Errorf("failed to get balance: %w", err)
+	}
+
+	// country can't be nill because of previous logic
 	country, err := CountriesQ(r).FilterByCodes(*balance.Country).Get()
 	if err != nil {
 		return fmt.Errorf("failed to get referrer country: %w", err)
 	}
 
-	if country == nil {
-		return fmt.Errorf("failed to get referrer country: must be present in database")
+	if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
+		Log(r).Debug("Country disallowed for reserve or limit was reached after passport scan")
+		return nil
 	}
 
 	events, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
@@ -235,27 +267,40 @@ func claimReferralSpecificEvents(r *http.Request, balance data.Balance, autoClai
 		return fmt.Errorf("get fulfilled referral specific events: %w", err)
 	}
 
-	if len(events) == 0 {
+	countToClaim := int64(len(events))
+	if countToClaim == 0 {
 		return nil
 	}
-
-	if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
-		return nil
+	if country.Reserved+countToClaim*evTypeRef.Reward >= country.ReserveLimit+evTypeRef.Reward {
+		countToClaim = int64(math.Ceil(float64(country.ReserveLimit-country.Reserved) / float64(evTypeRef.Reward)))
 	}
 
-	for _, event := range events {
-		if _, err = claimEventWithPoints(r, event, evTypeRef.Reward, &balance); err != nil {
-			return fmt.Errorf("failed to claim referral specific event: %w", err)
-		}
+	eventsToClaimed := make([]string, countToClaim)
+	for i := 0; i < int(countToClaim); i++ {
+		eventsToClaimed[i] = events[i].ID
 	}
+
+	_, err = EventsQ(r).FilterByID(eventsToClaimed...).Update(data.EventClaimed, nil, &evTypeRef.Reward)
+	if err != nil {
+		return fmt.Errorf("update event status: %w", err)
+	}
+
+	err = DoClaimEventUpdates(
+		Levels(r),
+		ReferralsQ(r),
+		BalancesQ(r),
+		CountriesQ(r),
+		*balance,
+		countToClaim*evTypeRef.Reward)
+	if err != nil {
+		return fmt.Errorf("failed to do claim event updates for referral specific events: %w", err)
+	}
+
 	return nil
-
 }
 
-func addEventForReferrer(r *http.Request, balance data.Balance) error {
-	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balance data.Balance) error {
 	if evTypeRef == nil {
-		Log(r).Debug("Referral event type is inactive, not fulfilling event for referrer")
 		return nil
 	}
 
@@ -264,20 +309,21 @@ func addEventForReferrer(r *http.Request, balance data.Balance) error {
 	if err != nil {
 		return fmt.Errorf("get referral by ID: %w", err)
 	}
-
-	event, err := EventsQ(r).InsertOne(data.Event{
-		Nullifier: referral.Nullifier,
-		Type:      evTypeRef.Name,
-		Status:    data.EventFulfilled,
-		Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, balance.Nullifier)),
-	})
-
-	if err != nil {
-		return fmt.Errorf("failed to insert event for referrer: %w", err)
+	if referral == nil {
+		return fmt.Errorf("critical: referred_by not null, but row in referrals absent")
 	}
 
 	if !evTypeRef.AutoClaim {
-		Log(r).Debugf("auto claim for referral specific disabled")
+		err = EventsQ(r).Insert(data.Event{
+			Nullifier: referral.Nullifier,
+			Type:      evTypeRef.Name,
+			Status:    data.EventFulfilled,
+			Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, balance.Nullifier)),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to insert fulfilled event for referrer: %w", err)
+		}
+
 		return nil
 	}
 
@@ -285,14 +331,12 @@ func addEventForReferrer(r *http.Request, balance data.Balance) error {
 	if err != nil {
 		return fmt.Errorf("failed to get referrer balance: %w", err)
 	}
-
 	if referrerBalance == nil {
-		return fmt.Errorf("referrer balance not exists: %s", referral.Nullifier)
+		return fmt.Errorf("critical: referrer balance not exist [%s], while referral code exist", referral.Nullifier)
 	}
 
-	// genesis address have codes, but haven't referred_by
 	if !referrerBalance.ReferredBy.Valid || referrerBalance.Country == nil {
-		Log(r).Debug("Referrer have invalid referred_by or not scan passport")
+		Log(r).Debug("Referrer is genesis balance or not scanned passport")
 		return nil
 	}
 
@@ -300,19 +344,46 @@ func addEventForReferrer(r *http.Request, balance data.Balance) error {
 	if err != nil {
 		return fmt.Errorf("failed to get referrer country: %w", err)
 	}
-
 	if country == nil {
-		return fmt.Errorf("failed to get referrer country: must be present in database")
+		return fmt.Errorf("critical: country must be present in database")
 	}
 
 	if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
 		Log(r).Debug("Referrer country have ReserveAllowed false or limit reached")
+
+		err = EventsQ(r).Insert(data.Event{
+			Nullifier: referral.Nullifier,
+			Type:      evTypeRef.Name,
+			Status:    data.EventFulfilled,
+			Meta:      data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, balance.Nullifier)),
+		})
+		if err != nil {
+			return fmt.Errorf("failed to insert fulfilled event for referrer: %w", err)
+		}
+
 		return nil
 	}
 
-	_, err = claimEventWithPoints(r, *event, evTypeRef.Reward, referrerBalance)
+	err = EventsQ(r).Insert(data.Event{
+		Nullifier:    referral.Nullifier,
+		Type:         evTypeRef.Name,
+		Status:       data.EventClaimed,
+		PointsAmount: &evTypeRef.Reward,
+		Meta:         data.Jsonb(fmt.Sprintf(`{"nullifier": "%s"}`, balance.Nullifier)),
+	})
 	if err != nil {
-		return fmt.Errorf("failed to claim referral_specific event for referrer: %w", err)
+		return fmt.Errorf("failed to insert claimed event for referrer: %w", err)
+	}
+
+	err = DoClaimEventUpdates(
+		Levels(r),
+		ReferralsQ(r),
+		BalancesQ(r),
+		CountriesQ(r),
+		*referrerBalance,
+		evTypeRef.Reward)
+	if err != nil {
+		return fmt.Errorf("failed to do claim event updates for referrer referral specific events: %w", err)
 	}
 
 	return nil
