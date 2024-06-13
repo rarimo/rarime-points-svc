@@ -37,6 +37,7 @@ func Run(cfg config.Config, sig chan struct{}) {
 }
 
 func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Levels) error {
+	// if event disabled - fulfilled event can be claimed
 	evType := types.Get(evtypes.TypePassportScan)
 	if evType == nil {
 		return nil
@@ -67,6 +68,7 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 		countriesBalancesMap[*balance.Country] = append(countriesBalancesMap[*balance.Country], balance)
 	}
 
+	// if autoclaim disabled, then event definetely active - fulfill passport scan events
 	if !evType.AutoClaim {
 		if len(toFulfill) != 0 {
 			_, err = pg.NewEvents(db).
@@ -102,6 +104,7 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 			return false
 		})
 
+		// Not all events can be claimed, because limit can be reached in half path
 		countToClaim := int(math.Min(
 			float64(len(countriesBalancesMap[country.Code])),
 			math.Ceil(float64(country.ReserveLimit-country.Reserved)/float64(evType.Reward))))
@@ -129,6 +132,7 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 				return fmt.Errorf("failed to do claim event updates for passport scan: %w", err)
 			}
 
+			// we mark claimed events to fulfill event which can't be claimed because of country limitations
 			countriesBalancesMap[country.Code][i].EventStatus = data.EventClaimed
 		}
 	}
@@ -210,6 +214,7 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 		return nil
 	}
 
+	// we need to have maps which link nullifiers to events slice and countries to balances slice
 	nullifiersEventsMap := make(map[string][]data.Event, len(events))
 	nullifiers := make([]string, 0, len(events))
 	for _, event := range events {
@@ -248,14 +253,17 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 		return fmt.Errorf("failed to select countries for claim passport scan events: %w", err)
 	}
 
+	// toClaim - event ids which must be claimed
 	toClaim := make([]string, 0, len(events))
 	for _, country := range countries {
+		// if country have limitations - skip this
 		if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
 			continue
 		}
 
 		limit := country.ReserveLimit - country.Reserved
 		for _, balance := range countriesBalancesMap[country.Code] {
+			// if limit reached we need stop
 			if limit <= 0 {
 				break
 			}
@@ -265,6 +273,9 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 				limit -= evType.Reward
 				toClaim = append(toClaim, event.ID)
 				toAccrue += evType.Reward
+				if limit <= 0 {
+					break
+				}
 			}
 
 			err = handlers.DoClaimEventUpdates(

@@ -135,16 +135,32 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 	// because for claim event must be country code
 	balance.Country = &country.Code
 
+	// Fulfill passport scan event for user if event active
+	// Event can be automaticaly claimed if:
+	// 1. Autoclaim enabled for passport scan event
+	// 2. Reservation is allowed to the country
+	// 3. The country reservation limit has not been reached
 	if err = fulfillOrClaimPassportScanEvent(r, balance, *country); err != nil {
 		return fmt.Errorf("fulfill passport scan event: %w", err)
 	}
 
+	// Type not filtered as inactive because disabled events can be claimed
 	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific)
 	if evTypeRef == nil {
 		Log(r).Debug("Referral specific event type is inactive")
 		return nil
 	}
 
+	// Claim events for invited friends who scanned the passport.
+	// This is possible when the user registered in the referral
+	// program and invited friends, the friends scanned the passport,
+	// but since the user had an unscanned passport, the event
+	// could not automatically claimed to him. And now that
+	// user has scanned the passport, it is necessary to claim events
+	// for user's friends, if possible, that is, the following conditions are met:
+	// 1. Autoclaim enabled for passport scan event
+	// 2. Reservation is allowed to the country
+	// 3. The country reservation limit has not been reached
 	if err = claimReferralSpecificEvents(r, evTypeRef, balance.Nullifier); err != nil {
 		return fmt.Errorf("failed to claim referral specific events: %w", err)
 	}
@@ -154,6 +170,9 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 		return nil
 	}
 
+	// Adds a friend event for the referrer. If the event
+	// is inactive, then nothing happens. If active, the
+	// fulfilled event is added and, if possible, the event claimed
 	if err = addEventForReferrer(r, evTypeRef, balance); err != nil {
 		return fmt.Errorf("add event for referrer: %w", err)
 	}
@@ -233,11 +252,8 @@ func fulfillOrClaimPassportScanEvent(r *http.Request, balance data.Balance, coun
 	return nil
 }
 
+// evTypeRef must not be nil
 func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig, nullifier string) error {
-	if evTypeRef == nil {
-		Log(r).Debug("Referral specific event type is inactive")
-		return nil
-	}
 	if !evTypeRef.AutoClaim {
 		Log(r).Debugf("auto claim for referral specific disabled")
 		return nil
@@ -255,6 +271,7 @@ func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig
 		return fmt.Errorf("failed to get referrer country: %w", err)
 	}
 
+	// if user country have restrictions for claim points then not claim events and return
 	if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
 		Log(r).Debug("Country disallowed for reserve or limit was reached after passport scan")
 		return nil
@@ -267,10 +284,18 @@ func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig
 		return fmt.Errorf("get fulfilled referral specific events: %w", err)
 	}
 
+	// Specify how many events can be claimed
 	countToClaim := int64(len(events))
 	if countToClaim == 0 {
 		return nil
 	}
+
+	// If, for example, 10 points are awarded for an event,
+	// and 2 points remain before reaching the reservation
+	// limit, then this event can be claimed. And since there
+	// can be many events with invited friends, need to calculate
+	// the maximum number of events that can be claimed in order
+	// not to exceed the limit.
 	if country.Reserved+countToClaim*evTypeRef.Reward >= country.ReserveLimit+evTypeRef.Reward {
 		countToClaim = int64(math.Ceil(float64(country.ReserveLimit-country.Reserved) / float64(evTypeRef.Reward)))
 	}
