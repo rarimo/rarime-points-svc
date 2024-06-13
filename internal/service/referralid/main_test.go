@@ -10,21 +10,21 @@ func TestNew(t *testing.T) {
 		want  string
 	}{
 		{
-			name: "Valid DID with index 0",
-			did:  "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV",
-			want: "bDSCcQB8Hhk",
+			name: "Valid nullifier with index 0",
+			did:  "2184ae1f990d26aa5bb84d54dc945ac3cce569cd828269802f0fa5c5c28f30a7",
+			want: "6xM70VgX4eh",
 		},
 		{
-			name:  "Valid DID with index 1",
-			did:   "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV",
+			name:  "Valid nullifier with index 1",
+			did:   "2184ae1f990d26aa5bb84d54dc945ac3cce569cd828269802f0fa5c5c28f30a7",
 			index: 1,
-			want:  "9csIL7dW65m",
+			want:  "eLHv3hj5txB",
 		},
 		{
-			name:  "Valid DID with index 258",
-			did:   "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV",
+			name:  "Valid nullifier with index 258",
+			did:   "2184ae1f990d26aa5bb84d54dc945ac3cce569cd828269802f0fa5c5c28f30a7",
 			index: 258,
-			want:  "73k3bdYaFWM",
+			want:  "1hhJaHQB13G",
 		},
 	}
 	for _, tt := range tests {
@@ -38,29 +38,29 @@ func TestNew(t *testing.T) {
 
 func TestNewMany(t *testing.T) {
 	tests := []struct {
-		name  string
-		did   string
-		index uint64
-		count uint64
-		want  []string
+		name      string
+		nullifier string
+		index     uint64
+		count     uint64
+		want      []string
 	}{
 		{
-			name:  "Valid DID for basic balance creation",
-			did:   "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV",
-			count: 5,
-			want:  []string{"bDSCcQB8Hhk", "9csIL7dW65m", "lcRN9LZliVw", "kjmJHA8IdRA", "lcz9ZTJtWgA"},
+			name:      "Valid nullifier for basic balance creation",
+			nullifier: "2184ae1f990d26aa5bb84d54dc945ac3cce569cd828269802f0fa5c5c28f30a7",
+			count:     5,
+			want:      []string{"6xM70VgX4eh", "eLHv3hj5txB", "8Mu12YhyDVQ", "4l3LwW9p77V", "bLnCgkUOPWT"},
 		},
 		{
-			name:  "Valid DID for start from non-zero index",
-			did:   "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV",
-			index: 2,
-			count: 3,
-			want:  []string{"lcRN9LZliVw", "kjmJHA8IdRA", "lcz9ZTJtWgA"},
+			name:      "Valid nullifier for start from non-zero index",
+			nullifier: "2184ae1f990d26aa5bb84d54dc945ac3cce569cd828269802f0fa5c5c28f30a7",
+			index:     2,
+			count:     3,
+			want:      []string{"8Mu12YhyDVQ", "4l3LwW9p77V", "bLnCgkUOPWT"},
 		},
 		{
-			name:  "Valid DID, no count",
-			did:   "did:iden3:readonly:tUDjWxnVJNi7t3FudukqrUcNwF5KVGoWgim5pp2jV",
-			index: 8,
+			name:      "Valid nullifier, no count",
+			nullifier: "2184ae1f990d26aa5bb84d54dc945ac3cce569cd828269802f0fa5c5c28f30a7",
+			index:     8,
 		},
 	}
 
@@ -78,7 +78,7 @@ func TestNewMany(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := NewMany(tt.did, tt.count, tt.index)
+			got := NewMany(tt.nullifier, tt.count, tt.index)
 			if !equal(got, tt.want) {
 				t.Errorf("NewMany() = %s, want %s", got, tt.want)
 			}
