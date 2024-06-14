@@ -144,10 +144,14 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 		return fmt.Errorf("fulfill passport scan event: %w", err)
 	}
 
-	// Type not filtered as inactive because disabled events can be claimed
+	// Type not filtered as inactive because expired events can be claimed
 	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific)
 	if evTypeRef == nil {
 		Log(r).Debug("Referral specific event type is inactive")
+		return nil
+	}
+	if evTypeRef.Disabled {
+		Log(r).Infof("Event type %s is disabled", evtypes.TypeReferralSpecific)
 		return nil
 	}
 

@@ -36,7 +36,9 @@ type BalancesQ interface {
 	GetWithRank(nullifier string) (*Balance, error)
 	SelectWithRank() ([]Balance, error)
 
-	// Filters not applied. Return balances which already have scanned passport, but there no claimed events for this
+	// WithoutPassportEvent returns balances which already
+	// have scanned passport, but there no claimed events
+	// for this. Filters are not applied.
 	WithoutPassportEvent() ([]WithoutPassportEventBalance, error)
 	WithoutReferralEvent() ([]ReferredReferrer, error)
 

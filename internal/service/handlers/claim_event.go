@@ -140,7 +140,7 @@ func claimEvent(r *http.Request, event *data.Event, balance *data.Balance) (clai
 	return claimed, nil
 }
 
-// do updates which link to claim event:
+// DoClaimEventUpdates do updates which link to claim event:
 // update reserved amount in country;
 // lvlup and update referrals count;
 // accruing points;

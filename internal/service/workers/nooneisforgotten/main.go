@@ -36,10 +36,22 @@ func Run(cfg config.Config, sig chan struct{}) {
 	sig <- struct{}{}
 }
 
+// updatePassportScanEvents is needed so that if the passport
+// scan events were not fulfilled or claimed because the event was disabled,
+// expired or no autoclaimed, fulfill and, if possible, claim them.
+// First, there is an attempt to claim as many events as
+// possible and to fulfill the rest of the events.
+//
+// Events may not be fulfilled if the event is not active.
+// Event may not be claimed if AutoClaim is disabled.
+// If the event is not active, only fulfilled events will be claimed.
 func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Levels) error {
-	// if event disabled - fulfilled event can be claimed
+	// if event inactive - fulfilled event can be claimed
 	evType := types.Get(evtypes.TypePassportScan)
 	if evType == nil {
+		return nil
+	}
+	if evType.Disabled {
 		return nil
 	}
 
@@ -164,6 +176,10 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 	return nil
 }
 
+// updateReferralUserEvents is used to add events for referrers
+// for friends who have scanned the passport, if they have not been added.
+//
+// Events are not added if the event is inactive or disabled
 func updateReferralUserEvents(db *pgdb.DB, types evtypes.Types) error {
 	evTypeRef := types.Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 	if evTypeRef == nil {
@@ -196,9 +212,14 @@ func updateReferralUserEvents(db *pgdb.DB, types evtypes.Types) error {
 	return nil
 }
 
+// claimReferral SpecificEvents claim fulfilled events for invited
+// friends which have passport scanned, if it possible
 func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config.Levels) error {
 	evType := types.Get(evtypes.TypeReferralSpecific)
 	if evType == nil {
+		return nil
+	}
+	if evType.Disabled {
 		return nil
 	}
 	if !evType.AutoClaim {
