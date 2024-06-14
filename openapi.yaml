@@ -113,8 +113,7 @@ paths:
           description: Specifies whether to return the referral codes
           required: false
           schema:
-            type: booleand
-            example: true
+            type: boolean
       responses:
         '200':
           description: Success
@@ -131,52 +130,6 @@ paths:
           $ref: '#/components/responses/invalidParameter'
         '401':
           $ref: '#/components/responses/invalidAuth'
-        '500':
-          $ref: '#/components/responses/internalError'
-    patch:
-      tags:
-        - Points balance
-      summary: Activate points balance
-      description: |
-        Activate inactive balance. Balance is inactive when referred_by field is null.
-        nullifier in query must match with id in request body
-      operationId: activatePointsBalance
-      parameters:
-        - $ref: '#/components/parameters/pathNullifier'
-      requestBody:
-        content:
-          application/vnd.api+json:
-            schema:
-              type: object
-              required:
-                - data
-              properties:
-                data:
-                  $ref: '#/components/schemas/CreateBalance'
-      responses:
-        '200':
-          description: Success
-          content:
-            application/vnd.api+json:
-              schema:
-                type: object
-                required:
-                  - data
-                properties:
-                  data:
-                    $ref: '#/components/schemas/Balance'
-        '400':
-          $ref: '#/components/responses/invalidParameter'
-        '401':
-          $ref: '#/components/responses/invalidAuth'
-        '404':
-          $ref: '#/components/responses/notFound'
-        '409':
-          description: Balance already activated
-          content:
-            application/vnd.api+json:
-              schema:
-                $ref: '#/components/schemas/Errors'
         '500':
           $ref: '#/components/responses/internalError'
   '/integrations/rarime-points-svc/v1/public/balances/{nullifier}/verifypassport':
@@ -328,6 +281,55 @@ paths:
                     $ref: '#/components/schemas/CountriesConfig'
         '500':
           $ref: '#/components/responses/internalError'
+  /integrations/rarime-points-svc/v1/public/event_types:
+    get:
+      tags:
+        - Events
+      summary: List event types
+      description: |
+        Returns public configuration of all event types.
+        Basically, it is event static metadata (model `EventStaticMeta`)
+        for each event type in the system.
+      operationId: getEventTypes
+      parameters:
+        - in: query
+          name: 'filter[name]'
+          description: Filter by type name. Possible values should be hard-coded in the client.
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              example: passport_scan
+        - in: query
+          name: 'filter[flag]'
+          description: Filter by configuration flags. Values are disjunctive (OR).
+          required: false
+          schema:
+            type: array
+            items:
+              type: string
+              enum:
+                - active
+                - not_started
+                - expired
+                - disabled
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: object
+                required:
+                  - data
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventType'
+        '500':
+          $ref: '#/components/responses/internalError'
   /integrations/rarime-points-svc/v1/public/events:
     get:
       tags:
@@ -361,7 +363,13 @@ paths:
             type: array
             items:
               type: string
-              example: create_org
+              example: passport_scan
+        - in: query
+          name: 'filter[has_expiration]'
+          description: Filter events by type which has or hasn't expiration.
+          required: false
+          schema:
+            type: boolean
         - in: query
           name: count
           description: 'Count total number of events for a single user, applying filters.'
@@ -519,7 +527,6 @@ components:
               type: object
               required:
                 - amount
-                - is_disabled
                 - created_at
                 - updated_at
                 - level
@@ -549,29 +556,20 @@ components:
                   format: int
                   description: Rank of the user in the full leaderboard. Returned only for the single user.
                   example: 294
-                active_referral_codes:
+                referral_codes:
                   type: array
-                  description: |
-                    Referral codes which can be used to build a referral link and send it
-                    to friends. Returned only for the single user.
-                  example:
-                    - zgsScguZ
-                    - jerUsmac
+                  description: Referral codes. Returned only for the single user.
                   items:
-                    type: string
-                consumed_referral_codes:
-                  type: array
-                  description: Referral codes used by invited users. Returned only for the single user.
-                  example:
-                    - 73k3bdYaFWM
-                    - 9csIL7dW65m
-                  items:
-                    type: string
+                    $ref: '#/components/schemas/ReferralCode'
                 level:
                   type: integer
                   format: int
                   description: The level indicates user permissions and features
                   example: 2
+                is_verified:
+                  type: boolean
+                  description: |
+                    Whether the user has scanned passport. Returned only for the single user.
     BalanceKey:
       type: object
       required:
@@ -724,6 +722,7 @@ components:
                 - status
                 - created_at
                 - updated_at
+                - has_expiration
                 - meta
               properties:
                 status:
@@ -741,6 +740,9 @@ components:
                   type: integer
                   description: Unix timestamp of the event status change
                   example: 1706531218
+                has_expiration:
+                  type: boolean
+                  description: Whether this event may become expired.
                 meta:
                   $ref: '#/components/schemas/EventMeta'
                 points_amount:
@@ -801,7 +803,7 @@ components:
         - description
         - short_description
         - frequency
-        - no_auto_open
+        - flag
       properties:
         name:
           type: string
@@ -849,6 +851,48 @@ components:
           type: string
           description: Event logo
           example: 'https://logo.com/some_logo.svg'
+        flag:
+          type: string
+          description: |
+            Event configuration flag:
+              - active: Events can be opened, fulfilled, claimed
+              - not_started: Event are not available yet, see `starts_at`
+              - expired: Event is not available, as it has already expired, see `expires_at`
+              - disabled: Event is disabled in the system
+
+            If event is disabled, it doesn't matter if it's expired or not started:
+            it has `disabled` flag.
+          enum:
+            - active
+            - not_started
+            - expired
+            - disabled
+    EventType:
+      allOf:
+        - $ref: '#/components/schemas/EventTypeKey'
+        - type: object
+          description: Event type configuration and metadata
+          required:
+            - attributes
+          properties:
+            attributes:
+              type: object
+              format: EventStaticMeta
+              $ref: '#/components/schemas/EventStaticMeta'
+    EventTypeKey:
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: string
+          description: Event type unique code name
+          example: passport_scan
+        type:
+          type: string
+          enum:
+            - event_type
     PassportEventState:
       allOf:
         - $ref: '#/components/schemas/PassportEventStateKey'
@@ -911,6 +955,37 @@ components:
           type: string
           enum:
             - point_price
+    ReferralCode:
+      type: object
+      required:
+        - id
+        - status
+      properties:
+        id:
+          type: string
+          description: 'Referral code itself, unique identifier'
+          example: bDSCcQB8Hhk
+        status:
+          type: string
+          description: |
+            Status of the code, belonging to this user (referrer):
+              1. active: the code is not used yet by another user (referee)
+              2. banned: the referrer's country (known after scanning passport)
+                 is not allowed to participate in the referral program
+              3. limited: the limit of reserved tokens in the referrer's country is reached
+              4. awaiting: the code is used by referee who has scanned passport, but the referrer hasn't yet
+              5. rewarded: the code is used, both referee and referrer have scanned passports
+              6. consumed: the code is used by referee who has not scanned passport yet
+
+            The list is sorted by priority. E.g. if the referee has scanned passport,
+            but referrer's country has limit reached, the status would be `limited`.
+          enum:
+            - active
+            - banned
+            - limited
+            - awaiting
+            - rewarded
+            - consumed
     VerifyPassport:
       allOf:
         - $ref: '#/components/schemas/VerifyPassportKey'
