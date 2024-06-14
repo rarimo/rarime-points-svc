@@ -145,10 +145,10 @@ func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 func (q *balances) WithoutPassportEvent() ([]data.WithoutPassportEventBalance, error) {
 	var res []data.WithoutPassportEventBalance
 	stmt := fmt.Sprintf(`
-	SELECT b.*, e.id AS event_id 
-		FROM %s AS b LEFT JOIN %s AS e
+	SELECT b.*, e.id AS event_id, e.status AS event_status
+		FROM %s AS b INNER JOIN %s AS e
 		ON b.nullifier = e.nullifier AND e.type='passport_scan' 
-		WHERE (e.status NOT IN ('fulfilled', 'claimed') OR e.nullifier IS NULL) 
+		WHERE e.status NOT IN ('claimed') 
 		AND b.referred_by IS NOT NULL
 		AND b.country IS NOT NULL
 	`, balancesTable, eventsTable)
@@ -188,7 +188,7 @@ func (q *balances) WithoutReferralEvent() ([]data.ReferredReferrer, error) {
 
 }
 
-func (q *balances) FilterByNullifier(nullifier string) data.BalancesQ {
+func (q *balances) FilterByNullifier(nullifier ...string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 

@@ -44,6 +44,7 @@ type EventConfig struct {
 	StartsAt         *time.Time `fig:"starts_at"`
 	ExpiresAt        *time.Time `fig:"expires_at"`
 	NoAutoOpen       bool       `fig:"no_auto_open"`
+	AutoClaim        bool       `fig:"auto_claim"`
 	Disabled         bool       `fig:"disabled"`
 	ActionURL        *url.URL   `fig:"action_url"`
 	Logo             *url.URL   `fig:"logo"`
