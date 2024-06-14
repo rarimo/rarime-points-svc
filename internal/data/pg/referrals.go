@@ -118,13 +118,30 @@ func (q *referrals) Count() (uint64, error) {
 	return res.Count, nil
 }
 
-func (q *referrals) WithRewarding() data.ReferralsQ {
+func (q *referrals) WithStatus() data.ReferralsQ {
 	var (
-		join        = fmt.Sprintf("LEFT JOIN %s b ON %s.id = b.referred_by", balancesTable, referralsTable)
-		isRewarding = "(usage_left = 0 AND b.country IS NOT NULL) AS is_rewarding"
+		joinReferrer = fmt.Sprintf("JOIN %s rr ON %s.nullifier = b.nullifier", balancesTable, referralsTable)
+		joinReferee  = fmt.Sprintf("LEFT JOIN %s re ON %s.id = b.referred_by", balancesTable, referralsTable)
+		joinC        = fmt.Sprintf("JOIN %s c ON rr.country = c.code", countriesTable)
+
+		status = fmt.Sprintf(`CASE
+			WHEN usage_left > 0 THEN '%s'
+			WHEN rr.country IS NOT NULL AND NOT c.reserve_allowed AND NOT c.withdrawal_allowed THEN '%s'
+			WHEN rr.country IS NOT NULL AND (c.reserved >= c.reserve_limit OR NOT c.reserve_allowed) THEN '%s'
+			WHEN rr.country IS NULL AND re.country IS NOT NULL THEN '%s'
+			WHEN rr.country IS NOT NULL AND re.country IS NOT NULL THEN '%s'
+			ELSE '%s'
+		END AS status`,
+			data.StatusActive, data.StatusBanned, data.StatusLimited,
+			data.StatusAwaiting, data.StatusRewarded, data.StatusConsumed,
+		)
 	)
 
-	q.selector = q.selector.Column(isRewarding).JoinClause(join)
+	q.selector = q.selector.Column(status).
+		JoinClause(joinReferrer).
+		JoinClause(joinReferee).
+		JoinClause(joinC)
+
 	return q
 }
 

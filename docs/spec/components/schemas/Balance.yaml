@@ -37,30 +37,11 @@ allOf:
             format: int
             description: Rank of the user in the full leaderboard. Returned only for the single user.
             example: 294
-          active_referral_codes:
+          referral_codes:
             type: array
-            description: |
-              Referral codes which can be used to build a referral link and send it
-              to friends. Returned only for the single user.
-            example: ["bDSCcQB8Hhk"]
+            description: Referral codes. Returned only for the single user.
             items:
-              type: string
-          consumed_referral_codes:
-            type: array
-            description: |
-              Referral codes used by invited users who have not scanned passport yet.
-              Returned only for the single user.
-            example: ["73k3bdYaFWM", "kjmJHA8IdRA"]
-            items:
-              type: string
-          rewarding_referral_codes:
-            type: array
-            description: |
-              Referral codes used by invited users who have scanned passport.
-              Returned only for the single user.
-            example: ["9csIL7dW65m", "lcRN9LZliVw"]
-            items:
-              type: string
+              $ref: '#/components/schemas/ReferralCode'
           level:
             type: integer
             format: int

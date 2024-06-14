@@ -1,10 +1,10 @@
 package data
 
 type Referral struct {
-	ID          string `db:"id"`
-	Nullifier   string `db:"nullifier"`
-	UsageLeft   int32  `db:"usage_left"`
-	IsRewarding bool   `db:"is_rewarding"`
+	ID        string `db:"id"`
+	Nullifier string `db:"nullifier"`
+	UsageLeft int32  `db:"usage_left"`
+	Status    string `db:"status"`
 }
 
 type ReferralsQ interface {
@@ -17,7 +17,7 @@ type ReferralsQ interface {
 	Get(id string) (*Referral, error)
 	Count() (uint64, error)
 
-	WithRewarding() ReferralsQ
+	WithStatus() ReferralsQ
 	FilterByNullifier(string) ReferralsQ
 	FilterConsumed() ReferralsQ
 }
