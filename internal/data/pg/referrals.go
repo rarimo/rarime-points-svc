@@ -22,7 +22,7 @@ type referrals struct {
 func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 	return &referrals{
 		db:       db,
-		selector: squirrel.Select("*").From(referralsTable),
+		selector: squirrel.Select("id", referralsTable+".nullifier AS nullifier", "usage_left").From(referralsTable),
 		updater:  squirrel.Update(referralsTable).Set("usage_left", squirrel.Expr("usage_left - 1")),
 		counter:  squirrel.Select("COUNT(*) as count").From(referralsTable),
 	}
@@ -120,16 +120,16 @@ func (q *referrals) Count() (uint64, error) {
 
 func (q *referrals) WithRewarding() data.ReferralsQ {
 	var (
-		join        = fmt.Sprintf("%s ON %s.id = %s.referred_by", balancesTable, referralsTable, balancesTable)
-		isRewarding = fmt.Sprintf("(usage_left = 0 AND %s.country IS NOT NULL) AS is_rewarding", balancesTable)
+		join        = fmt.Sprintf("LEFT JOIN %s b ON %s.id = b.referred_by", balancesTable, referralsTable)
+		isRewarding = "(usage_left = 0 AND b.country IS NOT NULL) AS is_rewarding"
 	)
 
-	q.selector = q.selector.Column(isRewarding).Join(join)
+	q.selector = q.selector.Column(isRewarding).JoinClause(join)
 	return q
 }
 
 func (q *referrals) FilterByNullifier(nullifier string) data.ReferralsQ {
-	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
+	return q.applyCondition(squirrel.Eq{fmt.Sprintf("%s.nullifier", referralsTable): nullifier})
 }
 
 func (q *referrals) FilterConsumed() data.ReferralsQ {
