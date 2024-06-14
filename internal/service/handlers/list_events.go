@@ -27,10 +27,13 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.FilterHasExpiration != nil {
-		expirable := EventTypes(r).Names(func(ev evtypes.EventConfig) bool {
-			return ev.ExpiresAt == nil
-		})
-		req.FilterType = append(req.FilterType, expirable...)
+		filter := func(ev evtypes.EventConfig) bool { return ev.ExpiresAt != nil }
+		// keep in mind that these filters eliminate values matching the condition, see evtypes/filters.go
+		if *req.FilterHasExpiration {
+			filter = func(ev evtypes.EventConfig) bool { return ev.ExpiresAt == nil }
+		}
+
+		req.FilterType = append(req.FilterType, EventTypes(r).Names(filter)...)
 	}
 
 	inactiveTypes := EventTypes(r).Names(func(ev evtypes.EventConfig) bool {
