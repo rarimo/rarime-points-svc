@@ -120,9 +120,9 @@ func (q *referrals) Count() (uint64, error) {
 
 func (q *referrals) WithStatus() data.ReferralsQ {
 	var (
-		joinReferrer = fmt.Sprintf("JOIN %s rr ON %s.nullifier = b.nullifier", balancesTable, referralsTable)
-		joinReferee  = fmt.Sprintf("LEFT JOIN %s re ON %s.id = b.referred_by", balancesTable, referralsTable)
-		joinC        = fmt.Sprintf("JOIN %s c ON rr.country = c.code", countriesTable)
+		joinReferrer = fmt.Sprintf("JOIN %s rr ON %s.nullifier = rr.nullifier", balancesTable, referralsTable)
+		joinReferee  = fmt.Sprintf("LEFT JOIN %s re ON %s.id = re.referred_by", balancesTable, referralsTable)
+		joinCountry  = fmt.Sprintf("LEFT JOIN %s c ON rr.country = c.code", countriesTable)
 
 		status = fmt.Sprintf(`CASE
 			WHEN usage_left > 0 THEN '%s'
@@ -140,7 +140,7 @@ func (q *referrals) WithStatus() data.ReferralsQ {
 	q.selector = q.selector.Column(status).
 		JoinClause(joinReferrer).
 		JoinClause(joinReferee).
-		JoinClause(joinC)
+		JoinClause(joinCountry)
 
 	return q
 }

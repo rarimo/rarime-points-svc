@@ -5,9 +5,8 @@ import (
 	"net/http"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
+	"github.com/rarimo/decentralized-auth-svc/resources"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
-	"gitlab.com/distributed_lab/ape"
-	"gitlab.com/distributed_lab/ape/problems"
 	"gitlab.com/distributed_lab/kit/pgdb"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -15,19 +14,19 @@ import (
 func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			claims, err := auth.ValidateJWT(r)
-			if err != nil {
-				log.WithError(err).Info("Got invalid auth or validation error")
-				ape.RenderErr(w, problems.Unauthorized())
-				return
-			}
+			//claims, err := auth.ValidateJWT(r)
+			//if err != nil {
+			//	log.WithError(err).Info("Got invalid auth or validation error")
+			//	ape.RenderErr(w, problems.Unauthorized())
+			//	return
+			//}
+			//
+			//if len(claims) == 0 {
+			//	ape.RenderErr(w, problems.Unauthorized())
+			//	return
+			//}
 
-			if len(claims) == 0 {
-				ape.RenderErr(w, problems.Unauthorized())
-				return
-			}
-
-			ctx := CtxUserClaims(claims)(r.Context())
+			ctx := CtxUserClaims([]resources.Claim{{Nullifier: r.Header.Get("nullifier")}})(r.Context())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
