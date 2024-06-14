@@ -4,6 +4,7 @@ type Referral struct {
 	ID        string `db:"id"`
 	Nullifier string `db:"nullifier"`
 	UsageLeft int32  `db:"usage_left"`
+	Status    string `db:"status"`
 }
 
 type ReferralsQ interface {
@@ -18,6 +19,7 @@ type ReferralsQ interface {
 
 	Update(usageLeft int) (*Referral, error)
 
+	WithStatus() ReferralsQ
 	FilterByNullifier(string) ReferralsQ
 	FilterConsumed() ReferralsQ
 }

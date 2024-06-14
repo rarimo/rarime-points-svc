@@ -8,7 +8,6 @@ allOf:
         type: object
         required:
           - amount
-          - is_disabled
           - created_at
           - updated_at
           - level
@@ -38,22 +37,17 @@ allOf:
             format: int
             description: Rank of the user in the full leaderboard. Returned only for the single user.
             example: 294
-          active_referral_codes:
+          referral_codes:
             type: array
-            description: |
-              Referral codes which can be used to build a referral link and send it
-              to friends. Returned only for the single user.
-            example: ["zgsScguZ", "jerUsmac"]
+            description: Referral codes. Returned only for the single user.
             items:
-              type: string
-          consumed_referral_codes:
-            type: array
-            description: Referral codes used by invited users. Returned only for the single user.
-            example: ["73k3bdYaFWM", "9csIL7dW65m"]
-            items:
-              type: string
+              $ref: '#/components/schemas/ReferralCode'
           level:
             type: integer
             format: int
             description: The level indicates user permissions and features 
-            example: 2           
+            example: 2
+          is_verified:
+            type: boolean
+            description: |
+              Whether the user has scanned passport. Returned only for the single user.

@@ -43,9 +43,12 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	var referrals []data.Referral
 	if req.ReferralCodes {
-		referrals, err = ReferralsQ(r).FilterByNullifier(req.Nullifier).Select()
+		referrals, err = ReferralsQ(r).
+			FilterByNullifier(req.Nullifier).
+			WithStatus().
+			Select()
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to get referrals by nullifier")
+			Log(r).WithError(err).Error("Failed to get referrals by nullifier with rewarding field")
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
@@ -54,6 +57,8 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
+// newBalanceModel forms a balance response without referral fields, which must
+// only be accessed with authorization.
 func newBalanceModel(balance data.Balance) resources.Balance {
 	return resources.Balance{
 		Key: resources.Key{
@@ -72,22 +77,23 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 
 func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
 	resp := resources.BalanceResponse{Data: newBalanceModel(balance)}
+	boolP := func(b bool) *bool { return &b }
+
+	resp.Data.Attributes.IsDisabled = boolP(!balance.ReferredBy.Valid)
+	resp.Data.Attributes.IsVerified = boolP(balance.Country != nil)
+
 	if len(referrals) == 0 {
 		return resp
 	}
 
-	activeCodes, consumedCodes := make([]string, 0, len(referrals)), make([]string, 0, len(referrals))
-	resp.Data.Attributes.ActiveReferralCodes = &activeCodes
-	resp.Data.Attributes.ConsumedReferralCodes = &consumedCodes
-	resp.Data.Attributes.IsDisabled = !balance.ReferredBy.Valid
-
-	for _, ref := range referrals {
-		if ref.UsageLeft == 0 {
-			consumedCodes = append(consumedCodes, ref.ID)
-			continue
+	res := make([]resources.ReferralCode, len(referrals))
+	for i, r := range referrals {
+		res[i] = resources.ReferralCode{
+			Id:     r.ID,
+			Status: r.Status,
 		}
-		activeCodes = append(activeCodes, ref.ID)
 	}
 
+	resp.Data.Attributes.ReferralCodes = &res
 	return resp
 }

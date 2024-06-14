@@ -110,9 +110,9 @@ func TestVerifyPassport(t *testing.T) {
 		}
 	})
 
-	t.Run("IncorrectCoutnryCode", func(t *testing.T) {
+	t.Run("IncorrectCountryCode", func(t *testing.T) {
 		proof.PubSignals[zk.Citizenship] = "6974819"
-		body := verifyPassportBody(referrer, proof)
+		body = verifyPassportBody(referrer, proof)
 		_, respCode := postPatchRequest(t, balancesEndpoint+"/"+referrer+"/verifypassport", body, referrer, false)
 		if respCode != http.StatusInternalServerError {
 			t.Errorf("want %d got %d", http.StatusInternalServerError, respCode)
@@ -210,7 +210,6 @@ func TestLevels(t *testing.T) {
 	// must never panic because of logic getBalance
 	if len(*balance.Data.Attributes.ActiveReferralCodes) != 15 {
 		t.Fatalf("balance referral codes must be 15, got %d: %s", len(*balance.Data.Attributes.ActiveReferralCodes), nullifier)
-
 	}
 }
 

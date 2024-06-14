@@ -9,7 +9,7 @@ required:
   - description
   - short_description
   - frequency
-  - no_auto_open
+  - flag
 properties:
   name:
     type: string
@@ -53,3 +53,19 @@ properties:
     type: string
     description: Event logo
     example: https://logo.com/some_logo.svg
+  flag:
+    type: string
+    description: |
+      Event configuration flag:
+        - active: Events can be opened, fulfilled, claimed
+        - not_started: Event are not available yet, see `starts_at`
+        - expired: Event is not available, as it has already expired, see `expires_at`
+        - disabled: Event is disabled in the system
+      
+      If event is disabled, it doesn't matter if it's expired or not started:
+      it has `disabled` flag.
+    enum:
+      - active
+      - not_started
+      - expired
+      - disabled

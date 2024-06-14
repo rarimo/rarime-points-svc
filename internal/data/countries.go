@@ -10,6 +10,15 @@ const (
 	ColWithdrawn = "withdrawn"
 )
 
+const (
+	StatusActive   = "active"
+	StatusBanned   = "banned"
+	StatusLimited  = "limited"
+	StatusAwaiting = "awaiting"
+	StatusRewarded = "rewarded"
+	StatusConsumed = "consumed"
+)
+
 type CountriesQ interface {
 	New() CountriesQ
 	Insert(countries ...Country) error

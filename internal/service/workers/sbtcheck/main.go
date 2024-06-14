@@ -52,6 +52,9 @@ type extConfig interface {
 	SbtChecker
 }
 
+// Run runs SBT checkers for all networks. This is deprecated, because we did not
+// migrate to the decentralized identity architecture with the replacement of DID
+// to nullifier.
 func Run(ctx context.Context, cfg extConfig) {
 	log := cfg.Log().WithField("who", "sbt-checker")
 

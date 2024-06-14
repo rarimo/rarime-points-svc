@@ -4,6 +4,14 @@ import (
 	"time"
 )
 
+// Filter functions work in the following way:
+//
+// 1. For FilterBy* functions, the config is only added when it matches the filter:
+// FilterByName(name1, name2) will only return events with name1 or name2
+//
+// 2. For other Filter* functions, the configs matching the filter are excluded:
+// FilterExpired eliminates all expired events (instead of including only them)
+
 type filter func(EventConfig) bool
 
 func FilterExpired(ev EventConfig) bool {
@@ -25,6 +33,34 @@ func FilterNotOpenable(ev EventConfig) bool {
 func FilterByFrequency(f Frequency) func(EventConfig) bool {
 	return func(ev EventConfig) bool {
 		return ev.Frequency != f
+	}
+}
+
+func FilterByNames(names ...string) func(EventConfig) bool {
+	return func(ev EventConfig) bool {
+		if len(names) == 0 {
+			return false
+		}
+		for _, name := range names {
+			if ev.Name == name {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+func FilterByFlags(flags ...string) func(EventConfig) bool {
+	return func(ev EventConfig) bool {
+		if len(flags) == 0 {
+			return false
+		}
+		for _, flag := range flags {
+			if ev.Flag() == flag {
+				return false
+			}
+		}
+		return true
 	}
 }
 

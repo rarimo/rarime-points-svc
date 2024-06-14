@@ -1,0 +1,12 @@
+allOf:
+  - $ref: '#/components/schemas/EventTypeKey'
+  - type: object
+    description: Event type configuration and metadata
+    required:
+      - attributes
+    properties:
+      attributes:
+        # helps to both display good doc and generate convenient model
+        type: object
+        format: EventStaticMeta
+        $ref: '#/components/schemas/EventStaticMeta'

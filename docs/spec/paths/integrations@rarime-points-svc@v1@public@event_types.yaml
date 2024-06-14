@@ -1,0 +1,48 @@
+get:
+  tags:
+    - Events
+  summary: List event types
+  description: |
+    Returns public configuration of all event types.
+    Basically, it is event static metadata (model `EventStaticMeta`)
+    for each event type in the system.
+  operationId: getEventTypes
+  parameters:
+    - in: query
+      name: 'filter[name]'
+      description: Filter by type name. Possible values should be hard-coded in the client.
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          example: "passport_scan"
+    - in: query
+      name: 'filter[flag]'
+      description: Filter by configuration flags. Values are disjunctive (OR).
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          enum:
+            - active
+            - not_started
+            - expired
+            - disabled
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                type: array
+                items:
+                  $ref: '#/components/schemas/EventType'
+    500:
+      $ref: '#/components/responses/internalError'

@@ -10,6 +10,7 @@ allOf:
           - status
           - created_at
           - updated_at
+          - has_expiration
           - meta
         properties:
           status:
@@ -24,6 +25,9 @@ allOf:
             type: integer
             description: Unix timestamp of the event status change
             example: 1706531218
+          has_expiration:
+            type: boolean
+            description: Whether this event may become expired.
           meta:
             $ref: '#/components/schemas/EventMeta'
           points_amount:

@@ -23,7 +23,7 @@ type referrals struct {
 func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 	return &referrals{
 		db:       db,
-		selector: squirrel.Select("*").From(referralsTable),
+		selector: squirrel.Select("id", referralsTable+".nullifier AS nullifier", "usage_left").From(referralsTable),
 		updater:  squirrel.Update(referralsTable),
 		consumer: squirrel.Update(referralsTable).Set("usage_left", squirrel.Expr("usage_left - 1")),
 		counter:  squirrel.Select("COUNT(*) as count").From(referralsTable),
@@ -130,8 +130,35 @@ func (q *referrals) Count() (uint64, error) {
 	return res.Count, nil
 }
 
+func (q *referrals) WithStatus() data.ReferralsQ {
+	var (
+		joinReferrer = fmt.Sprintf("JOIN %s rr ON %s.nullifier = rr.nullifier", balancesTable, referralsTable)
+		joinReferee  = fmt.Sprintf("LEFT JOIN %s re ON %s.id = re.referred_by", balancesTable, referralsTable)
+		joinCountry  = fmt.Sprintf("LEFT JOIN %s c ON rr.country = c.code", countriesTable)
+
+		status = fmt.Sprintf(`CASE
+			WHEN usage_left > 0 THEN '%s'
+			WHEN rr.country IS NOT NULL AND NOT c.reserve_allowed AND NOT c.withdrawal_allowed THEN '%s'
+			WHEN rr.country IS NOT NULL AND (c.reserved >= c.reserve_limit OR NOT c.reserve_allowed) THEN '%s'
+			WHEN rr.country IS NULL AND re.country IS NOT NULL THEN '%s'
+			WHEN rr.country IS NOT NULL AND re.country IS NOT NULL THEN '%s'
+			ELSE '%s'
+		END AS status`,
+			data.StatusActive, data.StatusBanned, data.StatusLimited,
+			data.StatusAwaiting, data.StatusRewarded, data.StatusConsumed,
+		)
+	)
+
+	q.selector = q.selector.Column(status).
+		JoinClause(joinReferrer).
+		JoinClause(joinReferee).
+		JoinClause(joinCountry)
+
+	return q
+}
+
 func (q *referrals) FilterByNullifier(nullifier string) data.ReferralsQ {
-	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
+	return q.applyCondition(squirrel.Eq{fmt.Sprintf("%s.nullifier", referralsTable): nullifier})
 }
 
 func (q *referrals) FilterConsumed() data.ReferralsQ {

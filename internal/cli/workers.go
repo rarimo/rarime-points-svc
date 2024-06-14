@@ -10,7 +10,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/expirywatch"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/nooneisforgotten"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/reopener"
-	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck"
 )
 
 // runServices manages service's dependencies and runs them in the correct order
@@ -40,7 +39,7 @@ func runServices(ctx context.Context, cfg config.Config, wg *sync.WaitGroup) {
 	// fulfilled, then both services do not overlap each other
 	<-reopenerSig
 	run(func() { nooneisforgotten.Run(cfg, noOneIsForgottenSig) })
-	run(func() { sbtcheck.Run(ctx, cfg) })
+	//run(func() { sbtcheck.Run(ctx, cfg) }) // see deprecation notice
 
 	// service depends on all the workers for good UX, except sbtcheck, as it has
 	// long catchup period and users are fine to wait

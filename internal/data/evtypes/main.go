@@ -30,8 +30,10 @@ const (
 )
 
 const (
-	PassportRewardAge         = "age"
-	PassportRewardNationality = "nationality"
+	FlagActive     = "active"
+	FlagNotStarted = "not_started"
+	FlagExpired    = "expired"
+	FlagDisabled   = "disabled"
 )
 
 type EventConfig struct {
@@ -48,6 +50,19 @@ type EventConfig struct {
 	Disabled         bool       `fig:"disabled"`
 	ActionURL        *url.URL   `fig:"action_url"`
 	Logo             *url.URL   `fig:"logo"`
+}
+
+func (e EventConfig) Flag() string {
+	switch {
+	case e.Disabled:
+		return FlagDisabled
+	case FilterNotStarted(e):
+		return FlagNotStarted
+	case FilterExpired(e):
+		return FlagExpired
+	default:
+		return FlagActive
+	}
 }
 
 func (e EventConfig) Resource() resources.EventStaticMeta {
@@ -70,6 +85,7 @@ func (e EventConfig) Resource() resources.EventStaticMeta {
 		ExpiresAt:        e.ExpiresAt,
 		ActionUrl:        safeConv(e.ActionURL),
 		Logo:             safeConv(e.Logo),
+		Flag:             e.Flag(),
 	}
 }
 
