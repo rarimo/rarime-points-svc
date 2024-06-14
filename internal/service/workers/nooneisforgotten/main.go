@@ -212,7 +212,7 @@ func updateReferralUserEvents(db *pgdb.DB, types evtypes.Types) error {
 	return nil
 }
 
-// claimReferral SpecificEvents claim fulfilled events for invited
+// claimReferralSpecificEvents claim fulfilled events for invited
 // friends which have passport scanned, if it possible
 func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config.Levels) error {
 	evType := types.Get(evtypes.TypeReferralSpecific)
