@@ -68,7 +68,7 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 		countriesBalancesMap[*balance.Country] = append(countriesBalancesMap[*balance.Country], balance)
 	}
 
-	// if autoclaim disabled, then event definetely active - fulfill passport scan events
+	// if autoclaim disabled, then event definitely active - fulfill passport scan events
 	if !evType.AutoClaim {
 		if len(toFulfill) != 0 {
 			_, err = pg.NewEvents(db).
