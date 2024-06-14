@@ -5,7 +5,9 @@ import (
 	"net/http"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
+	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
+	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
@@ -83,7 +85,7 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = EventsQ(r).Transaction(func() error {
-		event, err = claimEventWithPoints(r, *event, evType.Reward, balance)
+		event, err = claimEvent(r, event, balance)
 		if err != nil {
 			return err
 		}
@@ -107,49 +109,82 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newClaimEventResponse(*event, evType.Resource(), *balance))
 }
 
-// claimEventWithPoints requires event to exist
-func claimEventWithPoints(r *http.Request, event data.Event, reward int64, balance *data.Balance) (claimed *data.Event, err error) {
-	// Upgrade level logic when threshold is reached
-	refsCount, level := Levels(r).LvlUp(balance.Level, reward+balance.Amount)
-	if level != balance.Level {
-		count, err := ReferralsQ(r).FilterByNullifier(balance.Nullifier).Count()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get referral count: %w", err)
-		}
-
-		refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
-		if err = ReferralsQ(r).Insert(refToAdd...); err != nil {
-			return nil, fmt.Errorf("failed to insert referrals: %w", err)
-		}
-
-		err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
-			data.ColLevel: level,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to update level: %w", err)
-		}
+// claimEvent requires event to exist
+// call in transaction to prevent unexpected changes
+func claimEvent(r *http.Request, event *data.Event, balance *data.Balance) (claimed *data.Event, err error) {
+	if event == nil {
+		return nil, nil
 	}
 
-	claimed, err = EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &reward)
+	evType := EventTypes(r).Get(event.Type, evtypes.FilterInactive)
+	if evType == nil {
+		return event, nil
+	}
+
+	claimed, err = EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &evType.Reward)
 	if err != nil {
 		return nil, fmt.Errorf("update event status: %w", err)
 	}
 
-	err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
-		data.ColAmount: pg.AddToValue(data.ColAmount, reward),
-	})
+	err = DoClaimEventUpdates(
+		Levels(r),
+		ReferralsQ(r),
+		BalancesQ(r),
+		CountriesQ(r),
+		*balance,
+		evType.Reward)
 	if err != nil {
-		return nil, fmt.Errorf("update balance amount: %w", err)
-	}
-
-	err = CountriesQ(r).FilterByCodes(*balance.Country).Update(map[string]any{
-		data.ColReserved: pg.AddToValue(data.ColReserved, reward),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("increase country reserve: %w", err)
+		return nil, fmt.Errorf("failed to do claim event updates: %w", err)
 	}
 
 	return claimed, nil
+}
+
+// DoClaimEventUpdates do updates which link to claim event:
+// update reserved amount in country;
+// lvlup and update referrals count;
+// accruing points;
+//
+// Balance must be active and with verified passport
+func DoClaimEventUpdates(
+	levels config.Levels,
+	referralsQ data.ReferralsQ,
+	balancesQ data.BalancesQ,
+	countriesQ data.CountriesQ,
+	balance data.Balance,
+	reward int64) (err error) {
+
+	refsCount, level := levels.LvlUp(balance.Level, reward+balance.Amount)
+	if refsCount > 0 {
+		count, err := referralsQ.New().FilterByNullifier(balance.Nullifier).Count()
+		if err != nil {
+			return fmt.Errorf("failed to get referral count: %w", err)
+		}
+
+		refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
+		if err = referralsQ.New().Insert(refToAdd...); err != nil {
+			return fmt.Errorf("failed to insert referrals: %w", err)
+		}
+
+		return nil
+	}
+
+	err = balancesQ.FilterByNullifier(balance.Nullifier).Update(map[string]any{
+		data.ColAmount: pg.AddToValue(data.ColAmount, reward),
+		data.ColLevel:  level,
+	})
+	if err != nil {
+		return fmt.Errorf("update balance amount and level: %w", err)
+	}
+
+	err = countriesQ.FilterByCodes(*balance.Country).Update(map[string]any{
+		data.ColReserved: pg.AddToValue(data.ColReserved, reward),
+	})
+	if err != nil {
+		return fmt.Errorf("increase country reserve: %w", err)
+	}
+
+	return nil
 }
 
 func newClaimEventResponse(

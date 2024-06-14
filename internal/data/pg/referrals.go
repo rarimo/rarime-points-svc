@@ -16,6 +16,7 @@ type referrals struct {
 	db       *pgdb.DB
 	selector squirrel.SelectBuilder
 	updater  squirrel.UpdateBuilder
+	consumer squirrel.UpdateBuilder
 	counter  squirrel.SelectBuilder
 }
 
@@ -23,7 +24,8 @@ func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 	return &referrals{
 		db:       db,
 		selector: squirrel.Select("id", referralsTable+".nullifier AS nullifier", "usage_left").From(referralsTable),
-		updater:  squirrel.Update(referralsTable).Set("usage_left", squirrel.Expr("usage_left - 1")),
+		updater:  squirrel.Update(referralsTable),
+		consumer: squirrel.Update(referralsTable).Set("usage_left", squirrel.Expr("usage_left - 1")),
 		counter:  squirrel.Select("COUNT(*) as count").From(referralsTable),
 	}
 }
@@ -49,6 +51,16 @@ func (q *referrals) Insert(referrals ...data.Referral) error {
 	return nil
 }
 
+func (q *referrals) Update(usageLeft int) (*data.Referral, error) {
+	var res data.Referral
+
+	if err := q.db.Get(&res, q.updater.Set("usage_left", usageLeft).Suffix("RETURNING *")); err != nil {
+		return nil, fmt.Errorf("update referral: %w", err)
+	}
+
+	return &res, nil
+}
+
 func (q *referrals) Consume(ids ...string) ([]string, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -58,7 +70,7 @@ func (q *referrals) Consume(ids ...string) ([]string, error) {
 		IDs []string `db:"id"`
 	}
 
-	stmt := q.updater.Where(squirrel.Eq{"id": ids}).Suffix("Returning id")
+	stmt := q.consumer.Where(squirrel.Eq{"id": ids}).Suffix("Returning id")
 
 	if err := q.db.Exec(stmt); err != nil {
 		return nil, fmt.Errorf("consume referrals [%v]: %w", ids, err)
@@ -155,6 +167,7 @@ func (q *referrals) FilterConsumed() data.ReferralsQ {
 
 func (q *referrals) applyCondition(cond squirrel.Sqlizer) data.ReferralsQ {
 	q.selector = q.selector.Where(cond)
+	q.consumer = q.consumer.Where(cond)
 	q.updater = q.updater.Where(cond)
 	q.counter = q.counter.Where(cond)
 	return q

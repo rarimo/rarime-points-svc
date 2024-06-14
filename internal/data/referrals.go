@@ -17,6 +17,8 @@ type ReferralsQ interface {
 	Get(id string) (*Referral, error)
 	Count() (uint64, error)
 
+	Update(usageLeft int) (*Referral, error)
+
 	WithStatus() ReferralsQ
 	FilterByNullifier(string) ReferralsQ
 	FilterConsumed() ReferralsQ

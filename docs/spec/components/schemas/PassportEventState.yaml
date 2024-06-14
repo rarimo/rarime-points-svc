@@ -1,0 +1,15 @@
+allOf:
+  - $ref: '#/components/schemas/PassportEventStateKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        required:
+          - claimed
+        type: object
+        properties:
+          claimed:
+            type: bool
+            example: true
+            description: If passport scan event was automatically claimed

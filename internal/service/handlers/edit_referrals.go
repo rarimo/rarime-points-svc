@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
@@ -26,7 +27,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if balance == nil {
-		if *req.Count == 0 {
+		if req.Count == 0 {
 			Log(r).Debugf("Balance %s not found, skipping creation for count=0", req.Nullifier)
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -37,46 +38,63 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
-	}
 
-	if req.Genesis {
-		count, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).Count()
-		if err != nil {
-			Log(r).WithError(err).Error("Failed to get referrals count")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-
-		referral := referralid.New(req.Nullifier, count)
-
+		code := referralid.New(req.Nullifier, 0)
 		err = ReferralsQ(r).Insert(data.Referral{
-			ID:        referral,
+			ID:        code,
 			Nullifier: req.Nullifier,
-			UsageLeft: int32(*req.Count),
+			UsageLeft: int32(req.Count),
 		})
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to insert genesis referral")
+			Log(r).WithError(err).Errorf("failed to insert referral for nullifier [%s]", req.Nullifier)
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
 
 		ape.Render(w, struct {
-			Ref       string `json:"added_ref"`
-			UsageLeft int    `json:"usage_left"`
-		}{referral, int(*req.Count)})
+			Ref       string `json:"referral"`
+			UsageLeft uint64 `json:"usage_left"`
+		}{code, req.Count})
 		return
 	}
 
-	added, err := adjustReferralsCount(req, r)
+	if balance.ReferredBy.Valid {
+		ape.RenderErr(w, problems.BadRequest(validation.Errors{"balance": fmt.Errorf("genesis balances must be inactive")})...)
+		return
+	}
+
+	referrals, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).Select()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to adjust referrals count")
+		Log(r).WithError(err).Errorf("failed to select referrals for nullifier [%s]", req.Nullifier)
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	if len(referrals) != 1 {
+		ape.RenderErr(w, problems.BadRequest(validation.Errors{"balance": fmt.Errorf("genesis balances must have only one referral")})...)
+		return
+	}
+
+	referral, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).Update(int(req.Count))
+	if err != nil {
+		Log(r).WithError(err).Errorf("failed to update referral usage count for nullifier [%s]", req.Nullifier)
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if referral == nil {
+		Log(r).Errorf("critical: referral absent for user [%s]", req.Nullifier)
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	ape.Render(w, struct {
-		Refs []string `json:"added_referrals"`
-	}{added})
+		Ref       string `json:"referral"`
+		UsageLeft uint64 `json:"usage_left"`
+	}{
+		referral.ID,
+		uint64(referral.UsageLeft),
+	})
+
 }
 
 func prepareReferralsToAdd(nullifier string, count, index uint64) []data.Referral {
@@ -92,42 +110,4 @@ func prepareReferralsToAdd(nullifier string, count, index uint64) []data.Referra
 	}
 
 	return refs
-}
-
-func adjustReferralsCount(req requests.EditReferralsRequest, r *http.Request) (refsAdded []string, err error) {
-	active, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).FilterConsumed().Count()
-	if err != nil {
-		return nil, fmt.Errorf("count active referrals: %w", err)
-	}
-
-	if *req.Count == active {
-		Log(r).Infof("No referrals to add or consume for nullifier %s", req.Nullifier)
-		return
-	}
-
-	if *req.Count < active {
-		toConsume := active - *req.Count
-		if err = ReferralsQ(r).ConsumeFirst(req.Nullifier, toConsume); err != nil {
-			return nil, fmt.Errorf("consume referrals: %w", err)
-		}
-		Log(r).Infof("Consumed %d referrals for nullifier %s", toConsume, req.Nullifier)
-		return
-	}
-
-	index, err := ReferralsQ(r).FilterByNullifier(req.Nullifier).Count()
-	if err != nil {
-		return nil, fmt.Errorf("count all referrals: %w", err)
-	}
-
-	toAdd := *req.Count - active
-	// balance must exist, according to preceding logic in EditReferrals
-	err = ReferralsQ(r).Insert(prepareReferralsToAdd(req.Nullifier, toAdd, index)...)
-	if err != nil {
-		return nil, fmt.Errorf("insert referrals: %w", err)
-	}
-	Log(r).Infof("Inserted %d referrals for nullifier %s", toAdd, req.Nullifier)
-
-	// while this is deterministic, the codes will be the same
-	refsAdded = referralid.NewMany(req.Nullifier, toAdd, index)
-	return
 }

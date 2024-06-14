@@ -1,8 +1,12 @@
 type: object
 required:
+  - code
   - reserve_allowed
   - withdrawal_allowed
 properties:
+  code:
+    type: string
+    description: ISO 3166-1 alpha-3 country code
   reserve_allowed:
     type: boolean
     description: Whether the users of country are allowed to reserve (claim) tokens
