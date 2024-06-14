@@ -8,7 +8,6 @@ allOf:
         type: object
         required:
           - amount
-          - is_disabled
           - created_at
           - updated_at
           - level
@@ -66,4 +65,8 @@ allOf:
             type: integer
             format: int
             description: The level indicates user permissions and features 
-            example: 2           
+            example: 2
+          is_verified:
+            type: boolean
+            description: |
+              Whether the user has scanned passport. Returned only for the single user.

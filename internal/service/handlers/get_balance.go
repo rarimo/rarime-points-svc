@@ -77,6 +77,11 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 
 func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
 	resp := resources.BalanceResponse{Data: newBalanceModel(balance)}
+	boolP := func(b bool) *bool { return &b }
+
+	resp.Data.Attributes.IsDisabled = boolP(!balance.ReferredBy.Valid)
+	resp.Data.Attributes.IsVerified = boolP(balance.Country != nil)
+
 	if len(referrals) == 0 {
 		return resp
 	}
@@ -89,7 +94,6 @@ func newBalanceResponse(balance data.Balance, referrals []data.Referral) resourc
 	resp.Data.Attributes.ActiveReferralCodes = &active
 	resp.Data.Attributes.ConsumedReferralCodes = &consumed
 	resp.Data.Attributes.RewardingReferralCodes = &rewarding
-	resp.Data.Attributes.IsDisabled = !balance.ReferredBy.Valid
 
 	for _, ref := range referrals {
 		switch {
