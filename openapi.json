@@ -304,8 +304,23 @@
           }
         },
         "responses": {
-          "204": {
-            "description": "Success"
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PassportEventState"
+                    }
+                  }
+                }
+              }
+            }
           },
           "400": {
             "$ref": "#/components/responses/invalidParameter"
@@ -1230,6 +1245,55 @@
             "type": "string",
             "description": "Event logo",
             "example": "https://logo.com/some_logo.svg"
+          }
+        }
+      },
+      "PassportEventState": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PassportEventStateKey"
+          },
+          {
+            "type": "object",
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "required": [
+                  "claimed"
+                ],
+                "type": "object",
+                "properties": {
+                  "claimed": {
+                    "type": "bool",
+                    "example": true,
+                    "description": "If passport scan event was automatically claimed"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "PassportEventStateKey": {
+        "type": "object",
+        "required": [
+          "id",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Nullifier of the points owner",
+            "example": "0x123...abc",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "passport_event_state"
+            ]
           }
         }
       },
