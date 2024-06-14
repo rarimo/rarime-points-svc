@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/referralid"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
@@ -58,7 +59,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if balance.ReferredBy.Valid {
-		ape.RenderErr(w, problems.BadRequest(fmt.Errorf("active balance: Genesis balances must be inactive"))...)
+		ape.RenderErr(w, problems.BadRequest(validation.Errors{"balance": fmt.Errorf("genesis balances must be inactive")})...)
 		return
 	}
 
@@ -70,7 +71,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(referrals) != 1 {
-		ape.RenderErr(w, problems.BadRequest(fmt.Errorf("balance have must have only one referral to be genesis"))...)
+		ape.RenderErr(w, problems.BadRequest(validation.Errors{"balance": fmt.Errorf("genesis balances must have only one referral")})...)
 		return
 	}
 
@@ -89,7 +90,10 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, struct {
 		Ref       string `json:"referral"`
 		UsageLeft uint64 `json:"usage_left"`
-	}{referral.ID, uint64(referral.UsageLeft)})
+	}{
+		referral.ID,
+		uint64(referral.UsageLeft),
+	})
 
 }
 

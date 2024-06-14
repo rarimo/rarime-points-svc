@@ -141,6 +141,7 @@ func (q *referrals) FilterConsumed() data.ReferralsQ {
 func (q *referrals) applyCondition(cond squirrel.Sqlizer) data.ReferralsQ {
 	q.selector = q.selector.Where(cond)
 	q.consumer = q.consumer.Where(cond)
+	q.updater = q.updater.Where(cond)
 	q.counter = q.counter.Where(cond)
 	return q
 }
