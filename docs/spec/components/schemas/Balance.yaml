@@ -43,13 +43,23 @@ allOf:
             description: |
               Referral codes which can be used to build a referral link and send it
               to friends. Returned only for the single user.
-            example: ["zgsScguZ", "jerUsmac"]
+            example: ["bDSCcQB8Hhk"]
             items:
               type: string
           consumed_referral_codes:
             type: array
-            description: Referral codes used by invited users. Returned only for the single user.
-            example: ["73k3bdYaFWM", "9csIL7dW65m"]
+            description: |
+              Referral codes used by invited users who have not scanned passport yet.
+              Returned only for the single user.
+            example: ["73k3bdYaFWM", "kjmJHA8IdRA"]
+            items:
+              type: string
+          rewarding_referral_codes:
+            type: array
+            description: |
+              Referral codes used by invited users who have scanned passport.
+              Returned only for the single user.
+            example: ["9csIL7dW65m", "lcRN9LZliVw"]
             items:
               type: string
           level:

@@ -118,6 +118,16 @@ func (q *referrals) Count() (uint64, error) {
 	return res.Count, nil
 }
 
+func (q *referrals) WithRewarding() data.ReferralsQ {
+	var (
+		join        = fmt.Sprintf("%s ON %s.id = %s.referred_by", balancesTable, referralsTable, balancesTable)
+		isRewarding = fmt.Sprintf("(usage_left = 0 AND %s.country IS NOT NULL) AS is_rewarding", balancesTable)
+	)
+
+	q.selector = q.selector.Column(isRewarding).Join(join)
+	return q
+}
+
 func (q *referrals) FilterByNullifier(nullifier string) data.ReferralsQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }

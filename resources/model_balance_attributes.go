@@ -9,7 +9,7 @@ type BalanceAttributes struct {
 	ActiveReferralCodes *[]string `json:"active_referral_codes,omitempty"`
 	// Amount of points
 	Amount int64 `json:"amount"`
-	// Referral codes used by invited users. Returned only for the single user.
+	// Referral codes used by invited users who have not scanned passport yet. Returned only for the single user.
 	ConsumedReferralCodes *[]string `json:"consumed_referral_codes,omitempty"`
 	// Unix timestamp of balance creation
 	CreatedAt int32 `json:"created_at"`
@@ -19,6 +19,8 @@ type BalanceAttributes struct {
 	Level int `json:"level"`
 	// Rank of the user in the full leaderboard. Returned only for the single user.
 	Rank *int `json:"rank,omitempty"`
+	// Referral codes used by invited users who have scanned passport. Returned only for the single user.
+	RewardingReferralCodes *[]string `json:"rewarding_referral_codes,omitempty"`
 	// Unix timestamp of the last points accruing
 	UpdatedAt int32 `json:"updated_at"`
 }

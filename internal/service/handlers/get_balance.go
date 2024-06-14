@@ -43,9 +43,12 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	var referrals []data.Referral
 	if req.ReferralCodes {
-		referrals, err = ReferralsQ(r).FilterByNullifier(req.Nullifier).Select()
+		referrals, err = ReferralsQ(r).
+			FilterByNullifier(req.Nullifier).
+			WithRewarding().
+			Select()
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to get referrals by nullifier")
+			Log(r).WithError(err).Error("Failed to get referrals by nullifier with rewarding field")
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
@@ -76,17 +79,25 @@ func newBalanceResponse(balance data.Balance, referrals []data.Referral) resourc
 		return resp
 	}
 
-	activeCodes, consumedCodes := make([]string, 0, len(referrals)), make([]string, 0, len(referrals))
-	resp.Data.Attributes.ActiveReferralCodes = &activeCodes
-	resp.Data.Attributes.ConsumedReferralCodes = &consumedCodes
+	var (
+		active    = make([]string, 0, len(referrals))
+		consumed  = make([]string, 0, len(referrals))
+		rewarding = make([]string, 0, len(referrals))
+	)
+	resp.Data.Attributes.ActiveReferralCodes = &active
+	resp.Data.Attributes.ConsumedReferralCodes = &consumed
+	resp.Data.Attributes.RewardingReferralCodes = &rewarding
 	resp.Data.Attributes.IsDisabled = !balance.ReferredBy.Valid
 
 	for _, ref := range referrals {
-		if ref.UsageLeft == 0 {
-			consumedCodes = append(consumedCodes, ref.ID)
-			continue
+		switch {
+		case ref.UsageLeft > 0:
+			active = append(active, ref.ID)
+		case ref.IsRewarding:
+			rewarding = append(rewarding, ref.ID)
+		default:
+			consumed = append(consumed, ref.ID)
 		}
-		activeCodes = append(activeCodes, ref.ID)
 	}
 
 	return resp
