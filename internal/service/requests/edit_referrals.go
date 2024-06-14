@@ -9,9 +9,8 @@ import (
 )
 
 type EditReferralsRequest struct {
-	Nullifier string  `json:"nullifier"`
-	Count     *uint64 `json:"count"`
-	Genesis   bool    `json:"genesis"`
+	Nullifier string `json:"nullifier"`
+	Count     uint64 `json:"count"`
 }
 
 func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
@@ -24,6 +23,6 @@ func NewEditReferrals(r *http.Request) (req EditReferralsRequest, err error) {
 
 	return req, validation.Errors{
 		"nullifier": validation.Validate(req.Nullifier, validation.Required, validation.Match(nullifierRegexp)),
-		"count":     validation.Validate(req.Count, validation.NotNil),
+		"count":     validation.Validate(req.Count, validation.Required),
 	}.Filter()
 }

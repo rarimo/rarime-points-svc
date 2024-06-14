@@ -32,8 +32,8 @@ The path for internal endpoints is `/integrations/rarime-points-svc/v1/private/*
 
 ### Add referrals
 
-Private endpoint to set number of available referral codes or create a new
-_System user_ with referrals. _System user_ is unable to claim events or
+Private endpoint to set usage count for genesis referral code or create a new
+_System user_ with genesis referral code. _System user_ is unable to claim events or
 withdraw, it has `is_disabled` attribute set to `true`, so the client app should
 not allow it interactions with the system, although it is technically possible
 to do other actions.
@@ -44,44 +44,19 @@ Body:
 {
     "nullifier": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "count": 2,
-    "genesis": true
 }
 ```
-Response variants:
+Response:
 ```json
 {
-  "added_ref": "kPRQYQUcWzW",
+  "referral": "kPRQYQUcWzW",
   "usage_left": 2
 }
 ```
-or
-```json
-{
-  "added_referrals":[
-    "kPRQYQUcWzW",
-    "kPRQYQUcaaa",
-    "kPRQYQUcbbb",
-    "kPRQYQUcccc"
-  ]
-}
-```
+
 Parameters:
 - `nullifier` - nullifier to create or edit referrals for
-- `count` - number of referrals to set/number of referral usage for genesis
-- `genesis` - specify add many referrals with one usage or one referral with many usage
-
-
-Behavior:
-a) User does not exist -> create a _System user_ with the specified number of
-referrals (if count == 0, do not create)
-b) User exists, `N` > `count` -> add `N - count` active referrals
-c) User exists, `N` < `count` -> consume `count - N` active referrals (not delete!)
-d) User exists, `N` = `count` -> do nothing
-f) Flag `genesis = true` that mean that will be created only one referral with
-`usage_count = count`. Referrals which have `usage_count <= 0` is inactive
-
-Where `N` is the current number of active referrals for the user, `count` is
-query parameter value.
+- `count` - number of referral usage
 
 ### Local build
 
