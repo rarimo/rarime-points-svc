@@ -65,6 +65,10 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	for i := range referrals {
+		referrals[i].Status = data.StatusActive
+	}
+
 	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
