@@ -251,7 +251,7 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 		return nil
 	}
 
-	balances, err := pg.NewBalances(db).FilterByNullifier(nullifiers...).FilterDisabled().Select()
+	balances, err := pg.NewBalances(db).FilterByNullifier(nullifiers...).Select()
 	if err != nil {
 		return fmt.Errorf("failed to select balances for claim passport scan event: %w", err)
 	}
@@ -261,6 +261,9 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 
 	countriesBalancesMap := make(map[string][]data.Balance, len(balances))
 	for _, balance := range balances {
+		if !balance.ReferredBy.Valid {
+			continue
+		}
 		// country can't be nil because of db query logic
 		if _, ok := countriesBalancesMap[*balance.Country]; !ok {
 			countriesBalancesMap[*balance.Country] = make([]data.Balance, 0, len(balances))
