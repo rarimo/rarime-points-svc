@@ -272,9 +272,11 @@ func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig
 		return nil
 	}
 
-	events, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
+	events, err := EventsQ(r).
+		FilterByNullifier(balance.Nullifier).
 		FilterByType(evtypes.TypeReferralSpecific).
-		FilterByStatus(data.EventFulfilled).Select()
+		FilterByStatus(data.EventFulfilled).
+		Select()
 	if err != nil {
 		return fmt.Errorf("get fulfilled referral specific events: %w", err)
 	}

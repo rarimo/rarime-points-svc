@@ -320,6 +320,10 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 		}
 	}
 
+	if len(toClaim) == 0 {
+		return nil
+	}
+
 	_, err = pg.NewEvents(db).FilterByID(toClaim...).Update(data.EventClaimed, nil, &evType.Reward)
 	if err != nil {
 		return fmt.Errorf("update event status: %w", err)
