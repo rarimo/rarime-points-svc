@@ -1,6 +1,7 @@
 package nooneisforgotten
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -30,7 +31,7 @@ func Run(cfg config.Config, sig chan struct{}) {
 	if err := pg.NewEvents(db).Transaction(func() error {
 		return claimReferralSpecificEvents(db, cfg.EventTypes(), cfg.Levels())
 	}); err != nil {
-		panic(fmt.Errorf("failed to claim referral specific events"))
+		panic(fmt.Errorf("failed to claim referral specific events: %w", err))
 	}
 
 	sig <- struct{}{}
@@ -55,7 +56,7 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 		return nil
 	}
 
-	if !evType.AutoClaim && evtypes.FilterInactive(*evType) {
+	if evtypes.FilterInactive(*evType) {
 		return nil
 	}
 
@@ -91,6 +92,10 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 			}
 		}
 
+		return nil
+	}
+
+	if len(countriesList) == 0 {
 		return nil
 	}
 
@@ -231,10 +236,6 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 		return fmt.Errorf("failed to select passport scan events: %w", err)
 	}
 
-	if len(events) == 0 {
-		return nil
-	}
-
 	// we need to have maps which link nullifiers to events slice and countries to balances slice
 	nullifiersEventsMap := make(map[string][]data.Event, len(events))
 	nullifiers := make([]string, 0, len(events))
@@ -246,12 +247,16 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 		nullifiersEventsMap[event.Nullifier] = append(nullifiersEventsMap[event.Nullifier], event)
 	}
 
+	if len(nullifiers) == 0 {
+		return nil
+	}
+
 	balances, err := pg.NewBalances(db).FilterByNullifier(nullifiers...).FilterDisabled().Select()
 	if err != nil {
 		return fmt.Errorf("failed to select balances for claim passport scan event: %w", err)
 	}
 	if len(balances) == 0 {
-		return fmt.Errorf("critical: events present, but no balances with nullifier")
+		return errors.New("critical: events present, but no balances with nullifier")
 	}
 
 	countriesBalancesMap := make(map[string][]data.Balance, len(balances))
