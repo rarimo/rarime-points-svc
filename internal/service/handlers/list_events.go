@@ -50,6 +50,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		FilterByNullifier(*req.FilterNullifier).
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
+		FilterByNotType(req.FilterNotType...).
 		FilterInactiveNotClaimed(inactiveTypes...).
 		Page(&req.OffsetPageParams).
 		Select()
