@@ -165,8 +165,6 @@ func DoClaimEventUpdates(
 		if err = referralsQ.New().Insert(refToAdd...); err != nil {
 			return fmt.Errorf("failed to insert referrals: %w", err)
 		}
-
-		return nil
 	}
 
 	err = balancesQ.FilterByNullifier(balance.Nullifier).Update(map[string]any{
