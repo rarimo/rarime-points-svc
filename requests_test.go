@@ -2,8 +2,8 @@ package main_test
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -11,15 +11,20 @@ import (
 	"net/url"
 	"os"
 	"runtime/debug"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/google/jsonapi"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
@@ -39,15 +44,17 @@ const (
 )
 
 var (
-	globalCfg   config.Config
-	apiURL      string
-	genesisCode string
+	globalCfg             config.Config
+	apiURL                string
+	genesisCode           string
+	nullifiers            []string
+	currentNullifierIndex int
 )
 
 var baseProof = zkptypes.ZKProof{
 	Proof: &zkptypes.ProofData{
 		A:        []string{"0", "0", "0"},
-		B:        []([]string){{"0", "0"}, {"0", "0"}, {"0", "0"}},
+		B:        [][]string{{"0", "0"}, {"0", "0"}, {"0", "0"}},
 		C:        []string{"0", "0", "0"},
 		Protocol: "groth16",
 	},
@@ -80,48 +87,85 @@ func setUp() {
 	globalCfg = config.New(kv.MustFromEnv())
 	apiURL = fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1", globalCfg.Listener().Addr().String())
 
-	refs, err := editReferrals(genesisBalance, 15)
+	refs, err := editReferrals(genesisBalance, 20)
 	if err != nil {
 		panic(fmt.Errorf("failed to edit referrals: %w", err))
 	}
 	genesisCode = refs.Ref
+
+	nullifiers = make([]string, 20)
+	for i := range nullifiers {
+		hash := sha256.Sum256([]byte{byte(i)})
+		nullifiers[i] = hexutil.Encode(hash[:])
+	}
 }
 
 func TestCreateBalance(t *testing.T) {
-	t.Run("SimpleBalance", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000001"
-		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := requestWithBody(t, balancesEndpoint, body, nullifier, false)
-		if respCode != http.StatusOK {
-			t.Errorf("failed to create simple balance: want %d got %d", http.StatusOK, respCode)
-		}
+	var (
+		nullifierShared = nextN()
+		otRefCode       string
+	)
+
+	validBalanceChecks := func(t *testing.T, nullifier, code string) {
+		resp, err := createBalance(nullifier, genesisCode)
+		require.NoError(t, err)
+		require.Equal(t, nullifier, resp.Data.ID)
+
+		attr := resp.Data.Attributes
+
+		require.NotNil(t, attr.IsDisabled)
+		require.NotNil(t, attr.IsVerified)
+		require.NotNil(t, attr.ReferralCodes)
+		require.NotEmpty(t, *attr.ReferralCodes)
+
+		assert.Equal(t, 0, attr.Amount)
+		assert.False(t, *attr.IsDisabled)
+		assert.False(t, *attr.IsVerified)
+		assert.Equal(t, 1, attr.Level)
+		assert.NotNil(t, attr.Rank)
+
+		otRefCode = (*attr.ReferralCodes)[0].Id
+		require.NotEmpty(t, otRefCode)
+	}
+
+	// fixme @violog: looks like fail on assert/require won't stop outer tests, must check before proceeding
+	t.Run("BalanceGenesisCode", func(t *testing.T) {
+		validBalanceChecks(t, nullifierShared, genesisCode)
 	})
 
-	t.Run("SameBalance", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000001"
-		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := requestWithBody(t, balancesEndpoint, body, nullifier, false)
-		if respCode != http.StatusConflict {
-			t.Errorf("want %d got %d", http.StatusConflict, respCode)
-		}
+	t.Run("BalanceOneTimeCode", func(t *testing.T) {
+		validBalanceChecks(t, nextN(), otRefCode)
 	})
 
-	t.Run("Unauthorized", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000002"
-		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := requestWithBody(t, balancesEndpoint, body, "0x1"+nullifier[3:], false)
-		if respCode != http.StatusUnauthorized {
-			t.Errorf("want %d got %d", http.StatusUnauthorized, respCode)
-		}
+	t.Run("SameBalanceConflict", func(t *testing.T) {
+		_, err := createBalance(nullifierShared, genesisCode)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "409", apiErr.Status)
+	})
+
+	t.Run("NullifierUnauthorized", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		body := createBalanceBody(n1, genesisCode)
+		err := requestWithBody(balancesEndpoint, "POST", n2, body, nil)
+
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "401", apiErr.Status)
+	})
+
+	t.Run("ConsumedCode", func(t *testing.T) {
+		_, err := createBalance(nextN(), otRefCode)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "404", apiErr.Status)
 	})
 
 	t.Run("IncorrectCode", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000002"
-		body := createBalanceBody(nullifier, "someAntoherCode")
-		_, respCode := requestWithBody(t, balancesEndpoint, body, nullifier, false)
-		if respCode != http.StatusNotFound {
-			t.Errorf("want %d got %d", http.StatusNotFound, respCode)
-		}
+		_, err := createBalance(nextN(), "invalid")
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "404", apiErr.Status)
 	})
 }
 
@@ -387,38 +431,19 @@ func getEvents(t *testing.T, nullifier string) resources.EventListResponse {
 	return events
 }
 
-func createBalance(t *testing.T, nullifier, code string) resources.BalanceResponse {
+func createBalance(nullifier, code string) (resp resources.BalanceResponse, err error) {
 	body := createBalanceBody(nullifier, code)
-	respBody, respCode := requestWithBody(t, balancesEndpoint, body, nullifier, false)
-	if respCode != http.StatusOK {
-		t.Fatalf("failed to create simple balance: want %d got %d", http.StatusOK, respCode)
-	}
-
-	var balance resources.BalanceResponse
-	err := json.Unmarshal(respBody, &balance)
-	if err != nil {
-		t.Fatalf("failed to unmarhal balance response: %v", err)
-	}
-
-	return balance
+	err = requestWithBody(balancesEndpoint, "POST", nullifier, body, &resp)
+	return
 }
 
-func getBalance(t *testing.T, nullifier string) (balance resources.BalanceResponse, err error) {
+func getBalance(nullifier string) (resp resources.BalanceResponse, err error) {
 	query := url.Values{}
 	query.Add("referral_codes", "true")
 	query.Add("rank", "true")
 
-	respBody, err := getRequest(balancesEndpoint+"/"+nullifier, query, nullifier)
-	if err != nil {
-		return
-	}
-
-	err = json.Unmarshal(respBody, &balance)
-	if err != nil {
-		t.Fatalf("failed to unmarhal balance response: %v", err)
-	}
-
-	return balance
+	err = getRequest(balancesEndpoint+"/"+nullifier, query, nullifier, &resp)
+	return
 }
 
 type editReferralsResponse struct {
@@ -510,10 +535,11 @@ func doRequest(req *http.Request, user string, result any) error {
 	defer func() { _ = resp.Body.Close() }()
 
 	log.Printf("Req: %s status=%d", reqLog, resp.StatusCode)
+
 	switch resp.StatusCode {
 	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
 	default:
-		return errors.New("unsuccessful response code")
+		return &jsonapi.ErrorObject{Status: strconv.Itoa(resp.StatusCode)}
 	}
 
 	respBody, err := io.ReadAll(resp.Body)
@@ -527,4 +553,9 @@ func doRequest(req *http.Request, user string, result any) error {
 	}
 
 	return nil
+}
+
+func nextN() string {
+	currentNullifierIndex++
+	return nullifiers[currentNullifierIndex-1]
 }
