@@ -16,6 +16,7 @@ type ListEvents struct {
 	FilterStatus        []data.EventStatus `filter:"status"`
 	FilterType          []string           `filter:"meta.static.name"`
 	FilterHasExpiration *bool              `filter:"has_expiration"`
+	FilterNotType       []string           `url:"filter[meta.static.name][not]"`
 	Count               bool               `url:"count"`
 }
 

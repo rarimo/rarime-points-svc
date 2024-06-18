@@ -208,6 +208,13 @@ func (q *events) FilterByType(types ...string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"type": types})
 }
 
+func (q *events) FilterByNotType(types ...string) data.EventsQ {
+	if len(types) == 0 {
+		return q
+	}
+	return q.applyCondition(squirrel.NotEq{"type": types})
+}
+
 func (q *events) FilterByExternalID(id string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"external_id": id})
 }
