@@ -13,6 +13,7 @@ import (
 	"time"
 
 	zkptypes "github.com/iden3/go-rapidsnark/types"
+	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
@@ -27,6 +28,10 @@ const (
 	usaCode = "5591873"
 	gbrCode = "4670034"
 	deuCode = "4474197"
+	canCode = "4407630"
+	fraCode = "4608577"
+	indCode = "4804164"
+	mcoCode = "5063503"
 
 	genesisBalance = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
@@ -36,15 +41,15 @@ const (
 
 var (
 	apiURL      = ""
-	genesisCode = ""
+	genesisCode = "kPRQYQUcWzW"
 )
 
 var (
 	balancesPath = func() string {
-		return apiURL + "public/balances"
+		return "public/balances"
 	}
 	balancesSpecificPath = func(nullifier string) string {
-		return apiURL + "public/balances/" + nullifier
+		return "public/balances/" + nullifier
 	}
 	verifyPassportPath = func(nullifier string) string {
 		return balancesSpecificPath(nullifier) + "/verifypassport"
@@ -53,22 +58,22 @@ var (
 		return balancesSpecificPath(nullifier) + "/withdrawals"
 	}
 	countriesConfigPath = func() string {
-		return apiURL + "public/countries_config"
+		return "public/countries_config"
 	}
 	eventTypesPath = func() string {
-		return apiURL + "public/event_types"
+		return "public/event_types"
 	}
 	eventsPath = func() string {
-		return apiURL + "public/events"
+		return "public/events"
 	}
 	eventsSpecificPath = func(id string) string {
-		return apiURL + "public/events/" + id
+		return "public/events/" + id
 	}
 	fulfillEventPath = func() string {
-		return apiURL + "private/events"
+		return "private/events"
 	}
 	editReferralsPath = func() string {
-		return apiURL + "private/referrals"
+		return "private/referrals"
 	}
 )
 
@@ -88,11 +93,11 @@ func TestMain(m *testing.M) {
 	}
 
 	exitVal := m.Run()
-	os.Exit(exitVal)
 
 	if err := tearDown(); err != nil {
 		panic(fmt.Errorf("failed to teardown: %w", err))
 	}
+	os.Exit(exitVal)
 }
 
 func setUp() error {
@@ -114,7 +119,7 @@ func setApiURL() error {
 
 	err := figure.Out(&cfg).From(kv.MustGetStringMap(kv.MustFromEnv(), "listener")).Please()
 	if err != nil {
-		return fmt.Errorf("failed to figure out listener from service config", err)
+		return fmt.Errorf("failed to figure out listener from service config: %w", err)
 	}
 
 	apiURL = fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1/", cfg.Addr)
@@ -125,7 +130,7 @@ func TestCreateBalance(t *testing.T) {
 	t.Run("SimpleBalance", func(t *testing.T) {
 		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000001"
 		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := postPatchRequest(t, balancesEndpoint, body, nullifier, false)
+		_, respCode := postPatchRequest(t, balancesPath(), body, nullifier, false)
 		if respCode != http.StatusOK {
 			t.Errorf("failed to create simple balance: want %d got %d", http.StatusOK, respCode)
 		}
@@ -134,7 +139,7 @@ func TestCreateBalance(t *testing.T) {
 	t.Run("SameBalance", func(t *testing.T) {
 		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000001"
 		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := postPatchRequest(t, balancesEndpoint, body, nullifier, false)
+		_, respCode := postPatchRequest(t, balancesPath(), body, nullifier, false)
 		if respCode != http.StatusConflict {
 			t.Errorf("want %d got %d", http.StatusConflict, respCode)
 		}
@@ -143,7 +148,7 @@ func TestCreateBalance(t *testing.T) {
 	t.Run("Unauthorized", func(t *testing.T) {
 		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000002"
 		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := postPatchRequest(t, balancesEndpoint, body, "0x1"+nullifier[3:], false)
+		_, respCode := postPatchRequest(t, balancesPath(), body, "0x1"+nullifier[3:], false)
 		if respCode != http.StatusUnauthorized {
 			t.Errorf("want %d got %d", http.StatusUnauthorized, respCode)
 		}
@@ -152,7 +157,7 @@ func TestCreateBalance(t *testing.T) {
 	t.Run("IncorrectCode", func(t *testing.T) {
 		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000002"
 		body := createBalanceBody(nullifier, "someAntoherCode")
-		_, respCode := postPatchRequest(t, balancesEndpoint, body, nullifier, false)
+		_, respCode := postPatchRequest(t, balancesPath(), body, nullifier, false)
 		if respCode != http.StatusNotFound {
 			t.Errorf("want %d got %d", http.StatusNotFound, respCode)
 		}
@@ -160,99 +165,298 @@ func TestCreateBalance(t *testing.T) {
 }
 
 func TestVerifyPassport(t *testing.T) {
-	nullifier := "0x0000000000000000000000000000000000000000000000000000000000000002"
-	referrer := "0x0000000000000000000000000000000000000000000000000000000000000001"
-
-	balance := getBalance(t, referrer)
-	if balance.Data.Attributes.ActiveReferralCodes == nil ||
-		len(*balance.Data.Attributes.ActiveReferralCodes) == 0 {
-		t.Fatalf("active referral codes for user %s absent", referrer)
-	}
-	createBalance(t, nullifier, (*balance.Data.Attributes.ActiveReferralCodes)[0])
-
-	proof := baseProof
-	proof.PubSignals[zk.Citizenship] = ukrCode
-	body := verifyPassportBody(nullifier, proof)
-
 	t.Run("VerifyPassport", func(t *testing.T) {
-		_, respCode := postPatchRequest(t, balancesEndpoint+"/"+nullifier+"/verifypassport", body, nullifier, false)
-		if respCode != http.StatusNoContent {
-			t.Errorf("failed to verify passport: want %d got %d", http.StatusNoContent, respCode)
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000010"
+		createBalance(t, nullifier, genesisCode)
+
+		proof := baseProof
+		proof.PubSignals[zk.Citizenship] = ukrCode
+		body := verifyPassportBody(nullifier, proof)
+
+		_, respCode := postPatchRequest(t, verifyPassportPath(nullifier), body, nullifier, false)
+		if respCode != http.StatusOK {
+			t.Errorf("failed to verify passport: want %d got %d", http.StatusOK, respCode)
 		}
 	})
 
-	t.Run("VerifyOneMore", func(t *testing.T) {
-		_, respCode := postPatchRequest(t, balancesEndpoint+"/"+nullifier+"/verifypassport", body, nullifier, false)
+	t.Run("VerifyPassportSecondTime", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000010"
+
+		proof := baseProof
+		proof.PubSignals[zk.Citizenship] = ukrCode
+		body := verifyPassportBody(nullifier, proof)
+
+		// depend on previous test, because balance for nullifier must exist
+		_, respCode := postPatchRequest(t, verifyPassportPath(nullifier), body, nullifier, false)
 		if respCode != http.StatusTooManyRequests {
 			t.Errorf("want %d got %d", http.StatusTooManyRequests, respCode)
 		}
 	})
 
 	t.Run("IncorrectCountryCode", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000020"
+		createBalance(t, nullifier, genesisCode)
+
+		proof := baseProof
 		proof.PubSignals[zk.Citizenship] = "6974819"
-		body = verifyPassportBody(referrer, proof)
-		_, respCode := postPatchRequest(t, balancesEndpoint+"/"+referrer+"/verifypassport", body, referrer, false)
+		body := verifyPassportBody(nullifier, proof)
+
+		_, respCode := postPatchRequest(t, verifyPassportPath(nullifier), body, nullifier, false)
 		if respCode != http.StatusInternalServerError {
 			t.Errorf("want %d got %d", http.StatusInternalServerError, respCode)
 		}
 	})
 }
 
-func TestClaimEvent(t *testing.T) {
-	nullifier1 := "0x0000000000000000000000000000000000000000000000000000000000000010"
-	nullifier2 := "0x0000000000000000000000000000000000000000000000000000000000000020"
+func TestAutoClaimEvent(t *testing.T) {
+	t.Run("SuccessClaimPassportScan", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000100"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, usaCode)
 
-	balance1 := createBalance(t, nullifier1, genesisCode)
-	if balance1.Data.Attributes.ActiveReferralCodes == nil ||
-		len(*balance1.Data.Attributes.ActiveReferralCodes) == 0 {
-		t.Fatalf("active referral codes for user %s absent", nullifier1)
-	}
-
-	passportScanEventID, _ := getEventFromList(getEvents(t, nullifier1), evtypes.TypePassportScan)
-	if passportScanEventID == "" {
-		t.Fatalf("passport scan event absent for %s", nullifier1)
-	}
-
-	t.Run("TryClaimOpenEvent", func(t *testing.T) {
-		body := claimEventBody(passportScanEventID)
-		_, respCode := postPatchRequest(t, eventsEndpoint+"/"+passportScanEventID, body, nullifier1, true)
-		if respCode != http.StatusNotFound {
-			t.Errorf("want %d got %d", http.StatusNotFound, respCode)
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
+		if eventID == "" {
+			t.Log("passport scan event absent")
+			return
+		}
+		if eventStatus != string(data.EventClaimed) {
+			t.Fatalf("want passport scan event status %s got %s", data.EventClaimed, eventStatus)
 		}
 	})
 
-	createBalance(t, nullifier2, (*balance1.Data.Attributes.ActiveReferralCodes)[0])
-	verifyPassport(t, nullifier2, ukrCode)
+	t.Run("ReservedDisallowed", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000200"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, gbrCode)
 
-	refSpecEventID, _ := getEventFromList(getEvents(t, nullifier1), evtypes.TypeReferralSpecific)
-	if refSpecEventID == "" {
-		t.Fatalf("referral specific event absent for %s", nullifier1)
-	}
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
+		if eventID == "" {
+			t.Log("passport scan event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want passport scan event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+	})
 
-	t.Run("TryClaimEventWithoutPassport", func(t *testing.T) {
-		body := claimEventBody(refSpecEventID)
-		_, respCode := postPatchRequest(t, eventsEndpoint+"/"+refSpecEventID, body, nullifier1, true)
+	// this test depend on `SuccessClaimPassportScan`
+	t.Run("ReserveLimitReached", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000300"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, usaCode)
+
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
+		if eventID == "" {
+			t.Log("passport scan event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want passport scan event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+	})
+
+	t.Run("CountryBanned", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000400"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, canCode)
+
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
+		if eventID == "" {
+			t.Log("passport scan event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want passport scan event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+	})
+
+	t.Run("ReferralSpecific", func(t *testing.T) {
+		referrer := "0x0000000000000000000000000000000000000000000000000000000000000500"
+		referrerBalance := createBalance(t, referrer, genesisCode)
+		verifyPassport(t, referrer, ukrCode)
+		if referrerBalance.Data.Attributes.ReferralCodes == nil || len(*referrerBalance.Data.Attributes.ReferralCodes) == 0 {
+			t.Fatal("referrer's referral codes must exists")
+		}
+
+		if (*referrerBalance.Data.Attributes.ReferralCodes)[0].Status != data.StatusActive {
+			t.Fatal("first referrer's referral code inactive")
+		}
+
+		referred := "0x0000000000000000000000000000000000000000000000000000000000000600"
+		createBalance(t, referred, (*referrerBalance.Data.Attributes.ReferralCodes)[0].Id)
+		verifyPassport(t, referred, ukrCode)
+
+		eventID, eventStatus := getEventFromList(getEvents(t, referrer), evtypes.TypeReferralSpecific)
+		if eventID == "" {
+			t.Log("referral specific event absent")
+			return
+		}
+		if eventStatus != string(data.EventClaimed) {
+			t.Fatalf("want referral specific event status %s got %s", data.EventClaimed, eventStatus)
+		}
+	})
+
+	// User can have a lot unclaimed fulfilled referral specific events if user not scan passport
+	t.Run("ReferralSpecifics", func(t *testing.T) {
+		referrer := "0x0000000000000000000000000000000000000000000000000000000000000700"
+		referrerBalance := createBalance(t, referrer, genesisCode)
+		if referrerBalance.Data.Attributes.ReferralCodes == nil || len(*referrerBalance.Data.Attributes.ReferralCodes) < 2 {
+			t.Fatal("referrer's referral codes must exists")
+		}
+
+		if (*referrerBalance.Data.Attributes.ReferralCodes)[0].Status != data.StatusActive {
+			t.Fatal("first referrer's referral code inactive")
+		}
+
+		referred1 := "0x0000000000000000000000000000000000000000000000000000000000000800"
+		createBalance(t, referred1, (*referrerBalance.Data.Attributes.ReferralCodes)[0].Id)
+		verifyPassport(t, referred1, ukrCode)
+
+		if (*referrerBalance.Data.Attributes.ReferralCodes)[1].Status != data.StatusActive {
+			t.Fatal("second referrer's referral code inactive")
+		}
+
+		referred2 := "0x0000000000000000000000000000000000000000000000000000000000000900"
+		createBalance(t, referred2, (*referrerBalance.Data.Attributes.ReferralCodes)[1].Id)
+		verifyPassport(t, referred2, ukrCode)
+
+		fulfilledEventCount := 0
+		referrerEvents := getEvents(t, referrer)
+		for _, event := range referrerEvents.Data {
+			if event.Attributes.Meta.Static.Name == evtypes.TypeReferralSpecific && event.Attributes.Status == string(data.EventFulfilled) {
+				fulfilledEventCount += 1
+			}
+		}
+
+		if fulfilledEventCount != 2 {
+			t.Fatalf("count of fulfilled events for referrer must be 2")
+		}
+
+		verifyPassport(t, referrer, ukrCode)
+
+		claimedEventCount := 0
+		referrerEvents = getEvents(t, referrer)
+		for _, event := range referrerEvents.Data {
+			if event.Attributes.Meta.Static.Name == evtypes.TypeReferralSpecific && event.Attributes.Status == string(data.EventClaimed) {
+				claimedEventCount += 1
+			}
+		}
+
+		if claimedEventCount != 2 {
+			t.Fatalf("count of claimed events for referrer must be 2")
+		}
+	})
+}
+
+func TestClaimEvent(t *testing.T) {
+	t.Run("WithoutPassport", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000001000"
+		createBalance(t, nullifier, genesisCode)
+
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
+		if eventID == "" {
+			t.Log("free weekly event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+
+		body := claimEventBody(eventID)
+		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
 		if respCode != http.StatusForbidden {
 			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
 		}
 	})
 
-	passportScanEventID, _ = getEventFromList(getEvents(t, nullifier2), evtypes.TypePassportScan)
-	if passportScanEventID == "" {
-		t.Fatalf("passport scan event absent for %s", nullifier2)
-	}
+	t.Run("SuccessClaim", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000002000"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, fraCode)
 
-	t.Run("ClaimEvent", func(t *testing.T) {
-		body := claimEventBody(passportScanEventID)
-		_, respCode := postPatchRequest(t, eventsEndpoint+"/"+passportScanEventID, body, nullifier2, true)
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
+		if eventID == "" {
+			t.Log("free weekly event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+
+		body := claimEventBody(eventID)
+		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
 		if respCode != http.StatusOK {
 			t.Errorf("want %d got %d", http.StatusOK, respCode)
+		}
+	})
+
+	t.Run("ReserveDisallowed", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000003000"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, indCode)
+
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
+		if eventID == "" {
+			t.Log("free weekly event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+
+		body := claimEventBody(eventID)
+		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
+		if respCode != http.StatusForbidden {
+			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
+		}
+	})
+
+	// this test depend on `SuccessClaimPassportScan`
+	t.Run("ReserveLimitReached", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000004000"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, fraCode)
+
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
+		if eventID == "" {
+			t.Log("passport scan event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+
+		body := claimEventBody(eventID)
+		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
+		if respCode != http.StatusForbidden {
+			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
+		}
+	})
+
+	t.Run("CountryBanned", func(t *testing.T) {
+		nullifier := "0x0000000000000000000000000000000000000000000000000000000000005000"
+		createBalance(t, nullifier, genesisCode)
+		verifyPassport(t, nullifier, mcoCode)
+
+		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
+		if eventID == "" {
+			t.Log("passport scan event absent")
+			return
+		}
+		if eventStatus != string(data.EventFulfilled) {
+			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
+		}
+
+		body := claimEventBody(eventID)
+		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
+		if respCode != http.StatusForbidden {
+			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
 		}
 	})
 }
 
 func TestLevels(t *testing.T) {
-	nullifier := "0x0000000000000000000000000000000000000000000000000000000000000100"
+	nullifier := "0x0000000000000000000000000000000000000000000000000000000000010000"
 
 	balance := createBalance(t, nullifier, genesisCode)
 	if balance.Data.Attributes.Level != 1 {
@@ -260,13 +464,6 @@ func TestLevels(t *testing.T) {
 	}
 
 	verifyPassport(t, nullifier, ukrCode)
-
-	passportScanEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
-	if passportScanEventID == "" {
-		t.Fatalf("passport scan event absent for %s", nullifier)
-	}
-
-	claimEvent(t, passportScanEventID, nullifier)
 
 	balance = getBalance(t, nullifier)
 	if balance.Data.Attributes.Level != 2 {
@@ -286,70 +483,16 @@ func TestLevels(t *testing.T) {
 	}
 
 	// must never panic because of logic getBalance
-	if len(*balance.Data.Attributes.ActiveReferralCodes) != 15 {
-		t.Fatalf("balance referral codes must be 15, got %d: %s", len(*balance.Data.Attributes.ActiveReferralCodes), nullifier)
+	if len(*balance.Data.Attributes.ReferralCodes) != 15 {
+		t.Fatalf("balance referral codes must be 15, got %d: %s", len(*balance.Data.Attributes.ReferralCodes), nullifier)
 	}
 }
 
-func TestCountryPools(t *testing.T) {
-	nullifier := "0x0000000000000000000000000000000000000000000000000000000000001000"
-
-	createBalance(t, nullifier, genesisCode)
-	verifyPassport(t, nullifier, usaCode)
-
-	t.Run("UnderLimit", func(t *testing.T) {
-		passportScanEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
-		if passportScanEventID == "" {
-			t.Fatalf("passport scan event absent for %s", nullifier)
-		}
-
-		claimEvent(t, passportScanEventID, nullifier)
-	})
-
-	t.Run("OverLimit", func(t *testing.T) {
-		freeWeeklyEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if freeWeeklyEventID == "" {
-			t.Fatalf("free weekly event absent for %s", nullifier)
-		}
-
-		body := claimEventBody(freeWeeklyEventID)
-		_, respCode := postPatchRequest(t, eventsEndpoint+"/"+freeWeeklyEventID, body, nullifier, true)
-		if respCode != http.StatusForbidden {
-			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-		}
-	})
-
-	nullifier = "0x0000000000000000000000000000000000000000000000000000000000002000"
-
-	createBalance(t, nullifier, genesisCode)
-	verifyPassport(t, nullifier, gbrCode)
-
-	t.Run("NotAllowedReserve", func(t *testing.T) {
-		freeWeeklyEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if freeWeeklyEventID == "" {
-			t.Fatalf("free weekly event absent for %s", nullifier)
-		}
-
-		body := claimEventBody(freeWeeklyEventID)
-		_, respCode := postPatchRequest(t, eventsEndpoint+"/"+freeWeeklyEventID, body, nullifier, true)
-		if respCode != http.StatusForbidden {
-			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-		}
-	})
-
-	nullifier = "0x0000000000000000000000000000000000000000000000000000000000003000"
+func TestCountryPoolsDefault(t *testing.T) {
+	nullifier := "0x0000000000000000000000000000000000000000000000000000000000100000"
 
 	createBalance(t, nullifier, genesisCode)
 	verifyPassport(t, nullifier, deuCode)
-
-	t.Run("DefaultUnderLimit", func(t *testing.T) {
-		passportScanEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
-		if passportScanEventID == "" {
-			t.Fatalf("passport scan event absent for %s", nullifier)
-		}
-
-		claimEvent(t, passportScanEventID, nullifier)
-	})
 
 	t.Run("DefaultOverLimit", func(t *testing.T) {
 		freeWeeklyEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
@@ -378,7 +521,7 @@ func claimEvent(t *testing.T, id, nullifier string) resources.EventResponse {
 	body := claimEventBody(id)
 	respBody, respCode := postPatchRequest(t, eventsEndpoint+"/"+id, body, nullifier, true)
 	if respCode != http.StatusOK {
-		t.Errorf("want %d got %d", http.StatusOK, respCode)
+		t.Fatalf("want %d got %d", http.StatusOK, respCode)
 	}
 
 	var event resources.EventResponse
@@ -390,15 +533,23 @@ func claimEvent(t *testing.T, id, nullifier string) resources.EventResponse {
 	return event
 }
 
-func verifyPassport(t *testing.T, nullifier, country string) {
+func verifyPassport(t *testing.T, nullifier, country string) resources.PassportEventStateResponse {
 	proof := baseProof
 	proof.PubSignals[zk.Citizenship] = country
 	body := verifyPassportBody(nullifier, proof)
 
-	_, respCode := postPatchRequest(t, balancesEndpoint+"/"+nullifier+"/verifypassport", body, nullifier, false)
-	if respCode != http.StatusNoContent {
-		t.Errorf("failed to verify passport: want %d got %d", http.StatusNoContent, respCode)
+	respBody, respCode := postPatchRequest(t, verifyPassportPath(nullifier), body, nullifier, false)
+	if respCode != http.StatusOK {
+		t.Fatalf("failed to verify passport: want %d got %d", http.StatusOK, respCode)
 	}
+
+	var resp resources.PassportEventStateResponse
+	err := json.Unmarshal(respBody, &resp)
+	if err != nil {
+		t.Fatalf("failed to unmarshal passport event state response: %v", err)
+	}
+
+	return resp
 }
 
 func getEvents(t *testing.T, nullifier string) resources.EventListResponse {
@@ -409,7 +560,7 @@ func getEvents(t *testing.T, nullifier string) resources.EventListResponse {
 			return query
 		}(), nullifier)
 	if respCode != http.StatusOK {
-		t.Errorf("failed to get events: want %d got %d", http.StatusOK, respCode)
+		t.Fatalf("failed to get events: want %d got %d", http.StatusOK, respCode)
 	}
 
 	var events resources.EventListResponse
@@ -447,7 +598,7 @@ func getBalance(t *testing.T, nullifier string) resources.BalanceResponse {
 			return query
 		}(), nullifier)
 	if respCode != http.StatusOK {
-		t.Errorf("failed to get balance: want %d got %d", http.StatusOK, respCode)
+		t.Fatalf("failed to get balance: want %d got %d", http.StatusOK, respCode)
 	}
 
 	var balance resources.BalanceResponse
@@ -459,7 +610,9 @@ func getBalance(t *testing.T, nullifier string) resources.BalanceResponse {
 	return balance
 }
 
-func editReferrals(t *testing.T)
+// func editReferrals(t *testing.T) {
+
+// }
 
 func verifyPassportBody(nullifier string, proof zkptypes.ZKProof) resources.VerifyPassportRequest {
 	return resources.VerifyPassportRequest{
