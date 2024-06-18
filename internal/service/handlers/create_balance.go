@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
@@ -20,6 +21,11 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	nullifier := req.Data.ID
+
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) {
+		ape.RenderErr(w, problems.Unauthorized())
+		return
+	}
 
 	balance, err := BalancesQ(r).FilterByNullifier(nullifier).Get()
 	if err != nil {
