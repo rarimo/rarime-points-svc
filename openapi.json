@@ -461,6 +461,19 @@
           },
           {
             "in": "query",
+            "name": "filter[name][not]",
+            "description": "Inverted filter by type name: excludes provided values\n",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "example": "referral_specific"
+              }
+            }
+          },
+          {
+            "in": "query",
             "name": "filter[flag]",
             "description": "Filter by configuration flags. Values are disjunctive (OR).",
             "required": false,
@@ -545,6 +558,19 @@
               "items": {
                 "type": "string",
                 "example": "passport_scan"
+              }
+            }
+          },
+          {
+            "in": "query",
+            "name": "filter[meta.static.name][not]",
+            "description": "Inverted filter by event type name: excludes provided values\n",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "example": "referral_specific"
               }
             }
           },
