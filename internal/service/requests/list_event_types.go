@@ -9,8 +9,9 @@ import (
 )
 
 type ListExpiredEvents struct {
-	FilterName []string `filter:"name"`
-	FilterFlag []string `filter:"flag"`
+	FilterName    []string `filter:"name"`
+	FilterFlag    []string `filter:"flag"`
+	FilterNotName []string `url:"filter[name][not]"`
 }
 
 func NewListEventTypes(r *http.Request) (req ListExpiredEvents, err error) {
@@ -25,7 +26,9 @@ func NewListEventTypes(r *http.Request) (req ListExpiredEvents, err error) {
 			evtypes.FlagNotStarted,
 			evtypes.FlagExpired,
 			evtypes.FlagDisabled,
-		)))}.Filter()
+		))),
+		"filter[name][not]": val.Validate(req.FilterNotName, val.When(len(req.FilterName) > 0, val.Nil, val.Empty)),
+	}.Filter()
 
 	return
 }

@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"strings"
 
-	validation "github.com/go-ozzo/ozzo-validation/v4"
+	val "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/service/page"
 	"gitlab.com/distributed_lab/urlval/v4"
@@ -33,9 +33,10 @@ func NewListEvents(r *http.Request) (req ListEvents, err error) {
 		*req.FilterNullifier = strings.ToLower(*req.FilterNullifier)
 	}
 
-	err = validation.Errors{
-		"filter[nullifier]": validation.Validate(req.FilterNullifier, validation.Required, validation.Match(nullifierRegexp)),
-		"filter[status]":    validation.Validate(req.FilterStatus, validation.Each(validation.In(data.EventOpen, data.EventFulfilled, data.EventClaimed))),
+	err = val.Errors{
+		"filter[nullifier]":             val.Validate(req.FilterNullifier, val.Required, val.Match(nullifierRegexp)),
+		"filter[status]":                val.Validate(req.FilterStatus, val.Each(val.In(data.EventOpen, data.EventFulfilled, data.EventClaimed))),
+		"filter[meta.static.name][not]": val.Validate(req.FilterNotType, val.When(len(req.FilterType) > 0, val.Nil, val.Empty)),
 	}.Filter()
 	return
 }

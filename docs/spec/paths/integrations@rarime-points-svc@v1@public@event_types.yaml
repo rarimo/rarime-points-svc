@@ -18,6 +18,16 @@ get:
           type: string
           example: "passport_scan"
     - in: query
+      name: 'filter[name][not]'
+      description: |
+        Inverted filter by type name: excludes provided values
+      required: false
+      schema:
+        type: array
+        items:
+          type: string
+          example: "referral_specific"
+    - in: query
       name: 'filter[flag]'
       description: Filter by configuration flags. Values are disjunctive (OR).
       required: false
