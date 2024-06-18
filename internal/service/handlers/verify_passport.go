@@ -145,13 +145,9 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 	}
 
 	// Type not filtered as inactive because expired events can be claimed
-	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific)
+	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 	if evTypeRef == nil {
 		Log(r).Debug("Referral specific event type is inactive")
-		return nil
-	}
-	if evTypeRef.Disabled {
-		Log(r).Infof("Event type %s is disabled", evtypes.TypeReferralSpecific)
 		return nil
 	}
 
@@ -167,11 +163,6 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 	// 3. The country reservation limit has not been reached
 	if err = claimReferralSpecificEvents(r, evTypeRef, balance.Nullifier); err != nil {
 		return fmt.Errorf("failed to claim referral specific events: %w", err)
-	}
-
-	if evtypes.FilterInactive(*evTypeRef) {
-		Log(r).Debug("Referral specific event type is inactive: event not added")
-		return nil
 	}
 
 	// Adds a friend event for the referrer. If the event
@@ -281,9 +272,11 @@ func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig
 		return nil
 	}
 
-	events, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
+	events, err := EventsQ(r).
+		FilterByNullifier(balance.Nullifier).
 		FilterByType(evtypes.TypeReferralSpecific).
-		FilterByStatus(data.EventFulfilled).Select()
+		FilterByStatus(data.EventFulfilled).
+		Select()
 	if err != nil {
 		return fmt.Errorf("get fulfilled referral specific events: %w", err)
 	}

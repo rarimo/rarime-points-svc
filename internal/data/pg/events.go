@@ -168,12 +168,12 @@ func (q *events) SelectAbsentTypes(allTypes ...string) ([]data.ReopenableEvent, 
 		)
 		SELECT u.nullifier, t.type
 		FROM (
-    		SELECT DISTINCT nullifier FROM %s
+    		SELECT nullifier FROM %s
 		) u
 		CROSS JOIN types t
 		LEFT JOIN %s e ON e.nullifier = u.nullifier AND e.type = t.type
 		WHERE e.type IS NULL;
-	`, strings.Join(values, ", "), eventsTable, eventsTable)
+	`, strings.Join(values, ", "), balancesTable, eventsTable)
 
 	var res []data.ReopenableEvent
 	if err := q.db.SelectRaw(&res, query); err != nil {
@@ -206,6 +206,13 @@ func (q *events) FilterByType(types ...string) data.EventsQ {
 		return q
 	}
 	return q.applyCondition(squirrel.Eq{"type": types})
+}
+
+func (q *events) FilterByNotType(types ...string) data.EventsQ {
+	if len(types) == 0 {
+		return q
+	}
+	return q.applyCondition(squirrel.NotEq{"type": types})
 }
 
 func (q *events) FilterByExternalID(id string) data.EventsQ {

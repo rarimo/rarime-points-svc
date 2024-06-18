@@ -20,6 +20,9 @@ func ListEventTypes(w http.ResponseWriter, r *http.Request) {
 	types := EventTypes(r).List(
 		evtypes.FilterByNames(req.FilterName...),
 		evtypes.FilterByFlags(req.FilterFlag...),
+		func(ev evtypes.EventConfig) bool {
+			return len(req.FilterNotName) > 0 && !evtypes.FilterByNames(req.FilterNotName...)(ev)
+		},
 	)
 
 	resTypes := make([]resources.EventType, len(types))

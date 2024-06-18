@@ -33,7 +33,13 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 			filter = func(ev evtypes.EventConfig) bool { return ev.ExpiresAt == nil }
 		}
 
-		req.FilterType = append(req.FilterType, EventTypes(r).Names(filter)...)
+		types := EventTypes(r).Names(filter)
+		if len(types) == 0 {
+			// filter won't be correctly applied if there are no types matching the condition
+			ape.Render(w, newEventsResponse(nil, nil))
+			return
+		}
+		req.FilterType = append(req.FilterType, types...)
 	}
 
 	inactiveTypes := EventTypes(r).Names(func(ev evtypes.EventConfig) bool {
@@ -44,6 +50,7 @@ func ListEvents(w http.ResponseWriter, r *http.Request) {
 		FilterByNullifier(*req.FilterNullifier).
 		FilterByStatus(req.FilterStatus...).
 		FilterByType(req.FilterType...).
+		FilterByNotType(req.FilterNotType...).
 		FilterInactiveNotClaimed(inactiveTypes...).
 		Page(&req.OffsetPageParams).
 		Select()
