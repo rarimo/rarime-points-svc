@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -27,10 +28,48 @@ const (
 	gbrCode = "4670034"
 	deuCode = "4474197"
 
-	genesisCode = "kPRQYQUcWzW"
+	genesisBalance = "0x0000000000000000000000000000000000000000000000000000000000000000"
 
 	balancesEndpoint = "public/balances"
 	eventsEndpoint   = "public/events"
+)
+
+var (
+	apiURL      = ""
+	genesisCode = ""
+)
+
+var (
+	balancesPath = func() string {
+		return apiURL + "public/balances"
+	}
+	balancesSpecificPath = func(nullifier string) string {
+		return apiURL + "public/balances/" + nullifier
+	}
+	verifyPassportPath = func(nullifier string) string {
+		return balancesSpecificPath(nullifier) + "/verifypassport"
+	}
+	witdhrawalsPath = func(nullifier string) string {
+		return balancesSpecificPath(nullifier) + "/withdrawals"
+	}
+	countriesConfigPath = func() string {
+		return apiURL + "public/countries_config"
+	}
+	eventTypesPath = func() string {
+		return apiURL + "public/event_types"
+	}
+	eventsPath = func() string {
+		return apiURL + "public/events"
+	}
+	eventsSpecificPath = func(id string) string {
+		return apiURL + "public/events/" + id
+	}
+	fulfillEventPath = func() string {
+		return apiURL + "private/events"
+	}
+	editReferralsPath = func() string {
+		return apiURL + "private/referrals"
+	}
 )
 
 var baseProof = zkptypes.ZKProof{
@@ -41,6 +80,45 @@ var baseProof = zkptypes.ZKProof{
 		Protocol: "groth16",
 	},
 	PubSignals: []string{"0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0", "0"},
+}
+
+func TestMain(m *testing.M) {
+	if err := setUp(); err != nil {
+		panic(fmt.Errorf("failed to setup: %w", err))
+	}
+
+	exitVal := m.Run()
+	os.Exit(exitVal)
+
+	if err := tearDown(); err != nil {
+		panic(fmt.Errorf("failed to teardown: %w", err))
+	}
+}
+
+func setUp() error {
+	if err := setApiURL(); err != nil {
+		return fmt.Errorf("failed to set api URL: %w", err)
+	}
+
+	return nil
+}
+
+func tearDown() error {
+	return nil
+}
+
+func setApiURL() error {
+	var cfg struct {
+		Addr string `fig:"addr,required"`
+	}
+
+	err := figure.Out(&cfg).From(kv.MustGetStringMap(kv.MustFromEnv(), "listener")).Please()
+	if err != nil {
+		return fmt.Errorf("failed to figure out listener from service config", err)
+	}
+
+	apiURL = fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1/", cfg.Addr)
+	return nil
 }
 
 func TestCreateBalance(t *testing.T) {
@@ -381,6 +459,8 @@ func getBalance(t *testing.T, nullifier string) resources.BalanceResponse {
 	return balance
 }
 
+func editReferrals(t *testing.T)
+
 func verifyPassportBody(nullifier string, proof zkptypes.ZKProof) resources.VerifyPassportRequest {
 	return resources.VerifyPassportRequest{
 		Data: resources.VerifyPassport{
@@ -492,14 +572,3 @@ func getRequest(t *testing.T, endpoint string, query url.Values, user string) ([
 
 	return respBody, resp.StatusCode
 }
-
-var apiURL = func() string {
-	var cfg struct {
-		Addr string `fig:"addr,required"`
-	}
-	err := figure.Out(&cfg).From(kv.MustGetStringMap(kv.MustFromEnv(), "listener")).Please()
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1/", cfg.Addr)
-}()
