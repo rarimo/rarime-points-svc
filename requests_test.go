@@ -81,6 +81,9 @@ func TestMain(m *testing.M) {
 	tearDown()
 }
 
+func tearDown() {
+}
+
 func setUp() {
 	if os.Getenv(kv.EnvViperConfigFile) == "" {
 		err := os.Setenv(kv.EnvViperConfigFile, defaultConfigFile)
@@ -112,7 +115,7 @@ func TestCreateBalance(t *testing.T) {
 	)
 
 	validBalanceChecks := func(t *testing.T, nullifier, code string) {
-		resp, err := createBalance(nullifier, genesisCode)
+		resp, err := createBalance(nullifier, code)
 		require.NoError(t, err)
 		require.Equal(t, nullifier, resp.Data.ID)
 
@@ -182,11 +185,12 @@ func TestVerifyPassport(t *testing.T) {
 		proof := baseProof
 		proof.PubSignals[zk.Citizenship] = ukrCode
 		body := verifyPassportBody(nullifier, proof)
-
+	})
 	t.Run("VerifyPassport", func(t *testing.T) {
 		_, respCode := requestWithBody(t, balancesEndpoint+"/"+nullifier+"/verifypassport", body, nullifier, false)
 		if respCode != http.StatusNoContent {
 			t.Errorf("failed to verify passport: want %d got %d", http.StatusNoContent, respCode)
+		}
 		_, respCode := postPatchRequest(t, verifyPassportPath(nullifier), body, nullifier, false)
 		if respCode != http.StatusOK {
 			t.Errorf("failed to verify passport: want %d got %d", http.StatusOK, respCode)
@@ -222,250 +226,227 @@ func TestVerifyPassport(t *testing.T) {
 	})
 }
 
-func TestAutoClaimEvent(t *testing.T) {
-	t.Run("SuccessClaimPassportScan", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000100"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, usaCode)
+func TestEventsAutoClaim(t *testing.T) {
+	t.Run("PassportScanAutoclaim", func(t *testing.T) {
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
-		if eventID == "" {
-			t.Log("passport scan event absent")
-			return
-		}
-		if eventStatus != string(data.EventClaimed) {
-			t.Fatalf("want passport scan event status %s got %s", data.EventClaimed, eventStatus)
-		}
+		respVerifyStatus, err := verifyPassport(n, usaCode)
+		require.NoError(t, err)
+		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
+
+		respBalance, err := getBalance(n)
+		require.NoError(t, err)
+		require.Equal(t, 2, respBalance.Data.Attributes.Level)
+		require.Equal(t, 5, respBalance.Data.Attributes.Amount)
+		require.NotNil(t, respBalance.Data.Attributes.ReferralCodes)
+		require.Equal(t, 10, len(*respBalance.Data.Attributes.ReferralCodes))
 	})
 
-	t.Run("ReservedDisallowed", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000200"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, gbrCode)
+	// this test depend on previous test
+	t.Run("PassportScanLimitReached", func(t *testing.T) {
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
-		if eventID == "" {
-			t.Log("passport scan event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want passport scan event status %s got %s", data.EventFulfilled, eventStatus)
-		}
+		respVerifyStatus, err := verifyPassport(n, usaCode)
+		require.NoError(t, err)
+		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
 	})
 
-	// this test depend on `SuccessClaimPassportScan`
-	t.Run("ReserveLimitReached", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000300"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, usaCode)
+	t.Run("PassportScanReserveDisallowed", func(t *testing.T) {
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
-		if eventID == "" {
-			t.Log("passport scan event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want passport scan event status %s got %s", data.EventFulfilled, eventStatus)
-		}
+		respVerifyStatus, err := verifyPassport(n, gbrCode)
+		require.NoError(t, err)
+		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
 	})
 
-	t.Run("CountryBanned", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000400"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, canCode)
+	t.Run("PassportScanCountryBanned", func(t *testing.T) {
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypePassportScan)
-		if eventID == "" {
-			t.Log("passport scan event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want passport scan event status %s got %s", data.EventFulfilled, eventStatus)
-		}
+		respVerifyStatus, err := verifyPassport(n, canCode)
+		require.NoError(t, err)
+		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
 	})
 
-	t.Run("ReferralSpecific", func(t *testing.T) {
-		referrer := "0x0000000000000000000000000000000000000000000000000000000000000500"
-		referrerBalance := createBalance(t, referrer, genesisCode)
-		verifyPassport(t, referrer, ukrCode)
-		if referrerBalance.Data.Attributes.ReferralCodes == nil || len(*referrerBalance.Data.Attributes.ReferralCodes) == 0 {
-			t.Fatal("referrer's referral codes must exists")
-		}
+	t.Run("ReferralSpecificAutoclaim", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		respBalance, err := createBalance(n1, genesisCode)
+		require.NoError(t, err)
+		require.NotNil(t, respBalance.Data.Attributes.ReferralCodes)
+		require.NotEmpty(t, (*respBalance.Data.Attributes.ReferralCodes))
 
-		if (*referrerBalance.Data.Attributes.ReferralCodes)[0].Status != data.StatusActive {
-			t.Fatal("first referrer's referral code inactive")
-		}
+		respVerifyStatus, err := verifyPassport(n1, ukrCode)
+		require.NoError(t, err)
+		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
 
-		referred := "0x0000000000000000000000000000000000000000000000000000000000000600"
-		createBalance(t, referred, (*referrerBalance.Data.Attributes.ReferralCodes)[0].Id)
-		verifyPassport(t, referred, ukrCode)
+		respBalance, err = createBalance(n2, (*respBalance.Data.Attributes.ReferralCodes)[0].Id)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, referrer), evtypes.TypeReferralSpecific)
-		if eventID == "" {
-			t.Log("referral specific event absent")
-			return
-		}
-		if eventStatus != string(data.EventClaimed) {
-			t.Fatalf("want referral specific event status %s got %s", data.EventClaimed, eventStatus)
-		}
+		_, err = verifyPassport(n2, ukrCode)
+		require.NoError(t, err)
+
+		respEvents, err := getEvents(n1)
+		require.NoError(t, err)
+		_, status := getEventFromList(respEvents, evtypes.TypeReferralSpecific)
+		require.Equal(t, data.EventClaimed, status)
 	})
 
 	// User can have a lot unclaimed fulfilled referral specific events if user not scan passport
-	t.Run("ReferralSpecifics", func(t *testing.T) {
-		referrer := "0x0000000000000000000000000000000000000000000000000000000000000700"
-		referrerBalance := createBalance(t, referrer, genesisCode)
-		if referrerBalance.Data.Attributes.ReferralCodes == nil || len(*referrerBalance.Data.Attributes.ReferralCodes) < 2 {
-			t.Fatal("referrer's referral codes must exists")
-		}
+	t.Run("ReferralSpecificsAutoclaim", func(t *testing.T) {
+		n1, n2, n3 := nextN(), nextN(), nextN()
+		respBalance, err := createBalance(n1, genesisCode)
+		require.NoError(t, err)
+		require.NotNil(t, respBalance.Data.Attributes.ReferralCodes)
+		require.GreaterOrEqual(t, (*respBalance.Data.Attributes.ReferralCodes), 2)
 
-		if (*referrerBalance.Data.Attributes.ReferralCodes)[0].Status != data.StatusActive {
-			t.Fatal("first referrer's referral code inactive")
-		}
+		respBalance, err = createBalance(n2, (*respBalance.Data.Attributes.ReferralCodes)[0].Id)
+		require.NoError(t, err)
+		_, err = verifyPassport(n2, ukrCode)
+		require.NoError(t, err)
 
-		referred1 := "0x0000000000000000000000000000000000000000000000000000000000000800"
-		createBalance(t, referred1, (*referrerBalance.Data.Attributes.ReferralCodes)[0].Id)
-		verifyPassport(t, referred1, ukrCode)
+		respBalance, err = createBalance(n3, (*respBalance.Data.Attributes.ReferralCodes)[1].Id)
+		require.NoError(t, err)
+		_, err = verifyPassport(n3, ukrCode)
+		require.NoError(t, err)
 
-		if (*referrerBalance.Data.Attributes.ReferralCodes)[1].Status != data.StatusActive {
-			t.Fatal("second referrer's referral code inactive")
-		}
-
-		referred2 := "0x0000000000000000000000000000000000000000000000000000000000000900"
-		createBalance(t, referred2, (*referrerBalance.Data.Attributes.ReferralCodes)[1].Id)
-		verifyPassport(t, referred2, ukrCode)
-
+		respEvents, err := getEvents(n1)
+		require.NoError(t, err)
 		fulfilledEventCount := 0
-		referrerEvents := getEvents(t, referrer)
-		for _, event := range referrerEvents.Data {
+		for _, event := range respEvents.Data {
 			if event.Attributes.Meta.Static.Name == evtypes.TypeReferralSpecific && event.Attributes.Status == string(data.EventFulfilled) {
 				fulfilledEventCount += 1
 			}
 		}
+		require.Equal(t, 2, fulfilledEventCount)
 
-		if fulfilledEventCount != 2 {
-			t.Fatalf("count of fulfilled events for referrer must be 2")
-		}
+		respVerifyStatus, err := verifyPassport(n1, ukrCode)
+		require.NoError(t, err)
+		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
 
-		verifyPassport(t, referrer, ukrCode)
-
+		respEvents, err = getEvents(n1)
+		require.NoError(t, err)
 		claimedEventCount := 0
-		referrerEvents = getEvents(t, referrer)
-		for _, event := range referrerEvents.Data {
-			if event.Attributes.Meta.Static.Name == evtypes.TypeReferralSpecific && event.Attributes.Status == string(data.EventClaimed) {
+		for _, event := range respEvents.Data {
+			if event.Attributes.Meta.Static.Name == evtypes.TypeReferralSpecific && event.Attributes.Status == string(data.EventFulfilled) {
 				claimedEventCount += 1
 			}
 		}
-
-		if claimedEventCount != 2 {
-			t.Fatalf("count of claimed events for referrer must be 2")
-		}
+		require.Equal(t, 2, claimedEventCount)
 	})
 }
 
 func TestClaimEvent(t *testing.T) {
 	t.Run("WithoutPassport", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000001000"
-		createBalance(t, nullifier, genesisCode)
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if eventID == "" {
-			t.Log("free weekly event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
-		}
+		respEvents, err := getEvents(n)
+		require.NoError(t, err)
+		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
+		require.Equal(t, data.EventFulfilled, status)
 
-		body := claimEventBody(eventID)
-		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
-		if respCode != http.StatusForbidden {
-			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-		}
+		_, err = claimEvent(eventID, n)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "403", apiErr.Status)
 	})
 
-	t.Run("SuccessClaim", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000002000"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, fraCode)
+	t.Run("IncorrectEventID", func(t *testing.T) {
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if eventID == "" {
-			t.Log("free weekly event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
-		}
+		_, err = verifyPassport(n, ukrCode)
+		require.NoError(t, err)
 
-		body := claimEventBody(eventID)
-		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
-		if respCode != http.StatusOK {
-			t.Errorf("want %d got %d", http.StatusOK, respCode)
-		}
+		_, err = claimEvent("event", n)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "404", apiErr.Status)
+	})
+
+	t.Run("EventClaim", func(t *testing.T) {
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
+
+		_, err = verifyPassport(n, fraCode)
+		require.NoError(t, err)
+
+		respEvents, err := getEvents(n)
+		require.NoError(t, err)
+		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
+		require.Equal(t, data.EventFulfilled, status)
+
+		respEvent, err := claimEvent(eventID, n)
+		require.NoError(t, err)
+		require.Equal(t, data.EventClaimed, respEvent.Data.Attributes.Status)
+	})
+
+	// this test depend on previous test
+	t.Run("ReserveLimitReached", func(t *testing.T) {
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
+
+		_, err = verifyPassport(n, fraCode)
+		require.NoError(t, err)
+
+		respEvents, err := getEvents(n)
+		require.NoError(t, err)
+		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
+		require.Equal(t, data.EventFulfilled, status)
+
+		_, err = claimEvent(eventID, n)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "403", apiErr.Status)
 	})
 
 	t.Run("ReserveDisallowed", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000003000"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, indCode)
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if eventID == "" {
-			t.Log("free weekly event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
-		}
+		_, err = verifyPassport(n, indCode)
+		require.NoError(t, err)
 
-		body := claimEventBody(eventID)
-		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
-		if respCode != http.StatusForbidden {
-			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-		}
-	})
+		respEvents, err := getEvents(n)
+		require.NoError(t, err)
+		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
+		require.Equal(t, data.EventFulfilled, status)
 
-	// this test depend on `SuccessClaimPassportScan`
-	t.Run("ReserveLimitReached", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000004000"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, fraCode)
-
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if eventID == "" {
-			t.Log("passport scan event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
-		}
-
-		body := claimEventBody(eventID)
-		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
-		if respCode != http.StatusForbidden {
-			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-		}
+		_, err = claimEvent(eventID, n)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "403", apiErr.Status)
 	})
 
 	t.Run("CountryBanned", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000005000"
-		createBalance(t, nullifier, genesisCode)
-		verifyPassport(t, nullifier, mcoCode)
+		n := nextN()
+		_, err := createBalance(n, genesisCode)
+		require.NoError(t, err)
 
-		eventID, eventStatus := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if eventID == "" {
-			t.Log("passport scan event absent")
-			return
-		}
-		if eventStatus != string(data.EventFulfilled) {
-			t.Fatalf("want free weekly event status %s got %s", data.EventFulfilled, eventStatus)
-		}
+		_, err = verifyPassport(n, mcoCode)
+		require.NoError(t, err)
 
-		body := claimEventBody(eventID)
-		_, respCode := postPatchRequest(t, eventsSpecificPath(eventID), body, nullifier, true)
-		if respCode != http.StatusForbidden {
-			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-		}
+		respEvents, err := getEvents(n)
+		require.NoError(t, err)
+		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
+		require.Equal(t, data.EventFulfilled, status)
+
+		_, err = claimEvent(eventID, n)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "403", apiErr.Status)
 	})
 }
 
@@ -531,59 +512,28 @@ func getEventFromList(events resources.EventListResponse, evtype string) (id, st
 	return "", ""
 }
 
-func claimEvent(t *testing.T, id, nullifier string) resources.EventResponse {
+func claimEvent(id, nullifier string) (resp resources.EventResponse, err error) {
 	body := claimEventBody(id)
-	respBody, respCode := requestWithBody(t, eventsEndpoint+"/"+id, body, nullifier, true)
-	if respCode != http.StatusOK {
-		t.Fatalf("want %d got %d", http.StatusOK, respCode)
-	}
-
-	var event resources.EventResponse
-	err := json.Unmarshal(respBody, &event)
-	if err != nil {
-		t.Fatalf("failed to unmarhal event response: %v", err)
-	}
-
-	return event
+	err = requestWithBody(eventsEndpoint+"/"+id, "PATCH", nullifier, body, &resp)
+	return
 }
 
-func verifyPassport(t *testing.T, nullifier, country string) resources.PassportEventStateResponse {
+func verifyPassport(nullifier, country string) (resp resources.PassportEventStateResponse, err error) {
 	proof := baseProof
 	proof.PubSignals[zk.Citizenship] = country
 	body := verifyPassportBody(nullifier, proof)
 
-	respBody, respCode := postPatchRequest(t, verifyPassportPath(nullifier), body, nullifier, false)
-	if respCode != http.StatusOK {
-		t.Fatalf("failed to verify passport: want %d got %d", http.StatusOK, respCode)
-	}
-
-	var resp resources.PassportEventStateResponse
-	err := json.Unmarshal(respBody, &resp)
-	if err != nil {
-		t.Fatalf("failed to unmarshal passport event state response: %v", err)
-	}
-
-	return resp
+	err = requestWithBody(balancesEndpoint+"/"+nullifier+"/verifypassport", "POST", nullifier, body, &resp)
+	return
 }
 
-func getEvents(t *testing.T, nullifier string) resources.EventListResponse {
-	respBody, respCode := getRequest(t,
-		eventsEndpoint, func() url.Values {
-			query := url.Values{}
-			query.Add("filter[nullifier]", nullifier)
-			return query
-		}(), nullifier)
-	if respCode != http.StatusOK {
-		t.Fatalf("failed to get events: want %d got %d", http.StatusOK, respCode)
-	}
+func getEvents(nullifier string) (resp resources.EventListResponse, err error) {
+	query := url.Values{}
+	query.Add("filter[nullifier]", nullifier)
+	query.Add("filter[status]", "claimed,fulfilled,open")
 
-	var events resources.EventListResponse
-	err := json.Unmarshal(respBody, &events)
-	if err != nil {
-		t.Fatalf("failed to unmarhal event list response: %v", err)
-	}
-
-	return events
+	err = getRequest(eventsEndpoint, query, nullifier, &resp)
+	return
 }
 
 func createBalance(nullifier, code string) (resp resources.BalanceResponse, err error) {
