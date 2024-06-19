@@ -51,10 +51,8 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	referrals := prepareReferralsToAdd(nullifier, 5, 0)
-
 	events := prepareEventsWithRef(nullifier, req.Data.Attributes.ReferredBy, r)
-	if err = createBalanceWithEventsAndReferrals(nullifier, req.Data.Attributes.ReferredBy, events, referrals, r); err != nil {
+	if err = createBalanceWithEventsAndReferrals(nullifier, req.Data.Attributes.ReferredBy, events, r); err != nil {
 		Log(r).WithError(err).Error("Failed to create balance with events")
 		ape.RenderErr(w, problems.InternalError())
 		return
@@ -71,8 +69,14 @@ func CreateBalance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	for i := range referrals {
-		referrals[i].Status = data.StatusActive
+	referrals, err := ReferralsQ(r).
+		FilterByNullifier(nullifier).
+		WithStatus().
+		Select()
+	if err != nil {
+		Log(r).WithError(err).Error("Failed to get referrals by nullifier with rewarding field")
+		ape.RenderErr(w, problems.InternalError())
+		return
 	}
 
 	ape.Render(w, newBalanceResponse(*balance, referrals))
@@ -100,14 +104,16 @@ func prepareEventsWithRef(nullifier, refBy string, r *http.Request) []data.Event
 	})
 }
 
+// createBalanceWithEvents should be called in transaction to avoid database corruption
 func createBalanceWithEvents(nullifier, refBy string, events []data.Event, r *http.Request) error {
 	return EventsQ(r).Transaction(func() error {
-		err := BalancesQ(r).Insert(data.Balance{
+		balance := data.Balance{
 			Nullifier:  nullifier,
 			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
-			Level:      Levels(r).MinLvl(),
-		})
+			Level:      0,
+		}
 
+		err := BalancesQ(r).Insert(balance)
 		if err != nil {
 			return fmt.Errorf("add balance: %w", err)
 		}
@@ -115,20 +121,26 @@ func createBalanceWithEvents(nullifier, refBy string, events []data.Event, r *ht
 		Log(r).Debugf("%d events will be added for nullifier=%s", len(events), nullifier)
 		if err = EventsQ(r).Insert(events...); err != nil {
 			return fmt.Errorf("add open events: %w", err)
+		}
+
+		Log(r).Debugf("%s referral will be consumed", refBy)
+		if _, err = ReferralsQ(r).Consume(refBy); err != nil {
+			return fmt.Errorf("consume referral: %w", err)
 		}
 
 		return nil
 	})
 }
 
-func createBalanceWithEventsAndReferrals(nullifier, refBy string, events []data.Event, refCodes []data.Referral, r *http.Request) error {
+func createBalanceWithEventsAndReferrals(nullifier, refBy string, events []data.Event, r *http.Request) error {
 	return EventsQ(r).Transaction(func() error {
-		err := BalancesQ(r).Insert(data.Balance{
+		balance := data.Balance{
 			Nullifier:  nullifier,
 			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
-			Level:      Levels(r).MinLvl(),
-		})
+			Level:      0,
+		}
 
+		err := BalancesQ(r).Insert(balance)
 		if err != nil {
 			return fmt.Errorf("add balance: %w", err)
 		}
@@ -138,14 +150,21 @@ func createBalanceWithEventsAndReferrals(nullifier, refBy string, events []data.
 			return fmt.Errorf("add open events: %w", err)
 		}
 
-		Log(r).Debugf("%d referrals will be added for nullifier=%s", len(refCodes), nullifier)
-		if err = ReferralsQ(r).Insert(refCodes...); err != nil {
-			return fmt.Errorf("add referrals: %w", err)
-		}
-
 		Log(r).Debugf("%s referral will be consumed", refBy)
 		if _, err = ReferralsQ(r).Consume(refBy); err != nil {
 			return fmt.Errorf("consume referral: %w", err)
+		}
+
+		level, err := doLvlUpAndReferralsUpdate(Levels(r), ReferralsQ(r), balance, 0)
+		if err != nil {
+			return fmt.Errorf("failed to do lvlup and referrals update: %w", err)
+		}
+
+		err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
+			data.ColLevel: level,
+		})
+		if err != nil {
+			return fmt.Errorf("update balance amount and level: %w", err)
 		}
 
 		return nil
