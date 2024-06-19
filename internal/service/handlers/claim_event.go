@@ -154,17 +154,9 @@ func DoClaimEventUpdates(
 	balance data.Balance,
 	reward int64) (err error) {
 
-	refsCount, level := levels.LvlUp(balance.Level, reward+balance.Amount)
-	if refsCount > 0 {
-		count, err := referralsQ.New().FilterByNullifier(balance.Nullifier).Count()
-		if err != nil {
-			return fmt.Errorf("failed to get referral count: %w", err)
-		}
-
-		refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
-		if err = referralsQ.New().Insert(refToAdd...); err != nil {
-			return fmt.Errorf("failed to insert referrals: %w", err)
-		}
+	level, err := doLvlUpAndReferralsUpdate(levels, referralsQ, balance, reward)
+	if err != nil {
+		return fmt.Errorf("failed to do lvlup and referrals updates: %w", err)
 	}
 
 	err = balancesQ.FilterByNullifier(balance.Nullifier).Update(map[string]any{
@@ -183,6 +175,23 @@ func DoClaimEventUpdates(
 	}
 
 	return nil
+}
+
+func doLvlUpAndReferralsUpdate(levels config.Levels, referralsQ data.ReferralsQ, balance data.Balance, reward int64) (level int, err error) {
+	refsCount, level := levels.LvlUp(balance.Level, reward+balance.Amount)
+	if refsCount > 0 {
+		count, err := referralsQ.New().FilterByNullifier(balance.Nullifier).Count()
+		if err != nil {
+			return 0, fmt.Errorf("failed to get referral count: %w", err)
+		}
+
+		refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
+		if err = referralsQ.New().Insert(refToAdd...); err != nil {
+			return 0, fmt.Errorf("failed to insert referrals: %w", err)
+		}
+	}
+
+	return level, nil
 }
 
 func newClaimEventResponse(

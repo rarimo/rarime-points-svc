@@ -335,7 +335,23 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 		return fmt.Errorf("critical: referred_by not null, but row in referrals absent")
 	}
 
-	if !evTypeRef.AutoClaim {
+	referrerBalance, err := BalancesQ(r).FilterByNullifier(referral.Nullifier).Get()
+	if err != nil {
+		return fmt.Errorf("failed to get referrer balance: %w", err)
+	}
+	if referrerBalance == nil {
+		return fmt.Errorf("critical: referrer balance not exist [%s], while referral code exist", referral.Nullifier)
+	}
+
+	if !referrerBalance.ReferredBy.Valid {
+		Log(r).Debug("Referrer is genesis balance")
+		return nil
+	}
+
+	if !evTypeRef.AutoClaim || referrerBalance.Country == nil {
+		if referrerBalance.Country == nil {
+			Log(r).Debug("Referrer not scan passport yet! Add fulfilled events")
+		}
 		err = EventsQ(r).Insert(data.Event{
 			Nullifier: referral.Nullifier,
 			Type:      evTypeRef.Name,
@@ -346,19 +362,6 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 			return fmt.Errorf("failed to insert fulfilled event for referrer: %w", err)
 		}
 
-		return nil
-	}
-
-	referrerBalance, err := BalancesQ(r).FilterByNullifier(referral.Nullifier).Get()
-	if err != nil {
-		return fmt.Errorf("failed to get referrer balance: %w", err)
-	}
-	if referrerBalance == nil {
-		return fmt.Errorf("critical: referrer balance not exist [%s], while referral code exist", referral.Nullifier)
-	}
-
-	if !referrerBalance.ReferredBy.Valid || referrerBalance.Country == nil {
-		Log(r).Debug("Referrer is genesis balance or not scanned passport")
 		return nil
 	}
 
