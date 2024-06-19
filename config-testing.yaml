@@ -1,0 +1,105 @@
+log:
+  level: debug
+  disable_sentry: true
+
+db:
+  url: postgres://points:points@localhost:5432/points?sslmode=disable
+
+listener:
+  addr: localhost:8000
+
+event_types:
+  types:
+    - name: free_weekly
+      reward: 5
+      frequency: weekly
+      title: Free weekly points
+      short_description: Get free points every week, just pressing the button
+      description: "## Free Weekly Points\n\nThis is a weekly event where users can earn free points.\n\n### How it works\n\n- Users are eligible to participate once every week.\n- Upon participation, users will receive 100 points.\n- These points can be used for various features in the application.\n\nParticipate every week and maximize your rewards!\n"
+      logo: https://pbs.twimg.com/profile_images/1639021161257263105/XmT0EBnK_400x400.jpg
+      starts_at: 2024-03-23T12:42:00Z
+    - name: passport_scan
+      reward: 10
+      frequency: one-time
+      title: Passport verification
+      short_description: Scan your passport to unlock features and get points
+      description: "## Passport verification\n\nThis is a general event description.\n\n### How it works\n\n- Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n- Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nParticipate every week and maximize your rewards!\n"
+      logo: https://pbs.twimg.com/profile_images/1639021161257263105/XmT0EBnK_400x400.jpg
+      starts_at: 2024-03-23T12:42:00Z
+    - name: referral_common
+      reward: 15
+      frequency: one-time
+      title: Refer new users
+      short_description: Refer friends and get a reward for each friend who verifies the passport
+      description: "## Referral program\n\nThis is a general event description.\n\n### How it works\n\n- Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n- Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nParticipate every week and maximize your rewards!\n"
+      action_url: https://rarimo.com
+    - name: referral_specific
+      reward: 3
+      frequency: unlimited
+      no_auto_open: true
+      title: Refer user <did>
+      short_description: The user <did> has verified the passport. Claim the reward!
+      description: "## Referral program\n\nThis is a general event description.\n\n### How it works\n\n- Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n- Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nParticipate every week and maximize your rewards!\n"
+      action_url: https://rarimo.com
+    - name: new_limited_event
+      title: Limited event
+      reward: 5
+      frequency: one-time
+      short_description: This event will expire soon
+      description: "## Limited event\n\nThis is a general event description.\n\n### How it works\n\n- Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n- Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nParticipate every week and maximize your rewards!\n"
+      action_url: https://rarimo.com
+      expires_at: 2024-11-01T00:00:00Z
+    - name: new_expired_event
+      title: Expired event
+      reward: 3
+      frequency: one-time
+      short_description: This event has expired
+      description: "## Expired event\n\nThis is a general event description.\n\n### How it works\n\n- Lorem ipsum dolor sit amet, consectetur adipiscing elit.\n- Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.\n- Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.\n\nParticipate every week and maximize your rewards!\n"
+      action_url: https://rarimo.com
+      expires_at: 2024-06-10T00:00:00Z
+
+levels:
+  levels:
+    - lvl: 1
+      threshold: 0
+      referrals: 5
+      withdrawal_allowed: false
+    - lvl: 2
+      threshold: 30
+      referrals: 5
+      withdrawal_allowed: true
+    - lvl: 3
+      threshold: 50
+      referrals: 5
+      withdrawal_allowed: true
+
+countries:
+  countries:
+    - code: "USA"
+      reserve_limit: 0
+      reserve_allowed: false
+      withdrawal_allowed: false
+    - code: "default"
+      reserve_limit: 100000
+      reserve_allowed: true
+      withdrawal_allowed: true
+
+auth:
+  addr: http://localhost:9030
+
+broadcaster:
+  addr: localhost:9010
+  sender_account: "rarimo1ghcxdrgmy8duq8cu68fgmlp2sfmfwkh2dl4chl"
+
+verifier:
+  verification_key_path: "./verification_key.json"
+  allowed_age: 18
+  allowed_identity_timestamp: 1715698750
+
+root_verifier:
+  rpc: https://your-rpc
+  contract: 0x7DdAde70efADf832A600ba483FAD26fCA477FE2A
+  request_timeout: 10s
+
+withdrawal:
+  point_price_urmo: 1000000 # 1 RMO

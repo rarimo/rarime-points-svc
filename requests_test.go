@@ -22,6 +22,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/data/pg"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
@@ -76,7 +77,6 @@ func TestMain(m *testing.M) {
 
 	setUp()
 	exitVal = m.Run()
-	tearDown() // it is DB cleanup, but maybe it is easier to do with migrate down or random nullifiers?
 }
 
 func setUp() {
@@ -89,18 +89,45 @@ func setUp() {
 
 	globalCfg = config.New(kv.MustFromEnv())
 	apiURL = fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1", globalCfg.Listener().Addr().String())
+	initGenesisRef()
 
-	refs, err := editReferrals(genesisBalance, 100)
+	// let's not introduce counting function just for test
+	balances, err := pg.NewBalances(globalCfg.DB()).Select()
 	if err != nil {
-		panic(fmt.Errorf("failed to edit referrals: %w", err))
+		panic(fmt.Errorf("failed to select balances: %w", err))
 	}
-	genesisCode = refs.Ref
 
+	// to prevent repeating cleanups, more balances are created
+	currentNullifierIndex = len(balances)
 	nullifiers = make([]string, 20)
 	for i := range nullifiers {
-		hash := sha256.Sum256([]byte{byte(i)})
+		hash := sha256.Sum256([]byte{byte(i + len(balances))})
 		nullifiers[i] = hexutil.Encode(hash[:])
 	}
+}
+
+func initGenesisRef() {
+	gen, err := pg.NewReferrals(globalCfg.DB()).
+		FilterConsumed().
+		FilterByNullifier(genesisBalance).
+		Select()
+	if err != nil {
+		panic(fmt.Errorf("failed to get genesis balance: %w", err))
+	}
+	if len(gen) > 1 {
+		panic(fmt.Errorf("%d genesis referral codes found", len(gen)))
+	}
+
+	if len(gen) == 0 || gen[0].UsageLeft < 20 { // approximate amount to run tests
+		refs, err := editReferrals(genesisBalance, 10000)
+		if err != nil {
+			panic(fmt.Errorf("failed to edit referrals: %w", err))
+		}
+		genesisCode = refs.Ref
+		return
+	}
+
+	genesisCode = gen[0].ID
 }
 
 func TestCreateBalance(t *testing.T) {
