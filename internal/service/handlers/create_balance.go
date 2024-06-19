@@ -106,30 +106,28 @@ func prepareEventsWithRef(nullifier, refBy string, r *http.Request) []data.Event
 
 // createBalanceWithEvents should be called in transaction to avoid database corruption
 func createBalanceWithEvents(nullifier, refBy string, events []data.Event, r *http.Request) error {
-	return EventsQ(r).Transaction(func() error {
-		balance := data.Balance{
-			Nullifier:  nullifier,
-			ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
-			Level:      0,
-		}
+	balance := data.Balance{
+		Nullifier:  nullifier,
+		ReferredBy: sql.NullString{String: refBy, Valid: refBy != ""},
+		Level:      0,
+	}
 
-		err := BalancesQ(r).Insert(balance)
-		if err != nil {
-			return fmt.Errorf("add balance: %w", err)
-		}
+	err := BalancesQ(r).Insert(balance)
+	if err != nil {
+		return fmt.Errorf("add balance: %w", err)
+	}
 
-		Log(r).Debugf("%d events will be added for nullifier=%s", len(events), nullifier)
-		if err = EventsQ(r).Insert(events...); err != nil {
-			return fmt.Errorf("add open events: %w", err)
-		}
+	Log(r).Debugf("%d events will be added for nullifier=%s", len(events), nullifier)
+	if err = EventsQ(r).Insert(events...); err != nil {
+		return fmt.Errorf("add open events: %w", err)
+	}
 
-		Log(r).Debugf("%s referral will be consumed", refBy)
-		if _, err = ReferralsQ(r).Consume(refBy); err != nil {
-			return fmt.Errorf("consume referral: %w", err)
-		}
+	Log(r).Debugf("%s referral will be consumed", refBy)
+	if _, err = ReferralsQ(r).Consume(refBy); err != nil {
+		return fmt.Errorf("consume referral: %w", err)
+	}
 
-		return nil
-	})
+	return nil
 }
 
 func createBalanceWithEventsAndReferrals(nullifier, refBy string, events []data.Event, r *http.Request) error {

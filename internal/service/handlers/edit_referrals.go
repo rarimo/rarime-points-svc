@@ -32,21 +32,28 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		events := prepareEventsWithRef(req.Nullifier, "", r)
-		if err = createBalanceWithEvents(req.Nullifier, "", events, r); err != nil {
-			Log(r).WithError(err).Error("Failed to create balance with events")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
 
-		code := referralid.New(req.Nullifier, 0)
-		err = ReferralsQ(r).Insert(data.Referral{
-			ID:        code,
-			Nullifier: req.Nullifier,
-			UsageLeft: int32(req.Count),
+		var code string
+		err = EventsQ(r).Transaction(func() error {
+			events := prepareEventsWithRef(req.Nullifier, "", r)
+			if err = createBalanceWithEvents(req.Nullifier, "", events, r); err != nil {
+				return fmt.Errorf("failed to create balance with events: %w", err)
+			}
+
+			code = referralid.New(req.Nullifier, 0)
+			err = ReferralsQ(r).Insert(data.Referral{
+				ID:        code,
+				Nullifier: req.Nullifier,
+				UsageLeft: int32(req.Count),
+			})
+			if err != nil {
+				return fmt.Errorf("failed to insert referral for nullifier [%s]: %w", req.Nullifier, err)
+			}
+
+			return nil
 		})
 		if err != nil {
-			Log(r).WithError(err).Errorf("failed to insert referral for nullifier [%s]", req.Nullifier)
+			Log(r).WithError(err).Errorf("failed to create genesis balance [%s]", req.Nullifier)
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
