@@ -1,6 +1,8 @@
 package main_test
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -8,22 +10,29 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
+	"runtime/debug"
+	"strconv"
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/google/jsonapi"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
+	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
-	"gitlab.com/distributed_lab/figure"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-const requestTimeout = time.Second // use bigger on debug with breakpoints to prevent fails
-
 const (
+	requestTimeout    = time.Second // use bigger on debug with breakpoints to prevent fails
+	defaultConfigFile = "config.local.yaml"
+
 	ukrCode = "5589842"
 	usaCode = "5591873"
 	gbrCode = "4670034"
@@ -40,47 +49,17 @@ const (
 )
 
 var (
-	apiURL      = ""
-	genesisCode = "kPRQYQUcWzW"
-)
-
-var (
-	balancesPath = func() string {
-		return "public/balances"
-	}
-	balancesSpecificPath = func(nullifier string) string {
-		return "public/balances/" + nullifier
-	}
-	verifyPassportPath = func(nullifier string) string {
-		return balancesSpecificPath(nullifier) + "/verifypassport"
-	}
-	witdhrawalsPath = func(nullifier string) string {
-		return balancesSpecificPath(nullifier) + "/withdrawals"
-	}
-	countriesConfigPath = func() string {
-		return "public/countries_config"
-	}
-	eventTypesPath = func() string {
-		return "public/event_types"
-	}
-	eventsPath = func() string {
-		return "public/events"
-	}
-	eventsSpecificPath = func(id string) string {
-		return "public/events/" + id
-	}
-	fulfillEventPath = func() string {
-		return "private/events"
-	}
-	editReferralsPath = func() string {
-		return "private/referrals"
-	}
+	globalCfg             config.Config
+	apiURL                string
+	genesisCode           string
+	nullifiers            []string
+	currentNullifierIndex int
 )
 
 var baseProof = zkptypes.ZKProof{
 	Proof: &zkptypes.ProofData{
 		A:        []string{"0", "0", "0"},
-		B:        []([]string){{"0", "0"}, {"0", "0"}, {"0", "0"}},
+		B:        [][]string{{"0", "0"}, {"0", "0"}, {"0", "0"}},
 		C:        []string{"0", "0", "0"},
 		Protocol: "groth16",
 	},
@@ -88,79 +67,110 @@ var baseProof = zkptypes.ZKProof{
 }
 
 func TestMain(m *testing.M) {
-	if err := setUp(); err != nil {
-		panic(fmt.Errorf("failed to setup: %w", err))
-	}
+	var exitVal int
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("tests panicked: %v\n%s", r, debug.Stack())
+			exitVal = 1
+		}
+		os.Exit(exitVal)
+	}()
 
-	exitVal := m.Run()
-
-	if err := tearDown(); err != nil {
-		panic(fmt.Errorf("failed to teardown: %w", err))
-	}
-	os.Exit(exitVal)
+	setUp()
+	exitVal = m.Run()
+	tearDown()
 }
 
-func setUp() error {
-	if err := setApiURL(); err != nil {
-		return fmt.Errorf("failed to set api URL: %w", err)
+func setUp() {
+	if os.Getenv(kv.EnvViperConfigFile) == "" {
+		err := os.Setenv(kv.EnvViperConfigFile, defaultConfigFile)
+		if err != nil {
+			panic(fmt.Errorf("failed to set env: %w", err))
+		}
 	}
 
-	return nil
-}
+	globalCfg = config.New(kv.MustFromEnv())
+	apiURL = fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1", globalCfg.Listener().Addr().String())
 
-func tearDown() error {
-	return nil
-}
-
-func setApiURL() error {
-	var cfg struct {
-		Addr string `fig:"addr,required"`
-	}
-
-	err := figure.Out(&cfg).From(kv.MustGetStringMap(kv.MustFromEnv(), "listener")).Please()
+	refs, err := editReferrals(genesisBalance, 20)
 	if err != nil {
-		return fmt.Errorf("failed to figure out listener from service config: %w", err)
+		panic(fmt.Errorf("failed to edit referrals: %w", err))
 	}
+	genesisCode = refs.Ref
 
-	apiURL = fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1/", cfg.Addr)
-	return nil
+	nullifiers = make([]string, 20)
+	for i := range nullifiers {
+		hash := sha256.Sum256([]byte{byte(i)})
+		nullifiers[i] = hexutil.Encode(hash[:])
+	}
 }
 
 func TestCreateBalance(t *testing.T) {
-	t.Run("SimpleBalance", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000001"
-		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := postPatchRequest(t, balancesPath(), body, nullifier, false)
-		if respCode != http.StatusOK {
-			t.Errorf("failed to create simple balance: want %d got %d", http.StatusOK, respCode)
-		}
+	var (
+		nullifierShared = nextN()
+		otRefCode       string
+	)
+
+	validBalanceChecks := func(t *testing.T, nullifier, code string) {
+		resp, err := createBalance(nullifier, genesisCode)
+		require.NoError(t, err)
+		require.Equal(t, nullifier, resp.Data.ID)
+
+		attr := resp.Data.Attributes
+
+		require.NotNil(t, attr.IsDisabled)
+		require.NotNil(t, attr.IsVerified)
+		require.NotNil(t, attr.ReferralCodes)
+		require.NotEmpty(t, *attr.ReferralCodes)
+
+		assert.Equal(t, 0, attr.Amount)
+		assert.False(t, *attr.IsDisabled)
+		assert.False(t, *attr.IsVerified)
+		assert.Equal(t, 1, attr.Level)
+		assert.NotNil(t, attr.Rank)
+
+		otRefCode = (*attr.ReferralCodes)[0].Id
+		require.NotEmpty(t, otRefCode)
+	}
+
+	// fixme @violog: looks like fail on assert/require won't stop outer tests, must check before proceeding
+	t.Run("BalanceGenesisCode", func(t *testing.T) {
+		validBalanceChecks(t, nullifierShared, genesisCode)
 	})
 
-	t.Run("SameBalance", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000001"
-		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := postPatchRequest(t, balancesPath(), body, nullifier, false)
-		if respCode != http.StatusConflict {
-			t.Errorf("want %d got %d", http.StatusConflict, respCode)
-		}
+	t.Run("BalanceOneTimeCode", func(t *testing.T) {
+		validBalanceChecks(t, nextN(), otRefCode)
 	})
 
-	t.Run("Unauthorized", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000002"
-		body := createBalanceBody(nullifier, genesisCode)
-		_, respCode := postPatchRequest(t, balancesPath(), body, "0x1"+nullifier[3:], false)
-		if respCode != http.StatusUnauthorized {
-			t.Errorf("want %d got %d", http.StatusUnauthorized, respCode)
-		}
+	t.Run("SameBalanceConflict", func(t *testing.T) {
+		_, err := createBalance(nullifierShared, genesisCode)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "409", apiErr.Status)
+	})
+
+	t.Run("NullifierUnauthorized", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		body := createBalanceBody(n1, genesisCode)
+		err := requestWithBody(balancesEndpoint, "POST", n2, body, nil)
+
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "401", apiErr.Status)
+	})
+
+	t.Run("ConsumedCode", func(t *testing.T) {
+		_, err := createBalance(nextN(), otRefCode)
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "404", apiErr.Status)
 	})
 
 	t.Run("IncorrectCode", func(t *testing.T) {
-		nullifier := "0x0000000000000000000000000000000000000000000000000000000000000002"
-		body := createBalanceBody(nullifier, "someAntoherCode")
-		_, respCode := postPatchRequest(t, balancesPath(), body, nullifier, false)
-		if respCode != http.StatusNotFound {
-			t.Errorf("want %d got %d", http.StatusNotFound, respCode)
-		}
+		_, err := createBalance(nextN(), "invalid")
+		var apiErr jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		assert.Equal(t, "404", apiErr.Status)
 	})
 }
 
@@ -173,6 +183,10 @@ func TestVerifyPassport(t *testing.T) {
 		proof.PubSignals[zk.Citizenship] = ukrCode
 		body := verifyPassportBody(nullifier, proof)
 
+	t.Run("VerifyPassport", func(t *testing.T) {
+		_, respCode := requestWithBody(t, balancesEndpoint+"/"+nullifier+"/verifypassport", body, nullifier, false)
+		if respCode != http.StatusNoContent {
+			t.Errorf("failed to verify passport: want %d got %d", http.StatusNoContent, respCode)
 		_, respCode := postPatchRequest(t, verifyPassportPath(nullifier), body, nullifier, false)
 		if respCode != http.StatusOK {
 			t.Errorf("failed to verify passport: want %d got %d", http.StatusOK, respCode)
@@ -501,7 +515,7 @@ func TestCountryPoolsDefault(t *testing.T) {
 		}
 
 		body := claimEventBody(freeWeeklyEventID)
-		_, respCode := postPatchRequest(t, eventsEndpoint+"/"+freeWeeklyEventID, body, nullifier, true)
+		_, respCode := requestWithBody(t, eventsEndpoint+"/"+freeWeeklyEventID, body, nullifier, true)
 		if respCode != http.StatusForbidden {
 			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
 		}
@@ -519,7 +533,7 @@ func getEventFromList(events resources.EventListResponse, evtype string) (id, st
 
 func claimEvent(t *testing.T, id, nullifier string) resources.EventResponse {
 	body := claimEventBody(id)
-	respBody, respCode := postPatchRequest(t, eventsEndpoint+"/"+id, body, nullifier, true)
+	respBody, respCode := requestWithBody(t, eventsEndpoint+"/"+id, body, nullifier, true)
 	if respCode != http.StatusOK {
 		t.Fatalf("want %d got %d", http.StatusOK, respCode)
 	}
@@ -572,47 +586,33 @@ func getEvents(t *testing.T, nullifier string) resources.EventListResponse {
 	return events
 }
 
-func createBalance(t *testing.T, nullifier, code string) resources.BalanceResponse {
+func createBalance(nullifier, code string) (resp resources.BalanceResponse, err error) {
 	body := createBalanceBody(nullifier, code)
-	respBody, respCode := postPatchRequest(t, balancesEndpoint, body, nullifier, false)
-	if respCode != http.StatusOK {
-		t.Fatalf("failed to create simple balance: want %d got %d", http.StatusOK, respCode)
-	}
-
-	var balance resources.BalanceResponse
-	err := json.Unmarshal(respBody, &balance)
-	if err != nil {
-		t.Fatalf("failed to unmarhal balance response: %v", err)
-	}
-
-	return balance
+	err = requestWithBody(balancesEndpoint, "POST", nullifier, body, &resp)
+	return
 }
 
-func getBalance(t *testing.T, nullifier string) resources.BalanceResponse {
-	respBody, respCode := getRequest(t,
-		balancesEndpoint+"/"+nullifier,
-		func() url.Values {
-			query := url.Values{}
-			query.Add("referral_codes", "true")
-			query.Add("rank", "true")
-			return query
-		}(), nullifier)
-	if respCode != http.StatusOK {
-		t.Fatalf("failed to get balance: want %d got %d", http.StatusOK, respCode)
-	}
+func getBalance(nullifier string) (resp resources.BalanceResponse, err error) {
+	query := url.Values{}
+	query.Add("referral_codes", "true")
+	query.Add("rank", "true")
 
-	var balance resources.BalanceResponse
-	err := json.Unmarshal(respBody, &balance)
-	if err != nil {
-		t.Fatalf("failed to unmarhal balance response: %v", err)
-	}
-
-	return balance
+	err = getRequest(balancesEndpoint+"/"+nullifier, query, nullifier, &resp)
+	return
 }
 
-// func editReferrals(t *testing.T) {
+type editReferralsResponse struct {
+	Ref       string `json:"referral"`
+	UsageLeft uint64 `json:"usage_left"`
+}
 
-// }
+func editReferrals(nullifier string, count uint64) (resp editReferralsResponse, err error) {
+	req := requests.EditReferralsRequest{Nullifier: nullifier, Count: count}
+
+	err = requestWithBody(apiURL+"/private/referrals", "POST", "", req, &resp)
+
+	return
+}
 
 func verifyPassportBody(nullifier string, proof zkptypes.ZKProof) resources.VerifyPassportRequest {
 	return resources.VerifyPassportRequest{
@@ -651,59 +651,33 @@ func claimEventBody(id string) resources.Relation {
 	}
 }
 
-func postPatchRequest(t *testing.T, endpoint string, body any, user string, patch bool) ([]byte, int) {
-	if body == nil {
-		t.Fatal("request body not provided")
-	}
+func requestWithBody(endpoint, method, user string, body, result any) error {
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
-		t.Fatalf("failed to marshal request bode: %v", err)
+		return fmt.Errorf("failed to marshal body: %w", err)
 	}
 
-	log.Printf("  endpoint=/%s  body=%s", endpoint, body)
-
-	reqBody := strings.NewReader(string(bodyJSON))
-
-	reqType := "POST"
-	if patch {
-		reqType = "PATCH"
-	}
-
-	req, err := http.NewRequest(reqType, apiURL+endpoint, reqBody)
+	reqBody := bytes.NewReader(bodyJSON)
+	req, err := http.NewRequest(method, apiURL+endpoint, reqBody)
 	if err != nil {
-		t.Fatalf("failed to create post request: %v", err)
+		return fmt.Errorf("failed to create %s request: %w", method, err)
 	}
 
-	if user != "" {
-		req.Header.Set("nullifier", user)
-	}
-
-	resp, err := (&http.Client{Timeout: requestTimeout}).Do(req)
-	if err != nil {
-		t.Fatalf("failed to perform post request: %v", err)
-	}
-	defer func() {
-		resp.Body.Close()
-	}()
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatalf("failed to read resp body: %v", err)
-	}
-
-	log.Printf("  endpoint=/%s  body=%s", endpoint, respBody)
-
-	return respBody, resp.StatusCode
+	return doRequest(req, user, result)
 }
 
-func getRequest(t *testing.T, endpoint string, query url.Values, user string) ([]byte, int) {
-	log.Printf("  endpoint=/%s  query=%+v", endpoint, query)
-
+func getRequest(endpoint string, query url.Values, user string, result any) error {
 	req, err := http.NewRequest("GET", apiURL+endpoint, nil)
 	if err != nil {
-		t.Fatalf("failed to create get request: %v", err)
+		return fmt.Errorf("failed to create GET request: %w", err)
 	}
-
 	req.URL.RawQuery = query.Encode()
+
+	return doRequest(req, user, result)
+}
+
+func doRequest(req *http.Request, user string, result any) error {
+	reqLog := fmt.Sprintf("%s /%s?%s", req.Method, req.URL.Path, req.URL.Query().Encode())
 
 	if user != "" {
 		req.Header.Set("nullifier", user)
@@ -711,17 +685,32 @@ func getRequest(t *testing.T, endpoint string, query url.Values, user string) ([
 
 	resp, err := (&http.Client{Timeout: requestTimeout}).Do(req)
 	if err != nil {
-		t.Fatalf("failed to perform get request: %v", err)
+		return fmt.Errorf("failed to perform request (%s): %w", reqLog, err)
 	}
+	defer func() { _ = resp.Body.Close() }()
+
+	log.Printf("Req: %s status=%d", reqLog, resp.StatusCode)
+
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
+	default:
+		return &jsonapi.ErrorObject{Status: strconv.Itoa(resp.StatusCode)}
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		t.Fatalf("failed to read resp body: %v", err)
+		return fmt.Errorf("failed to read resp body: %w", err)
 	}
-	defer func() {
-		resp.Body.Close()
-	}()
 
-	log.Printf("  endpoint=/%s  body=%s", endpoint, respBody)
+	err = json.Unmarshal(respBody, result)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
+	}
 
-	return respBody, resp.StatusCode
+	return nil
+}
+
+func nextN() string {
+	currentNullifierIndex++
+	return nullifiers[currentNullifierIndex-1]
 }
