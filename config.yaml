@@ -61,6 +61,7 @@ levels:
       withdrawal_allowed: true
 
 countries:
+  verification_key: "37bc75afc97f8bdcd21cda85ae7b2885b5f1205ae3d79942e56457230f1636a037cc7ebfe42998d66a3dd3446b9d29366271b4f2bd8e0d307db1d320b38fc02f"
   countries:
     - code: "UKR"
       reserve_limit: 100000
@@ -97,23 +98,4 @@ root_verifier:
   request_timeout: 10s
 
 withdrawal:
-  point_price_urmo: 100
-
-sbt_check:
-  networks:
-    - name: polygon
-      rpc: https://your-rpc
-      contract: 0x...
-      request_timeout: 5s
-      start_from_block: 48984542
-      block_window: 3
-      max_blocks_per_request: 5000
-    - name: ethereum
-      rpc: https://your-rpc
-      contract: 0x...
-      request_timeout: 5s
-    - name: disabled_sample
-      disabled: true
-      rpc: https://your-rpc
-      contract: 0x...
-      request_timeout: 5s
+  point_price_urmo: 1000000

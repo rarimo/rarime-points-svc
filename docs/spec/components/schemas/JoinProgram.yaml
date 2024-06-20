@@ -1,0 +1,15 @@
+allOf:
+  - $ref: '#/components/schemas/JoinProgramKey'
+  - type: object
+    x-go-is-request: true
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - country
+        properties:
+          country:
+            type: string
+            example: "5589842"

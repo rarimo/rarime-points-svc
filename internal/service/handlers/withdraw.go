@@ -57,7 +57,14 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	country, err := getOrCreateCountry(CountriesQ(r), proof) // +1 query is not critical
+	countryCode, err := extractCountry(proof)
+	if err != nil {
+		log.WithError(err).Error("Critical: invalid country code provided, while the proof was valid")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	country, err := getOrCreateCountry(CountriesQ(r), countryCode) // +1 query is not critical
 	if err != nil {
 		log.WithError(err).Error("Failed to get or create country")
 		ape.RenderErr(w, problems.InternalError())
@@ -72,15 +79,6 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	var withdrawal *data.Withdrawal
 	err = EventsQ(r).Transaction(func() error {
-		// If user hasn't provided passport proof yet, do all the necessary updates to
-		// potentially reduce the number of proofs in UX
-		if balance.Country == nil {
-			if err = doPassportScanUpdates(r, *balance, req.Data.Attributes.Proof); err != nil {
-				return fmt.Errorf("do passport scan updates: %w", err)
-			}
-			log.Debug("Successfully performed passport scan updates for the first time")
-		}
-
 		err = BalancesQ(r).FilterByNullifier(nullifier).Update(map[string]any{
 			data.ColAmount: pg.AddToValue(data.ColAmount, -req.Data.Attributes.Amount),
 		})
