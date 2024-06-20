@@ -199,6 +199,88 @@
         }
       }
     },
+    "/integrations/rarime-points-svc/v1/public/balances/{nullifier}/join_program": {
+      "post": {
+        "tags": [
+          "Points balance"
+        ],
+        "summary": "Join rewards program",
+        "description": "Join rewards program",
+        "operationId": "joinRewardsProgram",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/pathNullifier"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "data"
+                ],
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/JoinProgram"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PassportEventState"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalidParameter"
+          },
+          "401": {
+            "$ref": "#/components/responses/invalidAuth"
+          },
+          "404": {
+            "description": "Balance not exists.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Passport already verified or event absent for user.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/internalError"
+          }
+        }
+      }
+    },
     "/integrations/rarime-points-svc/v1/public/balances/{nullifier}/verifypassport": {
       "post": {
         "tags": [
@@ -1319,6 +1401,55 @@
             "type": "string",
             "enum": [
               "event_type"
+            ]
+          }
+        }
+      },
+      "JoinProgram": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/JoinProgramKey"
+          },
+          {
+            "type": "object",
+            "x-go-is-request": true,
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "type": "object",
+                "required": [
+                  "country"
+                ],
+                "properties": {
+                  "country": {
+                    "type": "string",
+                    "example": "5589842"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "JoinProgramKey": {
+        "type": "object",
+        "required": [
+          "id",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Nullifier of the points owner",
+            "example": "0x123...abc",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "join_program"
             ]
           }
         }
