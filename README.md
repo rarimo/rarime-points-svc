@@ -123,4 +123,4 @@ and in handlers/verify_passport:
 	// }
 ```
 
-Run service with standart config (you need to configure db url only) and run tests.
+Run service with config-testing.yaml (you need to configure db url) and run tests.

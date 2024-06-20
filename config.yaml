@@ -69,31 +69,11 @@ countries:
       reserve_allowed: true
       withdrawal_allowed: true
     - code: "USA"
-      reserve_limit: 5
-      reserve_allowed: true
-      withdrawal_allowed: true
-    - code: "GBR"
-      reserve_limit: 5
-      reserve_allowed: false
-      withdrawal_allowed: true
-    - code: "CAN"
-      reserve_limit: 100
-      reserve_allowed: false
-      withdrawal_allowed: false
-    - code: "FRA"
-      reserve_limit: 6
-      reserve_allowed: true
-      withdrawal_allowed: true
-    - code: "IND"
-      reserve_limit: 1
-      reserve_allowed: false
-      withdrawal_allowed: true
-    - code: "MCO"
-      reserve_limit: 100
+      reserve_limit: 0
       reserve_allowed: false
       withdrawal_allowed: false
     - code: "default"
-      reserve_limit: 5
+      reserve_limit: 100
       reserve_allowed: true
       withdrawal_allowed: true
 
@@ -116,22 +96,3 @@ root_verifier:
 
 withdrawal:
   point_price_urmo: 100
-
-sbt_check:
-  networks:
-    - name: polygon
-      rpc: https://your-rpc
-      contract: 0x...
-      request_timeout: 5s
-      start_from_block: 48984542
-      block_window: 3
-      max_blocks_per_request: 5000
-    - name: ethereum
-      rpc: https://your-rpc
-      contract: 0x...
-      request_timeout: 5s
-    - name: disabled_sample
-      disabled: true
-      rpc: https://your-rpc
-      contract: 0x...
-      request_timeout: 5s

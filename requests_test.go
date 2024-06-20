@@ -249,7 +249,7 @@ func TestVerifyPassport(t *testing.T) {
 			require.True(t, c.WithdrawalAllowed)
 			continue
 		}
-		if c.Code == "CAN" {
+		if c.Code == "USA" {
 			can = true
 			require.False(t, c.ReserveAllowed)
 			require.False(t, c.WithdrawalAllowed)
@@ -286,7 +286,7 @@ func TestVerifyPassport(t *testing.T) {
 	t.Run("BlacklistedCountry", func(t *testing.T) {
 		n := nextN()
 		createAndValidateBalance(t, n, genesisCode)
-		resp, err := verifyPassport(n, canCode)
+		resp, err := verifyPassport(n, usaCode)
 		require.NoError(t, err)
 		assert.False(t, resp.Data.Attributes.Claimed)
 		getAndValidateBalance(t, n, true)
@@ -316,7 +316,7 @@ func TestEventsAutoClaim(t *testing.T) {
 		_, err := createBalance(n, genesisCode)
 		require.NoError(t, err)
 
-		respVerifyStatus, err := verifyPassport(n, usaCode)
+		respVerifyStatus, err := verifyPassport(n, canCode)
 		require.NoError(t, err)
 		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
 
@@ -334,7 +334,7 @@ func TestEventsAutoClaim(t *testing.T) {
 		_, err := createBalance(n, genesisCode)
 		require.NoError(t, err)
 
-		respVerifyStatus, err := verifyPassport(n, usaCode)
+		respVerifyStatus, err := verifyPassport(n, canCode)
 		require.NoError(t, err)
 		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
 	})
@@ -354,7 +354,7 @@ func TestEventsAutoClaim(t *testing.T) {
 		_, err := createBalance(n, genesisCode)
 		require.NoError(t, err)
 
-		respVerifyStatus, err := verifyPassport(n, canCode)
+		respVerifyStatus, err := verifyPassport(n, usaCode)
 		require.NoError(t, err)
 		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
 	})
@@ -646,6 +646,115 @@ func TestCountryPoolsDefault(t *testing.T) {
 		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "403", apiErr.Status)
+	})
+}
+
+func TestReferralCodeStatuses(t *testing.T) {
+	t.Run("ActiveCode", func(t *testing.T) {
+		n := nextN()
+		respBalance := createAndValidateBalance(t, n, genesisCode)
+		require.Equal(t, 5, len(*respBalance.Data.Attributes.ReferralCodes))
+		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
+			require.Equal(t, data.StatusActive, v.Status)
+		}
+	})
+
+	t.Run("BannedCode", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		respBalance := createAndValidateBalance(t, n1, genesisCode)
+		respVerifyStatus, err := verifyPassport(n1, usaCode)
+		require.NoError(t, err)
+		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
+
+		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
+		_ = createAndValidateBalance(t, n2, refCode)
+
+		respBalance = getAndValidateBalance(t, n1, true)
+		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
+			if v.Id == refCode && v.Status == data.StatusBanned {
+				return
+			}
+		}
+		t.Fatal("Banned referral code absent")
+	})
+
+	t.Run("LimitedCode", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		respBalance := createAndValidateBalance(t, n1, genesisCode)
+		respVerifyStatus, err := verifyPassport(n1, gbrCode)
+		require.NoError(t, err)
+		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
+
+		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
+		_ = createAndValidateBalance(t, n2, refCode)
+
+		respBalance = getAndValidateBalance(t, n1, true)
+		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
+			if v.Id == refCode && v.Status == data.StatusLimited {
+				return
+			}
+		}
+		t.Fatal("Limited referral code absent")
+	})
+
+	t.Run("AwaitingCode", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		respBalance := createAndValidateBalance(t, n1, genesisCode)
+
+		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
+		_ = createAndValidateBalance(t, n2, refCode)
+		respVerifyStatus, err := verifyPassport(n2, ukrCode)
+		require.NoError(t, err)
+		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
+
+		respBalance = getAndValidateBalance(t, n1, false)
+		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
+			if v.Id == refCode && v.Status == data.StatusAwaiting {
+				return
+			}
+		}
+		t.Fatal("Awaiting referral code absent")
+	})
+
+	t.Run("RewardedCode", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		respBalance := createAndValidateBalance(t, n1, genesisCode)
+		respVerifyStatus, err := verifyPassport(n1, ukrCode)
+		require.NoError(t, err)
+		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
+
+		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
+		_ = createAndValidateBalance(t, n2, refCode)
+		respVerifyStatus, err = verifyPassport(n2, ukrCode)
+		require.NoError(t, err)
+		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
+
+		respBalance = getAndValidateBalance(t, n1, true)
+		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
+			if v.Id == refCode && v.Status == data.StatusRewarded {
+				return
+			}
+		}
+		t.Fatal("Rewarded referral code absent")
+	})
+
+	t.Run("ConsumedCode", func(t *testing.T) {
+		n1, n2 := nextN(), nextN()
+		respBalance := createAndValidateBalance(t, n1, genesisCode)
+		respVerifyStatus, err := verifyPassport(n1, ukrCode)
+		require.NoError(t, err)
+		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
+
+		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
+		_ = createAndValidateBalance(t, n2, refCode)
+
+		respBalance = getAndValidateBalance(t, n1, true)
+		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
+			if v.Id == refCode && v.Status == data.StatusConsumed {
+				return
+			}
+		}
+		t.Fatal("Consumed referral code absent")
 	})
 }
 
