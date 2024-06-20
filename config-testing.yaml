@@ -105,6 +105,14 @@ countries:
       reserve_limit: 100
       reserve_allowed: false
       withdrawal_allowed: false
+    - code: "BEL"
+      reserve_limit: 100
+      reserve_allowed: true
+      withdrawal_allowed: false
+    - code: "MNG"
+      reserve_limit: 100
+      reserve_allowed: false
+      withdrawal_allowed: true
     - code: "default"
       reserve_limit: 5
       reserve_allowed: true
