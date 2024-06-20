@@ -11,7 +11,7 @@ import (
 const (
 	proofEventIDValue  = "211985299740800702300256033401632392934377086534111448880928528431996790315"
 	proofSelectorValue = "23073"
-	maxIdentityCount   = 0
+	maxIdentityCount   = 1
 )
 
 func (c *config) Verifier() *zk.Verifier {
