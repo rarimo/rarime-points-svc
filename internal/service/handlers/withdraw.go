@@ -79,15 +79,6 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	var withdrawal *data.Withdrawal
 	err = EventsQ(r).Transaction(func() error {
-		// If user hasn't provided passport proof yet, do all the necessary updates to
-		// potentially reduce the number of proofs in UX
-		if balance.Country == nil {
-			if err = doPassportScanUpdates(r, *balance, countryCode, true); err != nil {
-				return fmt.Errorf("do passport scan updates: %w", err)
-			}
-			log.Debug("Successfully performed passport scan updates already")
-		}
-
 		err = BalancesQ(r).FilterByNullifier(nullifier).Update(map[string]any{
 			data.ColAmount: pg.AddToValue(data.ColAmount, -req.Data.Attributes.Amount),
 		})
