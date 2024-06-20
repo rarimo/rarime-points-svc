@@ -52,7 +52,7 @@ func (l Levels) LvlUp(currentLevel int, totalAmount int64) (refCoundToAdd int, n
 			continue
 		}
 		if int64(v.Threshold) > totalAmount {
-			break
+			continue
 		}
 
 		refCoundToAdd += v.Referrals
