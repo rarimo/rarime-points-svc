@@ -18,6 +18,7 @@ event_types:
       frequency: one-time
       action_url: https://...
       logo: https://...
+      auto_claim: true
     - name: free_weekly
       title: Free weekly points
       reward: 1
@@ -44,6 +45,7 @@ event_types:
       description: The user {:did} has verified the passport. Claim the reward!
       short_description: Short description
       no_auto_open: true
+      auto_claim: true
 
 levels:
   levels:
@@ -68,15 +70,11 @@ countries:
       reserve_allowed: true
       withdrawal_allowed: true
     - code: "USA"
-      reserve_limit: 5
-      reserve_allowed: true
-      withdrawal_allowed: true
-    - code: "GBR"
-      reserve_limit: 5
+      reserve_limit: 0
       reserve_allowed: false
-      withdrawal_allowed: true
+      withdrawal_allowed: false
     - code: "default"
-      reserve_limit: 5
+      reserve_limit: 100
       reserve_allowed: true
       withdrawal_allowed: true
 

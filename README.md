@@ -122,5 +122,18 @@ and in handlers/verify_passport:
 	// 	return nil, problems.BadRequest(err)
 	// }
 ```
+and in handlers/withdraw(lines 49-58):
+```go
+	// validated in requests.NewWithdraw
+	// addr, _ := cosmos.AccAddressFromBech32(req.Data.Attributes.Address)
+	// never panics because of request validation
+	// proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
 
-Run service with standart config (you need to configure db url only) and run tests.
+	// err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr))
+	// if err != nil {
+	// 	ape.RenderErr(w, problems.BadRequest(err)...)
+	// 	return
+	// }
+```
+
+Run service with config-testing.yaml (you need to configure db url) and run tests.
