@@ -127,7 +127,7 @@ and in handlers/withdraw(lines 49-58):
 	// validated in requests.NewWithdraw
 	// addr, _ := cosmos.AccAddressFromBech32(req.Data.Attributes.Address)
 	// never panics because of request validation
-	proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
+	// proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
 
 	// err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr))
 	// if err != nil {
