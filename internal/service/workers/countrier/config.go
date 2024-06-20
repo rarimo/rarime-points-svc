@@ -1,6 +1,7 @@
 package countrier
 
 import (
+	"encoding/hex"
 	"fmt"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -11,9 +12,11 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-// Config exists only to Run countrier with provided country list
+// Config allows to Run countrier with provided country list and get verification
+// key for join_program endpoint
 type Config struct {
-	m map[string]countryParams
+	VerificationKey []byte
+	m               map[string]countryParams
 }
 
 type countryParams struct {
@@ -39,7 +42,8 @@ func NewConfig(getter kv.Getter) Countrier {
 func (c *config) Countries() Config {
 	return c.once.Do(func() interface{} {
 		var cfg struct {
-			Countries []countryParams `fig:"countries,required"`
+			VerificationKey string          `fig:"verification_key,required"`
+			Countries       []countryParams `fig:"countries,required"`
 		}
 
 		err := figure.Out(&cfg).
@@ -71,6 +75,14 @@ func (c *config) Countries() Config {
 			panic(fmt.Errorf("default country with code %s is not set", data.DefaultCountryCode))
 		}
 
-		return Config{m: countries}
+		key, err := hex.DecodeString(cfg.VerificationKey)
+		if err != nil {
+			panic(fmt.Errorf("verification_key is not a hex: %w", err))
+		}
+
+		return Config{
+			VerificationKey: key,
+			m:               countries,
+		}
 	}).(Config)
 }

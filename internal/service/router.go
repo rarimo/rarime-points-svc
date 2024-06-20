@@ -22,6 +22,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxPointPrice(cfg.PointPrice()),
 			handlers.CtxLevels(cfg.Levels()),
 			handlers.CtxVerifier(cfg.Verifier()),
+			handlers.CtxCountriesConfig(cfg.Countries()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)
@@ -33,6 +34,7 @@ func Run(ctx context.Context, cfg config.Config) {
 				r.Route("/{nullifier}", func(r chi.Router) {
 					r.Get("/", handlers.GetBalance)
 					r.Post("/verifypassport", handlers.VerifyPassport)
+					r.Post("/join_program", handlers.JoinProgram)
 					r.Get("/withdrawals", handlers.ListWithdrawals)
 					r.Post("/withdrawals", handlers.Withdraw)
 				})

@@ -8,6 +8,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/countrier"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"
 	zk "github.com/rarimo/zkverifier-kit"
 	"gitlab.com/distributed_lab/logan/v3"
@@ -28,6 +29,7 @@ const (
 	pointPriceCtxKey
 	verifierCtxKey
 	levelsCtxKey
+	countriesConfigCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -148,4 +150,14 @@ func CtxLevels(levels config.Levels) func(context.Context) context.Context {
 
 func Levels(r *http.Request) config.Levels {
 	return r.Context().Value(levelsCtxKey).(config.Levels)
+}
+
+func CtxCountriesConfig(config countrier.Config) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, countriesConfigCtxKey, config)
+	}
+}
+
+func CountriesConfig(r *http.Request) countrier.Config {
+	return r.Context().Value(countriesConfigCtxKey).(countrier.Config)
 }
