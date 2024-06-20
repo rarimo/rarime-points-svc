@@ -8,20 +8,21 @@ import (
 
 const (
 	ColAmount     = "amount"
-	ColReferredBy = "referred_by"
 	ColLevel      = "level"
 	ColCountry    = "country"
+	ColIsPassport = "is_passport_proven"
 )
 
 type Balance struct {
-	Nullifier  string         `db:"nullifier"`
-	Amount     int64          `db:"amount"`
-	CreatedAt  int32          `db:"created_at"`
-	UpdatedAt  int32          `db:"updated_at"`
-	ReferredBy sql.NullString `db:"referred_by"`
-	Rank       *int           `db:"rank"`
-	Level      int            `db:"level"`
-	Country    *string        `db:"country"`
+	Nullifier        string         `db:"nullifier"`
+	Amount           int64          `db:"amount"`
+	CreatedAt        int32          `db:"created_at"`
+	UpdatedAt        int32          `db:"updated_at"`
+	ReferredBy       sql.NullString `db:"referred_by"`
+	Rank             *int           `db:"rank"`
+	Level            int            `db:"level"`
+	Country          *string        `db:"country"`
+	IsPassportProven bool           `db:"is_passport_proven"`
 }
 
 type BalancesQ interface {

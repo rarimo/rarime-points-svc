@@ -10,7 +10,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
-	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
@@ -38,13 +37,13 @@ func JoinProgram(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if balance.Country != nil {
-		Log(r).Debugf("Balance %s already verified", balance.Nullifier)
+		Log(r).Debugf("Balance %s already joined rewards program", balance.Nullifier)
 		ape.RenderErr(w, problems.TooManyRequests())
 		return
 	}
 
 	err = EventsQ(r).Transaction(func() error {
-		return doPassportScanUpdates(r, *balance, req.Data.Attributes.Country)
+		return doPassportScanUpdates(r, *balance, req.Data.Attributes.Country, false)
 	})
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to execute transaction")
@@ -61,12 +60,7 @@ func JoinProgram(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var res resources.PassportEventStateResponse
-	res.Data.ID = req.Data.ID
-	res.Data.Type = resources.PASSPORT_EVENT_STATE
-	res.Data.Attributes.Claimed = event != nil
-
-	ape.Render(w, res)
+	ape.Render(w, newPassportEventStateResponse(req.Data.ID, event))
 }
 
 func calculateCountrySignature(key []byte, nullifier, country string) string {
