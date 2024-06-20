@@ -70,8 +70,8 @@ countries:
       withdrawal_allowed: true
     - code: "USA"
       reserve_limit: 5
-      reserve_allowed: false
-      withdrawal_allowed: false
+      reserve_allowed: true
+      withdrawal_allowed: true
     - code: "GBR"
       reserve_limit: 5
       reserve_allowed: false

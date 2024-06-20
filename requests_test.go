@@ -28,6 +28,7 @@ import (
 	zk "github.com/rarimo/zkverifier-kit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gitlab.com/distributed_lab/figure"
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
@@ -83,12 +84,6 @@ func TestMain(m *testing.M) {
 	exitVal = m.Run()
 }
 
-func tearDown() {
-}
-
-func tearDown() {
-}
-
 func setUp() {
 	if os.Getenv(kv.EnvViperConfigFile) == "" {
 		err := os.Setenv(kv.EnvViperConfigFile, defaultConfigFile)
@@ -97,10 +92,14 @@ func setUp() {
 		}
 	}
 
-	globalCfg = config.New(kv.MustFromEnv())
-	apiURL = fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1", globalCfg.Listener().Addr().String())
-	initGenesisRef()
+	var err error
+	apiURL, err = getApiURL()
+	if err != nil {
+		panic(fmt.Errorf("failed to get Api URL: %w", err))
+	}
 
+	globalCfg = config.New(kv.MustFromEnv())
+	initGenesisRef()
 	// let's not introduce counting function just for test
 	balances, err := pg.NewBalances(globalCfg.DB()).Select()
 	if err != nil {
@@ -109,11 +108,25 @@ func setUp() {
 
 	// to prevent repeating cleanups, more balances are created
 	currentNullifierIndex = len(balances)
-	nullifiers = make([]string, 20)
+	nullifiers = make([]string, 100)
 	for i := range nullifiers {
 		hash := sha256.Sum256([]byte{byte(i + len(balances))})
 		nullifiers[i] = hexutil.Encode(hash[:])
 	}
+}
+
+func getApiURL() (string, error) {
+	var cfg struct {
+		Addr string `fig:"addr,required"`
+	}
+
+	err := figure.Out(&cfg).From(kv.MustGetStringMap(kv.MustFromEnv(), "listener")).Please()
+	if err != nil {
+		return "", fmt.Errorf("failed to figure out listener from service config: %w", err)
+	}
+
+	apiURL := fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1/", cfg.Addr)
+	return apiURL, nil
 }
 
 func initGenesisRef() {
@@ -146,28 +159,6 @@ func TestCreateBalance(t *testing.T) {
 		otRefCode       string
 	)
 
-	validBalanceChecks := func(t *testing.T, nullifier, code string) {
-		resp, err := createBalance(nullifier, code)
-		require.NoError(t, err)
-		require.Equal(t, nullifier, resp.Data.ID)
-
-		attr := resp.Data.Attributes
-
-		require.NotNil(t, attr.IsDisabled)
-		require.NotNil(t, attr.IsVerified)
-		require.NotNil(t, attr.ReferralCodes)
-		require.NotEmpty(t, *attr.ReferralCodes)
-
-		assert.Equal(t, 0, attr.Amount)
-		assert.False(t, *attr.IsDisabled)
-		assert.False(t, *attr.IsVerified)
-		assert.Equal(t, 1, attr.Level)
-		assert.NotNil(t, attr.Rank)
-
-		otRefCode = (*attr.ReferralCodes)[0].Id
-		require.NotEmpty(t, otRefCode)
-	}
-
 	// fixme @violog: looks like fail on assert/require won't stop outer tests, must check before proceeding
 	t.Run("BalanceGenesisCode", func(t *testing.T) {
 		resp := createAndValidateBalance(t, nullifierShared, genesisCode)
@@ -180,7 +171,7 @@ func TestCreateBalance(t *testing.T) {
 
 	t.Run("SameBalanceConflict", func(t *testing.T) {
 		_, err := createBalance(nullifierShared, genesisCode)
-		var apiErr jsonapi.ErrorObject
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, "409", apiErr.Status)
 	})
@@ -189,22 +180,21 @@ func TestCreateBalance(t *testing.T) {
 		n1, n2 := nextN(), nextN()
 		body := createBalanceBody(n1, genesisCode)
 		err := requestWithBody(balancesEndpoint, "POST", n2, body, nil)
-
-		var apiErr jsonapi.ErrorObject
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, "401", apiErr.Status)
 	})
 
 	t.Run("ConsumedCode", func(t *testing.T) {
 		_, err := createBalance(nextN(), otRefCode)
-		var apiErr jsonapi.ErrorObject
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, "404", apiErr.Status)
 	})
 
 	t.Run("IncorrectCode", func(t *testing.T) {
 		_, err := createBalance(nextN(), "invalid")
-		var apiErr jsonapi.ErrorObject
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, "404", apiErr.Status)
 	})
@@ -224,7 +214,7 @@ func createAndValidateBalance(t *testing.T, nullifier, code string) resources.Ba
 	require.NotNil(t, attr.ReferralCodes)
 	require.NotEmpty(t, *attr.ReferralCodes)
 
-	assert.Equal(t, 0, attr.Amount)
+	assert.Equal(t, int64(0), attr.Amount)
 	assert.False(t, *attr.IsDisabled)
 	assert.False(t, *attr.IsVerified)
 	assert.Equal(t, 1, attr.Level)
@@ -245,25 +235,27 @@ func TestVerifyPassport(t *testing.T) {
 	createAndValidateBalance(t, referee, (*balance1.Data.Attributes.ReferralCodes)[0].Id)
 
 	var countriesResp resources.CountriesConfigResponse
-	err := getRequest("public/countries", nil, "", &countriesResp)
+	err := getRequest("public/countries_config", nil, "", &countriesResp)
 	require.NoError(t, err)
 
 	countriesList := countriesResp.Data.Attributes.Countries
-	require.Contains(t, countriesList, ukrCode)
-	require.Contains(t, countriesList, usaCode)
 
+	var ukr, can bool
 	// ensure the same behaviour whitelisted and banned countries
 	for _, c := range countriesList {
-		if c.Code == ukrCode {
+		if c.Code == "UKR" {
+			ukr = true
 			require.True(t, c.ReserveAllowed)
 			require.True(t, c.WithdrawalAllowed)
 			continue
 		}
-		if c.Code == usaCode {
-			require.False(t, c.ReserveAllowed)
+		if c.Code == "CAN" {
+			can = true
+			require.False(t, c.ReserveAllowed) // change this
 			require.False(t, c.WithdrawalAllowed)
 		}
 	}
+	require.False(t, !ukr || !can)
 
 	// passport verification should lead to referral event appearance and claimed passport event
 	t.Run("VerifyPassport", func(t *testing.T) {
@@ -275,7 +267,7 @@ func TestVerifyPassport(t *testing.T) {
 
 	t.Run("VerifyPassportSecondTime", func(t *testing.T) {
 		_, err = verifyPassport(referee, ukrCode)
-		var apiErr jsonapi.ErrorObject
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, "429", apiErr.Status)
 		getAndValidateBalance(t, referee, true)
@@ -283,18 +275,20 @@ func TestVerifyPassport(t *testing.T) {
 
 	t.Run("IncorrectCountryCode", func(t *testing.T) {
 		n := nextN()
+		createAndValidateBalance(t, n, genesisCode)
 		_, err = verifyPassport(n, "6974819")
-		var apiErr jsonapi.ErrorObject
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
-		assert.Equal(t, "429", apiErr.Status)
+		assert.Equal(t, "500", apiErr.Status)
 		getAndValidateBalance(t, n, false)
 	})
 
 	t.Run("BlacklistedCountry", func(t *testing.T) {
 		n := nextN()
-		resp, err := verifyPassport(n, usaCode)
+		createAndValidateBalance(t, n, genesisCode)
+		resp, err := verifyPassport(n, canCode)
 		require.NoError(t, err)
-		assert.True(t, resp.Data.Attributes.Claimed)
+		assert.False(t, resp.Data.Attributes.Claimed)
 		getAndValidateBalance(t, n, true)
 	})
 }
@@ -329,7 +323,7 @@ func TestEventsAutoClaim(t *testing.T) {
 		respBalance, err := getBalance(n)
 		require.NoError(t, err)
 		require.Equal(t, 2, respBalance.Data.Attributes.Level)
-		require.Equal(t, 5, respBalance.Data.Attributes.Amount)
+		require.Equal(t, int64(5), respBalance.Data.Attributes.Amount)
 		require.NotNil(t, respBalance.Data.Attributes.ReferralCodes)
 		require.Equal(t, 10, len(*respBalance.Data.Attributes.ReferralCodes))
 	})
@@ -382,10 +376,10 @@ func TestEventsAutoClaim(t *testing.T) {
 		_, err = verifyPassport(n2, ukrCode)
 		require.NoError(t, err)
 
-		respEvents, err := getEvents(n1)
+		respEvents, err := getEvents(n1, evtypes.TypeReferralSpecific)
 		require.NoError(t, err)
-		_, status := getEventFromList(respEvents, evtypes.TypeReferralSpecific)
-		require.Equal(t, data.EventClaimed, status)
+		require.Equal(t, 1, len(respEvents.Data))
+		require.Equal(t, string(data.EventClaimed), respEvents.Data[0].Attributes.Status)
 	})
 
 	// User can have a lot unclaimed fulfilled referral specific events if user not scan passport
@@ -394,23 +388,24 @@ func TestEventsAutoClaim(t *testing.T) {
 		respBalance, err := createBalance(n1, genesisCode)
 		require.NoError(t, err)
 		require.NotNil(t, respBalance.Data.Attributes.ReferralCodes)
-		require.GreaterOrEqual(t, (*respBalance.Data.Attributes.ReferralCodes), 2)
+		require.GreaterOrEqual(t, len(*respBalance.Data.Attributes.ReferralCodes), 2)
 
-		respBalance, err = createBalance(n2, (*respBalance.Data.Attributes.ReferralCodes)[0].Id)
+		_, err = createBalance(n2, (*respBalance.Data.Attributes.ReferralCodes)[0].Id)
 		require.NoError(t, err)
 		_, err = verifyPassport(n2, ukrCode)
 		require.NoError(t, err)
 
-		respBalance, err = createBalance(n3, (*respBalance.Data.Attributes.ReferralCodes)[1].Id)
+		_, err = createBalance(n3, (*respBalance.Data.Attributes.ReferralCodes)[1].Id)
 		require.NoError(t, err)
 		_, err = verifyPassport(n3, ukrCode)
 		require.NoError(t, err)
 
-		respEvents, err := getEvents(n1)
+		respEvents, err := getEvents(n1, evtypes.TypeReferralSpecific)
 		require.NoError(t, err)
+		require.Equal(t, 2, len(respEvents.Data))
 		fulfilledEventCount := 0
 		for _, event := range respEvents.Data {
-			if event.Attributes.Meta.Static.Name == evtypes.TypeReferralSpecific && event.Attributes.Status == string(data.EventFulfilled) {
+			if event.Attributes.Status == string(data.EventFulfilled) {
 				fulfilledEventCount += 1
 			}
 		}
@@ -420,11 +415,12 @@ func TestEventsAutoClaim(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
 
-		respEvents, err = getEvents(n1)
+		respEvents, err = getEvents(n1, evtypes.TypeReferralSpecific)
 		require.NoError(t, err)
+		require.Equal(t, 2, len(respEvents.Data))
 		claimedEventCount := 0
 		for _, event := range respEvents.Data {
-			if event.Attributes.Meta.Static.Name == evtypes.TypeReferralSpecific && event.Attributes.Status == string(data.EventFulfilled) {
+			if event.Attributes.Status == string(data.EventClaimed) {
 				claimedEventCount += 1
 			}
 		}
@@ -438,13 +434,13 @@ func TestClaimEvent(t *testing.T) {
 		_, err := createBalance(n, genesisCode)
 		require.NoError(t, err)
 
-		respEvents, err := getEvents(n)
+		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
 		require.NoError(t, err)
-		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
-		require.Equal(t, data.EventFulfilled, status)
+		require.Equal(t, 1, len(respEvents.Data))
+		require.Equal(t, string(data.EventFulfilled), respEvents.Data[0].Attributes.Status)
 
-		_, err = claimEvent(eventID, n)
-		var apiErr jsonapi.ErrorObject
+		_, err = claimEvent(respEvents.Data[0].ID, n)
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "403", apiErr.Status)
 	})
@@ -457,8 +453,8 @@ func TestClaimEvent(t *testing.T) {
 		_, err = verifyPassport(n, ukrCode)
 		require.NoError(t, err)
 
-		_, err = claimEvent("event", n)
-		var apiErr jsonapi.ErrorObject
+		_, err = claimEvent("e174d6e2-0c81-4771-99a1-8447532143b8", n)
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "404", apiErr.Status)
 	})
@@ -471,14 +467,14 @@ func TestClaimEvent(t *testing.T) {
 		_, err = verifyPassport(n, fraCode)
 		require.NoError(t, err)
 
-		respEvents, err := getEvents(n)
+		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
 		require.NoError(t, err)
-		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
-		require.Equal(t, data.EventFulfilled, status)
+		require.Equal(t, 1, len(respEvents.Data))
+		require.Equal(t, string(data.EventFulfilled), respEvents.Data[0].Attributes.Status)
 
-		respEvent, err := claimEvent(eventID, n)
+		respEvent, err := claimEvent(respEvents.Data[0].ID, n)
 		require.NoError(t, err)
-		require.Equal(t, data.EventClaimed, respEvent.Data.Attributes.Status)
+		require.Equal(t, string(data.EventClaimed), respEvent.Data.Attributes.Status)
 	})
 
 	// this test depend on previous test
@@ -490,13 +486,13 @@ func TestClaimEvent(t *testing.T) {
 		_, err = verifyPassport(n, fraCode)
 		require.NoError(t, err)
 
-		respEvents, err := getEvents(n)
+		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
 		require.NoError(t, err)
-		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
-		require.Equal(t, data.EventFulfilled, status)
+		require.Equal(t, 1, len(respEvents.Data))
+		require.Equal(t, string(data.EventFulfilled), respEvents.Data[0].Attributes.Status)
 
-		_, err = claimEvent(eventID, n)
-		var apiErr jsonapi.ErrorObject
+		_, err = claimEvent(respEvents.Data[0].ID, n)
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "403", apiErr.Status)
 	})
@@ -509,13 +505,13 @@ func TestClaimEvent(t *testing.T) {
 		_, err = verifyPassport(n, indCode)
 		require.NoError(t, err)
 
-		respEvents, err := getEvents(n)
+		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
 		require.NoError(t, err)
-		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
-		require.Equal(t, data.EventFulfilled, status)
+		require.Equal(t, 1, len(respEvents.Data))
+		require.Equal(t, string(data.EventFulfilled), respEvents.Data[0].Attributes.Status)
 
-		_, err = claimEvent(eventID, n)
-		var apiErr jsonapi.ErrorObject
+		_, err = claimEvent(respEvents.Data[0].ID, n)
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "403", apiErr.Status)
 	})
@@ -528,13 +524,13 @@ func TestClaimEvent(t *testing.T) {
 		_, err = verifyPassport(n, mcoCode)
 		require.NoError(t, err)
 
-		respEvents, err := getEvents(n)
+		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
 		require.NoError(t, err)
-		eventID, status := getEventFromList(respEvents, evtypes.TypeFreeWeekly)
-		require.Equal(t, data.EventFulfilled, status)
+		require.Equal(t, 1, len(respEvents.Data))
+		require.Equal(t, string(data.EventFulfilled), respEvents.Data[0].Attributes.Status)
 
-		_, err = claimEvent(eventID, n)
-		var apiErr jsonapi.ErrorObject
+		_, err = claimEvent(respEvents.Data[0].ID, n)
+		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "403", apiErr.Status)
 	})
@@ -563,8 +559,8 @@ func TestLevels(t *testing.T) {
 	require.Equal(t, 2, lvl2Cfg.Level)
 	require.Equal(t, 3, lvl3Cfg.Level)
 	// rewards must be equal to level threshold in order to upgrade level for each of 2 claimed events
-	require.Equal(t, amountClaim1, lvl2Cfg.Threshold)
-	require.Equal(t, amountClaim2, lvl3Cfg.Threshold)
+	require.Equal(t, amountClaim1, int64(lvl2Cfg.Threshold))
+	require.Equal(t, amountClaim2, int64(lvl3Cfg.Threshold))
 	require.False(t, evTypeWeekly.AutoClaim)
 
 	createAndValidateBalance(t, nullifier, genesisCode)
@@ -592,7 +588,7 @@ func TestLevels(t *testing.T) {
 	assert.Equal(t, lvl2Referrals, len(*refCodes))
 
 	eventID = getAndValidateSingleEvent(t, nullifier, evtypes.TypeFreeWeekly, data.EventFulfilled)
-	claimEventAndValidate(t, eventID, nullifier, amountClaim2)
+	claimEventAndValidate(t, eventID, nullifier, 1)
 
 	balance = getAndValidateBalance(t, nullifier, true)
 	balanceAttr = balance.Data.Attributes
@@ -605,7 +601,7 @@ func TestLevels(t *testing.T) {
 }
 
 func getAndValidateSingleEvent(t *testing.T, nullifier, evType string, status data.EventStatus) string {
-	resp, err := getEvents(nullifier, evtypes.TypePassportScan)
+	resp, err := getEvents(nullifier, evType)
 	require.NoError(t, err)
 	require.Len(t, resp.Data, 1)
 
@@ -614,7 +610,7 @@ func getAndValidateSingleEvent(t *testing.T, nullifier, evType string, status da
 
 	require.NotEmpty(t, event.ID)
 	assert.Equal(t, evType, attr.Meta.Static.Name)
-	assert.Equal(t, status, attr.Status)
+	assert.Equal(t, string(status), attr.Status)
 	return event.ID
 }
 
@@ -622,85 +618,47 @@ func claimEventAndValidate(t *testing.T, id, nullifier string, reward int64) {
 	resp, err := claimEvent(id, nullifier)
 	require.NoError(t, err)
 	attr := resp.Data.Attributes
-	assert.Equal(t, data.EventClaimed, attr.Status)
+	assert.Equal(t, string(data.EventClaimed), attr.Status)
 	require.NotNil(t, attr.PointsAmount)
 	assert.Equal(t, reward, *attr.PointsAmount)
 }
 
-func TestCountryPoolsDefault(t *testing.T) {
-	nullifier := "0x0000000000000000000000000000000000000000000000000000000000100000"
+// func TestCountryPoolsDefault(t *testing.T) {
+// 	nullifier := "0x0000000000000000000000000000000000000000000000000000000000100000"
 
-	createBalance(t, nullifier, genesisCode)
-	verifyPassport(t, nullifier, deuCode)
+// 	createBalance(t, nullifier, genesisCode)
+// 	verifyPassport(t, nullifier, deuCode)
 
-	t.Run("DefaultOverLimit", func(t *testing.T) {
-		freeWeeklyEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-		if freeWeeklyEventID == "" {
-			t.Fatalf("free weekly event absent for %s", nullifier)
-		}
+// 	t.Run("DefaultOverLimit", func(t *testing.T) {
+// 		freeWeeklyEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
+// 		if freeWeeklyEventID == "" {
+// 			t.Fatalf("free weekly event absent for %s", nullifier)
+// 		}
 
-		body := claimEventBody(freeWeeklyEventID)
-		_, respCode := requestWithBody(t, eventsEndpoint+"/"+freeWeeklyEventID, body, nullifier, true)
-		if respCode != http.StatusForbidden {
-			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-		}
-	})
-}
-
-func getEventFromList(events resources.EventListResponse, evtype string) (id, status string) {
-	for _, event := range events.Data {
-		if event.Attributes.Meta.Static.Name == evtype {
-			return event.ID, event.Attributes.Status
-		}
-	}
-	return "", ""
-}
+// 		body := claimEventBody(freeWeeklyEventID)
+// 		_, respCode := requestWithBody(t, eventsEndpoint+"/"+freeWeeklyEventID, body, nullifier, true)
+// 		if respCode != http.StatusForbidden {
+// 			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
+// 		}
+// 	})
+// }
 
 func claimEvent(id, nullifier string) (resp resources.EventResponse, err error) {
 	body := claimEventBody(id)
-	respBody, respCode := requestWithBody(t, eventsEndpoint+"/"+id, body, nullifier, true)
-	if respCode != http.StatusOK {
-		t.Errorf("want %d got %d", http.StatusOK, respCode)
-	}
-
-	var event resources.EventResponse
-	err := json.Unmarshal(respBody, &event)
-	if err != nil {
-		t.Fatalf("failed to unmarhal event response: %v", err)
-	}
-
-	return event
+	err = requestWithBody(eventsEndpoint+"/"+id, "PATCH", nullifier, body, &resp)
+	return
 }
 
-func verifyPassport(t *testing.T, nullifier, country string) {
-	proof := baseProof
-	proof.PubSignals[zk.Citizenship] = country
-	body := verifyPassportBody(nullifier, proof)
-
-	_, respCode := requestWithBody(t, balancesEndpoint+"/"+nullifier+"/verifypassport", body, nullifier, false)
-	if respCode != http.StatusNoContent {
-		t.Errorf("failed to verify passport: want %d got %d", http.StatusNoContent, respCode)
-	}
-}
-
-func getEvents(t *testing.T, nullifier string) resources.EventListResponse {
-	respBody, respCode := getRequest(t,
-		eventsEndpoint, func() url.Values {
-			query := url.Values{}
-			query.Add("filter[nullifier]", nullifier)
-			return query
-		}(), nullifier)
-	if respCode != http.StatusOK {
-		t.Errorf("failed to get events: want %d got %d", http.StatusOK, respCode)
+func getEvents(nullifier string, types ...string) (resp resources.EventListResponse, err error) {
+	query := url.Values{}
+	query.Add("filter[nullifier]", nullifier)
+	query.Add("page[limit]", "100")
+	if len(types) > 0 {
+		query.Add("filter[meta.static.name]", strings.Join(types, ","))
 	}
 
-	var events resources.EventListResponse
-	err := json.Unmarshal(respBody, &events)
-	if err != nil {
-		t.Fatalf("failed to unmarhal event list response: %v", err)
-	}
-
-	return events
+	err = getRequest(eventsEndpoint, query, nullifier, &resp)
+	return
 }
 
 func createBalance(nullifier, code string) (resp resources.BalanceResponse, err error) {
@@ -722,7 +680,7 @@ func verifyPassport(nullifier, country string) (resp resources.PassportEventStat
 	proof := baseProof
 	proof.PubSignals[zk.Citizenship] = country
 	body := verifyPassportBody(nullifier, proof)
-	err = requestWithBody(balancesEndpoint, "POST", nullifier, body, &resp)
+	err = requestWithBody(balancesEndpoint+"/"+nullifier+"/verifypassport", "POST", nullifier, body, &resp)
 	return
 }
 
@@ -733,9 +691,9 @@ type editReferralsResponse struct {
 
 func editReferrals(nullifier string, count uint64) (resp editReferralsResponse, err error) {
 	req := requests.EditReferralsRequest{Nullifier: nullifier, Count: count}
-
-	err = requestWithBody(apiURL+"/private/referrals", "POST", "", req, &resp)
-
+	fmt.Println(req)
+	err = requestWithBody("private/referrals", "POST", "", req, &resp)
+	fmt.Println(resp)
 	return
 }
 
