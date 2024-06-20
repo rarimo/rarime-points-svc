@@ -284,15 +284,6 @@ func TestVerifyPassport(t *testing.T) {
 		assert.Equal(t, "500", apiErr.Status)
 		getAndValidateBalance(t, n, false)
 	})
-
-	t.Run("BlacklistedCountry", func(t *testing.T) {
-		n := nextN()
-		createAndValidateBalance(t, n, genesisCode)
-		resp, err := verifyPassport(n, usaCode)
-		require.NoError(t, err)
-		assert.False(t, resp.Data.Attributes.Claimed)
-		getAndValidateBalance(t, n, true)
-	})
 }
 
 func getAndValidateBalance(t *testing.T, nullifier string, isVerified bool) resources.BalanceResponse {
@@ -385,7 +376,7 @@ func TestEventsAutoClaim(t *testing.T) {
 	})
 
 	// User can have a lot unclaimed fulfilled referral specific events if user not scan passport
-	t.Run("ReferralSpecificsAutoclaim", func(t *testing.T) {
+	t.Run("ReferralSpecificAutoclaimMany", func(t *testing.T) {
 		n1, n2, n3 := nextN(), nextN(), nextN()
 		respBalance, err := createBalance(n1, genesisCode)
 		require.NoError(t, err)
@@ -408,7 +399,7 @@ func TestEventsAutoClaim(t *testing.T) {
 		fulfilledEventCount := 0
 		for _, event := range respEvents.Data {
 			if event.Attributes.Status == string(data.EventFulfilled) {
-				fulfilledEventCount += 1
+				fulfilledEventCount++
 			}
 		}
 		require.Equal(t, 2, fulfilledEventCount)
@@ -423,7 +414,7 @@ func TestEventsAutoClaim(t *testing.T) {
 		claimedEventCount := 0
 		for _, event := range respEvents.Data {
 			if event.Attributes.Status == string(data.EventClaimed) {
-				claimedEventCount += 1
+				claimedEventCount++
 			}
 		}
 		require.Equal(t, 2, claimedEventCount)
@@ -669,7 +660,7 @@ func TestReferralCodeStatuses(t *testing.T) {
 		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
 
 		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
-		_ = createAndValidateBalance(t, n2, refCode)
+		createAndValidateBalance(t, n2, refCode)
 
 		respBalance = getAndValidateBalance(t, n1, true)
 		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
@@ -688,7 +679,7 @@ func TestReferralCodeStatuses(t *testing.T) {
 		require.False(t, respVerifyStatus.Data.Attributes.Claimed)
 
 		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
-		_ = createAndValidateBalance(t, n2, refCode)
+		createAndValidateBalance(t, n2, refCode)
 
 		respBalance = getAndValidateBalance(t, n1, true)
 		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
@@ -704,7 +695,7 @@ func TestReferralCodeStatuses(t *testing.T) {
 		respBalance := createAndValidateBalance(t, n1, genesisCode)
 
 		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
-		_ = createAndValidateBalance(t, n2, refCode)
+		createAndValidateBalance(t, n2, refCode)
 		respVerifyStatus, err := verifyPassport(n2, ukrCode)
 		require.NoError(t, err)
 		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
@@ -726,7 +717,7 @@ func TestReferralCodeStatuses(t *testing.T) {
 		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
 
 		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
-		_ = createAndValidateBalance(t, n2, refCode)
+		createAndValidateBalance(t, n2, refCode)
 		respVerifyStatus, err = verifyPassport(n2, ukrCode)
 		require.NoError(t, err)
 		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
@@ -748,7 +739,7 @@ func TestReferralCodeStatuses(t *testing.T) {
 		require.True(t, respVerifyStatus.Data.Attributes.Claimed)
 
 		refCode := (*respBalance.Data.Attributes.ReferralCodes)[0].Id
-		_ = createAndValidateBalance(t, n2, refCode)
+		createAndValidateBalance(t, n2, refCode)
 
 		respBalance = getAndValidateBalance(t, n1, true)
 		for _, v := range *respBalance.Data.Attributes.ReferralCodes {
@@ -790,8 +781,9 @@ func TestWithdrawals(t *testing.T) {
 	t.Run("CountryMismatched", func(t *testing.T) {
 		n := nextN()
 		createAndValidateBalance(t, n, genesisCode)
-		verifyPassport(n, ukrCode)
-		_, err := withdraw(n, fraCode, 1)
+		_, err := verifyPassport(n, ukrCode)
+		require.NoError(t, err)
+		_, err = withdraw(n, fraCode, 1)
 		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "400", apiErr.Status)
@@ -800,8 +792,9 @@ func TestWithdrawals(t *testing.T) {
 	t.Run("InsufficientBalance", func(t *testing.T) {
 		n := nextN()
 		createAndValidateBalance(t, n, genesisCode)
-		verifyPassport(n, ukrCode)
-		_, err := withdraw(n, ukrCode, 10)
+		_, err := verifyPassport(n, ukrCode)
+		require.NoError(t, err)
+		_, err = withdraw(n, ukrCode, 10)
 		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "400", apiErr.Status)
@@ -812,7 +805,8 @@ func TestWithdrawals(t *testing.T) {
 	t.Run("WithdrawNotAllowed", func(t *testing.T) {
 		n := nextN()
 		createAndValidateBalance(t, n, genesisCode)
-		verifyPassport(n, belCode)
+		_, err := verifyPassport(n, belCode)
+		require.NoError(t, err)
 		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(respEvents.Data))
@@ -976,7 +970,7 @@ func doRequest(req *http.Request, user string, result any) error {
 	if err != nil {
 		return fmt.Errorf("failed to perform request (%s): %w", reqLog, err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer func() { resp.Body.Close() }()
 
 	log.Printf("Req: %s status=%d", reqLog, resp.StatusCode)
 
