@@ -36,14 +36,42 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	countryCode, err := extractCountry(req.Data.Attributes.Proof)
+	if err != nil {
+		Log(r).WithError(err).Error("Critical: invalid country code provided, while the proof was valid")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
 	if balance.Country != nil {
-		Log(r).Debugf("Balance %s already verified", balance.Nullifier)
-		ape.RenderErr(w, problems.TooManyRequests())
+		if balance.IsPassportProven {
+			Log(r).Debugf("Balance %s already verified", balance.Nullifier)
+			ape.RenderErr(w, problems.TooManyRequests())
+			return
+		}
+
+		if *balance.Country != countryCode {
+			ape.RenderErr(w, problems.BadRequest(validation.Errors{
+				"country": fmt.Errorf("country mismatch: got %s, joined program with %s", countryCode, *balance.Country),
+			})...)
+			return
+		}
+
+		err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
+			data.ColIsPassport: true,
+		})
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to update balance")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+
+		ape.Render(w, newPassportEventStateResponse(req.Data.ID, nil))
 		return
 	}
 
 	err = EventsQ(r).Transaction(func() error {
-		return doPassportScanUpdates(r, *balance, req.Data.Attributes.Proof)
+		return doPassportScanUpdates(r, *balance, countryCode, true)
 	})
 	if err != nil {
 		Log(r).WithError(err).Error("Failed to execute transaction")
@@ -60,12 +88,15 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var res resources.PassportEventStateResponse
-	res.Data.ID = req.Data.ID
-	res.Data.Type = resources.PASSPORT_EVENT_STATE
-	res.Data.Attributes.Claimed = (event != nil)
+	ape.Render(w, newPassportEventStateResponse(req.Data.ID, event))
+}
 
-	ape.Render(w, res)
+func newPassportEventStateResponse(id string, event *data.Event) resources.PassportEventStateResponse {
+	var res resources.PassportEventStateResponse
+	res.Data.ID = id
+	res.Data.Type = resources.PASSPORT_EVENT_STATE
+	res.Data.Attributes.Claimed = event != nil
+	return res
 }
 
 // getAndVerifyBalanceEligibility provides shared logic to verify that the user
@@ -90,7 +121,7 @@ func getAndVerifyBalanceEligibility(
 	if errs = checkVerificationEligibility(r, balance); len(errs) > 0 {
 		return nil, errs
 	}
-	// for withdrawal
+	// for withdrawal and joining program
 	if proof == nil {
 		return balance, nil
 	}
@@ -123,8 +154,8 @@ func checkVerificationEligibility(r *http.Request, balance *data.Balance) (errs 
 // doPassportScanUpdates performs all the necessary updates when the passport
 // scan proof is provided. This logic is shared between verification and
 // withdrawal handlers.
-func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes.ZKProof) error {
-	country, err := updateBalanceCountry(r, balance, proof)
+func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode string, proven bool) error {
+	country, err := updateBalanceCountry(r, balance, countryCode, proven)
 	if err != nil {
 		return fmt.Errorf("update balance country: %w", err)
 	}
@@ -175,8 +206,8 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, proof zkptypes
 	return nil
 }
 
-func updateBalanceCountry(r *http.Request, balance data.Balance, proof zkptypes.ZKProof) (*data.Country, error) {
-	country, err := getOrCreateCountry(CountriesQ(r), proof)
+func updateBalanceCountry(r *http.Request, balance data.Balance, code string, proven bool) (*data.Country, error) {
+	country, err := getOrCreateCountry(CountriesQ(r), code)
 	if err != nil {
 		return nil, fmt.Errorf("get or create country: %w", err)
 	}
@@ -189,9 +220,12 @@ func updateBalanceCountry(r *http.Request, balance data.Balance, proof zkptypes.
 		return nil, errors.New("countries mismatch")
 	}
 
-	err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
-		data.ColCountry: country.Code,
-	})
+	toUpd := map[string]any{data.ColCountry: country.Code}
+	if proven {
+		toUpd[data.ColIsPassport] = true
+	}
+
+	err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(toUpd)
 	if err != nil {
 		return nil, fmt.Errorf("update balance country: %w", err)
 	}
@@ -414,12 +448,7 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 	return nil
 }
 
-func getOrCreateCountry(q data.CountriesQ, proof zkptypes.ZKProof) (*data.Country, error) {
-	code, err := extractCountry(proof)
-	if err != nil {
-		return nil, fmt.Errorf("extract country: %w", err)
-	}
-
+func getOrCreateCountry(q data.CountriesQ, code string) (*data.Country, error) {
 	c, err := q.FilterByCodes(code).Get()
 	if err != nil {
 		return nil, fmt.Errorf("get country by code: %w", err)

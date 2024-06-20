@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/cosmos/cosmos-sdk/types"
 	"github.com/go-chi/chi"
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
@@ -10,6 +11,7 @@ import (
 )
 
 func Run(ctx context.Context, cfg config.Config) {
+	setBech32Prefixes()
 	r := chi.NewRouter()
 
 	r.Use(
@@ -22,6 +24,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxPointPrice(cfg.PointPrice()),
 			handlers.CtxLevels(cfg.Levels()),
 			handlers.CtxVerifier(cfg.Verifier()),
+			handlers.CtxCountriesConfig(cfg.Countries()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)
@@ -33,6 +36,7 @@ func Run(ctx context.Context, cfg config.Config) {
 				r.Route("/{nullifier}", func(r chi.Router) {
 					r.Get("/", handlers.GetBalance)
 					r.Post("/verifypassport", handlers.VerifyPassport)
+					r.Post("/join_program", handlers.JoinProgram)
 					r.Get("/withdrawals", handlers.ListWithdrawals)
 					r.Post("/withdrawals", handlers.Withdraw)
 				})
@@ -57,4 +61,12 @@ func Run(ctx context.Context, cfg config.Config) {
 
 	cfg.Log().Info("Service started")
 	ape.Serve(ctx, r, cfg, ape.ServeOpts{})
+}
+
+func setBech32Prefixes() {
+	c := types.GetConfig()
+	c.SetBech32PrefixForAccount("rarimo", "rarimopub")
+	c.SetBech32PrefixForValidator("rarimovaloper", "rarimovaloperpub")
+	c.SetBech32PrefixForConsensusNode("rarimovalcons", "rarimovalconspub")
+	c.Seal()
 }

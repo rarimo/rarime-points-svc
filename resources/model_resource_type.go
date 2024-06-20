@@ -15,6 +15,7 @@ const (
 	UPDATE_BALANCE       ResourceType = "update_balance"
 	EVENT                ResourceType = "event"
 	EVENT_TYPE           ResourceType = "event_type"
+	JOIN_PROGRAM         ResourceType = "join_program"
 	PASSPORT_EVENT_STATE ResourceType = "passport_event_state"
 	POINT_PRICE          ResourceType = "point_price"
 	VERIFY_PASSPORT      ResourceType = "verify_passport"
