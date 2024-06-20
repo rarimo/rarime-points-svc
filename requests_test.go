@@ -162,7 +162,6 @@ func TestCreateBalance(t *testing.T) {
 		otRefCode       string
 	)
 
-	// fixme @violog: looks like fail on assert/require won't stop outer tests, must check before proceeding
 	t.Run("BalanceGenesisCode", func(t *testing.T) {
 		resp := createAndValidateBalance(t, nullifierShared, genesisCode)
 		otRefCode = (*resp.Data.Attributes.ReferralCodes)[0].Id
