@@ -121,7 +121,7 @@ func getAndVerifyBalanceEligibility(
 	if errs = checkVerificationEligibility(r, balance); len(errs) > 0 {
 		return nil, errs
 	}
-	// for withdrawal
+	// for withdrawal and joining program
 	if proof == nil {
 		return balance, nil
 	}

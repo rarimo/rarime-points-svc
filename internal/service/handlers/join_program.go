@@ -64,7 +64,7 @@ func JoinProgram(w http.ResponseWriter, r *http.Request) {
 }
 
 func calculateCountrySignature(key []byte, nullifier, country string) string {
-	bNull, err := hex.DecodeString(nullifier)
+	bNull, err := hex.DecodeString(nullifier[2:])
 	if err != nil {
 		panic(fmt.Errorf("nullifier was not properly validated as hex: %w", err))
 	}
