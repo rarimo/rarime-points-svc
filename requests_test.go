@@ -891,9 +891,7 @@ type editReferralsResponse struct {
 
 func editReferrals(nullifier string, count uint64) (resp editReferralsResponse, err error) {
 	req := requests.EditReferralsRequest{Nullifier: nullifier, Count: count}
-	fmt.Println(req)
 	err = requestWithBody("private/referrals", "POST", "", req, &resp)
-	fmt.Println(resp)
 	return
 }
 
