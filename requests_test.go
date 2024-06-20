@@ -45,8 +45,11 @@ const (
 	fraCode = "4608577"
 	indCode = "4804164"
 	mcoCode = "5063503"
+	belCode = "4343116"
+	mngCode = "5066311"
 
 	genesisBalance = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	rarimoAddress  = "rarimo1h2077nfkksek386y8ks5m2wgd60wl3035n8gv0"
 
 	balancesEndpoint = "public/balances"
 	eventsEndpoint   = "public/events"
@@ -758,6 +761,95 @@ func TestReferralCodeStatuses(t *testing.T) {
 	})
 }
 
+func TestWithdrawals(t *testing.T) {
+	t.Run("WithoutPassport", func(t *testing.T) {
+		n := nextN()
+		createAndValidateBalance(t, n, genesisCode)
+		_, err := withdraw(n, ukrCode, 10)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "400", apiErr.Status)
+	})
+
+	t.Run("BalanceAbsent", func(t *testing.T) {
+		n := nextN()
+		_, err := withdraw(n, ukrCode, 10)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "404", apiErr.Status)
+	})
+
+	t.Run("IncorrectCountryCode", func(t *testing.T) {
+		n := nextN()
+		createAndValidateBalance(t, n, genesisCode)
+		_, err := withdraw(n, "6974819", 10)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "500", apiErr.Status)
+	})
+
+	t.Run("CountryMismatched", func(t *testing.T) {
+		n := nextN()
+		createAndValidateBalance(t, n, genesisCode)
+		verifyPassport(n, ukrCode)
+		_, err := withdraw(n, fraCode, 1)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "400", apiErr.Status)
+	})
+
+	t.Run("InsufficientBalance", func(t *testing.T) {
+		n := nextN()
+		createAndValidateBalance(t, n, genesisCode)
+		verifyPassport(n, ukrCode)
+		_, err := withdraw(n, ukrCode, 10)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "400", apiErr.Status)
+	})
+
+	// TODO: Not enough level to do withdraw
+
+	t.Run("WithdrawNotAllowed", func(t *testing.T) {
+		n := nextN()
+		createAndValidateBalance(t, n, genesisCode)
+		verifyPassport(n, belCode)
+		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(respEvents.Data))
+		claimEventAndValidate(t, respEvents.Data[0].ID, n, 1)
+		_, err = withdraw(n, belCode, 4)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "400", apiErr.Status)
+	})
+}
+
+func withdraw(nullifier, country string, amount int64) (resp resources.WithdrawalResponse, err error) {
+	proof := baseProof
+	proof.PubSignals[zk.Citizenship] = country
+	body := withdrawBody(nullifier, proof, amount)
+	err = requestWithBody(balancesEndpoint+"/"+nullifier+"/withdrawals", "POST", nullifier, body, &resp)
+	return
+
+}
+
+func withdrawBody(nullifier string, proof zkptypes.ZKProof, amount int64) resources.WithdrawRequest {
+	return resources.WithdrawRequest{
+		Data: resources.Withdraw{
+			Key: resources.Key{
+				ID:   nullifier,
+				Type: resources.WITHDRAW,
+			},
+			Attributes: resources.WithdrawAttributes{
+				Address: rarimoAddress,
+				Proof:   proof,
+				Amount:  amount,
+			},
+		},
+	}
+}
+
 func claimEvent(id, nullifier string) (resp resources.EventResponse, err error) {
 	body := claimEventBody(id)
 	err = requestWithBody(eventsEndpoint+"/"+id, "PATCH", nullifier, body, &resp)
@@ -889,19 +981,19 @@ func doRequest(req *http.Request, user string, result any) error {
 
 	log.Printf("Req: %s status=%d", reqLog, resp.StatusCode)
 
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read resp body: %w", err)
+	}
+
 	switch resp.StatusCode {
 	case http.StatusOK, http.StatusCreated, http.StatusNoContent:
 	default:
-		return &jsonapi.ErrorObject{Status: strconv.Itoa(resp.StatusCode)}
+		return &jsonapi.ErrorObject{Status: strconv.Itoa(resp.StatusCode), Title: string(respBody)}
 	}
 
 	if result == nil {
 		return nil
-	}
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return fmt.Errorf("failed to read resp body: %w", err)
 	}
 
 	err = json.Unmarshal(respBody, result)
