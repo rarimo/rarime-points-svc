@@ -251,7 +251,7 @@ func TestVerifyPassport(t *testing.T) {
 		}
 		if c.Code == "CAN" {
 			can = true
-			require.False(t, c.ReserveAllowed) // change this
+			require.False(t, c.ReserveAllowed)
 			require.False(t, c.WithdrawalAllowed)
 		}
 	}
@@ -623,25 +623,31 @@ func claimEventAndValidate(t *testing.T, id, nullifier string, reward int64) {
 	assert.Equal(t, reward, *attr.PointsAmount)
 }
 
-// func TestCountryPoolsDefault(t *testing.T) {
-// 	nullifier := "0x0000000000000000000000000000000000000000000000000000000000100000"
+// test only default config because main logic already tested in another tests (autoclaim, claim, verifypassport)
+func TestCountryPoolsDefault(t *testing.T) {
+	n := nextN()
+	createAndValidateBalance(t, n, genesisCode)
 
-// 	createBalance(t, nullifier, genesisCode)
-// 	verifyPassport(t, nullifier, deuCode)
+	t.Run("DefaultUnderLimit", func(t *testing.T) {
+		resp, err := verifyPassport(n, deuCode)
+		require.NoError(t, err)
+		assert.True(t, resp.Data.Attributes.Claimed)
+		getAndValidateBalance(t, n, true)
 
-// 	t.Run("DefaultOverLimit", func(t *testing.T) {
-// 		freeWeeklyEventID, _ := getEventFromList(getEvents(t, nullifier), evtypes.TypeFreeWeekly)
-// 		if freeWeeklyEventID == "" {
-// 			t.Fatalf("free weekly event absent for %s", nullifier)
-// 		}
+	})
 
-// 		body := claimEventBody(freeWeeklyEventID)
-// 		_, respCode := requestWithBody(t, eventsEndpoint+"/"+freeWeeklyEventID, body, nullifier, true)
-// 		if respCode != http.StatusForbidden {
-// 			t.Errorf("want %d got %d", http.StatusForbidden, respCode)
-// 		}
-// 	})
-// }
+	t.Run("DefaultOverLimit", func(t *testing.T) {
+		respEvents, err := getEvents(n, evtypes.TypeFreeWeekly)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(respEvents.Data))
+		require.Equal(t, string(data.EventFulfilled), respEvents.Data[0].Attributes.Status)
+
+		_, err = claimEvent(respEvents.Data[0].ID, n)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "403", apiErr.Status)
+	})
+}
 
 func claimEvent(id, nullifier string) (resp resources.EventResponse, err error) {
 	body := claimEventBody(id)
