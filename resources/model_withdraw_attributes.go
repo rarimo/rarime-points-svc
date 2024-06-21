@@ -11,6 +11,6 @@ type WithdrawAttributes struct {
 	Address string `json:"address"`
 	// Amount of points to withdraw
 	Amount int64 `json:"amount"`
-	// Iden3 ZK passport verification proof.
+	// Query ZK passport verification proof.
 	Proof types.ZKProof `json:"proof"`
 }

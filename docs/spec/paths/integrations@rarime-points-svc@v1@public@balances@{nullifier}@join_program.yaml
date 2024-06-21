@@ -6,6 +6,13 @@ post:
   operationId: joinRewardsProgram
   parameters:
     - $ref: '#/components/parameters/pathNullifier'
+    - in: header
+      name: Signature
+      description: Signature of the request
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-f0-9]{64}$'
   requestBody:
     required: true
     content:
@@ -16,7 +23,7 @@ post:
             - data
           properties:
             data:
-              $ref: '#/components/schemas/JoinProgram'
+              $ref: '#/components/schemas/VerifyPassport'
   responses:
     200:
       description: Success

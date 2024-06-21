@@ -115,12 +115,15 @@ func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http
 ```
 and in handlers/verify_passport:
 ```go
-	// never panics because of request validation
 	// proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
-	// err = Verifier(r).VerifyProof(*proof)
-	// if err != nil {
-	// 	return nil, problems.BadRequest(err)
-	// }
+    // err = Verifier(r).VerifyProof(*proof)
+    // if err != nil {
+    //	if errors.Is(err, identity.ErrContractCall) {
+    //		Log(r).WithError(err).Error("Failed to verify proof")
+    //		return nil, append(errs, problems.InternalError())
+    //	}
+    //	return nil, problems.BadRequest(err)
+    // }
 ```
 and in handlers/withdraw(lines 49-58):
 ```go

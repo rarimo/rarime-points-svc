@@ -7,10 +7,22 @@ allOf:
     properties:
       attributes:
         required:
-          - proof
+          - anonymous_id
+          - country
         type: object
         properties:
+          anonymous_id:
+            type: string
+            description: Unique identifier of the passport.
+            example: "2bd3a2532096fee10a45a40e444a11b4d00a707f3459376087747de05996fbf5"
+          country:
+            type: string
+            description: |
+              ISO 3166-1 alpha-3 country code, must match the one provided in `proof`.
+            example: "UKR"
           proof:
             type: object
             format: types.ZKProof
-            description: Iden3 ZK passport verification proof.
+            description: |
+              Query ZK passport verification proof.
+              Required for endpoint `/v2/balances/{nullifier}/verifypassport`.

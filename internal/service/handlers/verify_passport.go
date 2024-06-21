@@ -1,14 +1,18 @@
 package handlers
 
 import (
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"math"
 	"math/big"
 	"net/http"
 
+	"errors"
+
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 	"github.com/google/jsonapi"
 	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
@@ -17,9 +21,9 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
+	"github.com/rarimo/zkverifier-kit/identity"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
-	"gitlab.com/distributed_lab/logan/v3/errors"
 )
 
 func VerifyPassport(w http.ResponseWriter, r *http.Request) {
@@ -30,30 +34,76 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	balance, errs := getAndVerifyBalanceEligibility(r, req.Data.ID, &req.Data.Attributes.Proof)
+	log := Log(r).WithFields(map[string]any{
+		"balance.nullifier":    req.Data.ID,
+		"balance.anonymous_id": req.Data.Attributes.AnonymousId,
+		"balance.country":      req.Data.Attributes.Country,
+	})
+
+	var (
+		country     = req.Data.Attributes.Country
+		anonymousID = req.Data.Attributes.AnonymousId
+		proof       = req.Data.Attributes.Proof
+
+		gotSig  = r.Header.Get("Signature")
+		wantSig = calculatePassportVerificationSignature(
+			CountriesConfig(r).VerificationKey,
+			req.Data.ID,
+			country,
+			anonymousID,
+		)
+	)
+
+	if gotSig != wantSig {
+		log.Warnf("Unauthorized access: HMAC signature mismatch: got %s, want %s", gotSig, wantSig)
+		ape.RenderErr(w, problems.Forbidden())
+		return
+	}
+	if proof == nil {
+		log.Debug("Proof is not provided: performing logic of joining program instead of full verification")
+	}
+
+	balance, errs := getAndVerifyBalanceEligibility(r, req.Data.ID, proof)
 	if len(errs) > 0 {
 		ape.RenderErr(w, errs...)
 		return
 	}
 
-	countryCode, err := extractCountry(req.Data.Attributes.Proof)
+	byAnonymousID, err := BalancesQ(r).FilterByAnonymousID(anonymousID).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Critical: invalid country code provided, while the proof was valid")
+		log.WithError(err).Error("Failed to get balance by anonymous ID")
 		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if byAnonymousID != nil && byAnonymousID.Nullifier != balance.Nullifier {
+		log.Warn("Balance with the same anonymous ID already exists")
+		ape.RenderErr(w, problems.Conflict())
 		return
 	}
 
 	if balance.Country != nil {
 		if balance.IsPassportProven {
-			Log(r).Debugf("Balance %s already verified", balance.Nullifier)
+			log.Warnf("Balance %s already verified", balance.Nullifier)
+			ape.RenderErr(w, problems.TooManyRequests())
+			return
+		}
+		if proof == nil {
+			log.Warnf("Balance %s tried to re-join program", balance.Nullifier)
 			ape.RenderErr(w, problems.TooManyRequests())
 			return
 		}
 
-		if *balance.Country != countryCode {
-			ape.RenderErr(w, problems.BadRequest(validation.Errors{
-				"country": fmt.Errorf("country mismatch: got %s, joined program with %s", countryCode, *balance.Country),
-			})...)
+		var balAID string
+		if balance.AnonymousID != nil {
+			balAID = *balance.AnonymousID
+		}
+
+		err = validation.Errors{
+			"data/attributes/country":      validation.Validate(*balance.Country, validation.Required, validation.In(country)),
+			"data/attributes/anonymous_id": validation.Validate(anonymousID, validation.Required, validation.In(balAID)),
+		}.Filter()
+		if err != nil {
+			ape.RenderErr(w, problems.BadRequest(err)...)
 			return
 		}
 
@@ -61,7 +111,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			data.ColIsPassport: true,
 		})
 		if err != nil {
-			Log(r).WithError(err).Error("Failed to update balance")
+			log.WithError(err).Error("Failed to update balance")
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
@@ -71,10 +121,10 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = EventsQ(r).Transaction(func() error {
-		return doPassportScanUpdates(r, *balance, countryCode, true)
+		return doPassportScanUpdates(r, *balance, country, anonymousID, proof != nil)
 	})
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to execute transaction")
+		log.WithError(err).Error("Failed to execute transaction")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -83,7 +133,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		FilterByType(evtypes.TypePassportScan).
 		FilterByStatus(data.EventClaimed).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get claimed event")
+		log.WithError(err).Error("Failed to get claimed event")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
@@ -97,6 +147,24 @@ func newPassportEventStateResponse(id string, event *data.Event) resources.Passp
 	res.Data.Type = resources.PASSPORT_EVENT_STATE
 	res.Data.Attributes.Claimed = event != nil
 	return res
+}
+
+func calculatePassportVerificationSignature(key []byte, nullifier, country, anonymousID string) string {
+	bNull, err := hex.DecodeString(nullifier[2:])
+	if err != nil {
+		panic(fmt.Errorf("nullifier was not properly validated as hex: %w", err))
+	}
+	bAID, err := hex.DecodeString(anonymousID)
+	if err != nil {
+		panic(fmt.Errorf("anonymousID was not properly validated as hex: %w", err))
+	}
+
+	h := hmac.New(sha256.New, key)
+	msg := append(bNull, []byte(country)...)
+	msg = append(msg, bAID...)
+	h.Write(msg)
+
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // getAndVerifyBalanceEligibility provides shared logic to verify that the user
@@ -130,6 +198,10 @@ func getAndVerifyBalanceEligibility(
 	proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
 	err = Verifier(r).VerifyProof(*proof)
 	if err != nil {
+		if errors.Is(err, identity.ErrContractCall) {
+			Log(r).WithError(err).Error("Failed to verify proof")
+			return nil, append(errs, problems.InternalError())
+		}
 		return nil, problems.BadRequest(err)
 	}
 
@@ -154,8 +226,8 @@ func checkVerificationEligibility(r *http.Request, balance *data.Balance) (errs 
 // doPassportScanUpdates performs all the necessary updates when the passport
 // scan proof is provided. This logic is shared between verification and
 // withdrawal handlers.
-func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode string, proven bool) error {
-	country, err := updateBalanceCountry(r, balance, countryCode, proven)
+func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode, anonymousID string, proven bool) error {
+	country, err := updateBalanceCountry(r, balance, countryCode, anonymousID, proven)
 	if err != nil {
 		return fmt.Errorf("update balance country: %w", err)
 	}
@@ -206,7 +278,7 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode st
 	return nil
 }
 
-func updateBalanceCountry(r *http.Request, balance data.Balance, code string, proven bool) (*data.Country, error) {
+func updateBalanceCountry(r *http.Request, balance data.Balance, code, anonymousID string, proven bool) (*data.Country, error) {
 	country, err := getOrCreateCountry(CountriesQ(r), code)
 	if err != nil {
 		return nil, fmt.Errorf("get or create country: %w", err)
@@ -220,7 +292,10 @@ func updateBalanceCountry(r *http.Request, balance data.Balance, code string, pr
 		return nil, errors.New("countries mismatch")
 	}
 
-	toUpd := map[string]any{data.ColCountry: country.Code}
+	toUpd := map[string]any{
+		data.ColCountry:     country.Code,
+		data.ColAnonymousID: anonymousID,
+	}
 	if proven {
 		toUpd[data.ColIsPassport] = true
 	}
@@ -477,23 +552,6 @@ func getOrCreateCountry(q data.CountriesQ, code string) (*data.Country, error) {
 	}
 
 	return c, nil
-}
-
-// extractCountry extracts 3-letter country code from the proof.
-func extractCountry(proof zkptypes.ZKProof) (string, error) {
-	b, ok := new(big.Int).SetString(proof.PubSignals[zk.Citizenship], 10)
-	if !ok {
-		b = new(big.Int)
-	}
-
-	code := string(b.Bytes())
-
-	return code, validation.Errors{
-		"code": validation.Validate(
-			code,
-			validation.Required,
-			validation.When(code != data.DefaultCountryCode, is.CountryCode3),
-		)}.Filter()
 }
 
 func mustHexToInt(s string) string {

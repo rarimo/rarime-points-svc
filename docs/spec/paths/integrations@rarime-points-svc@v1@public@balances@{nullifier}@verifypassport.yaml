@@ -3,10 +3,18 @@ post:
     - Points balance
   summary: Verify passport
   description: |
-    Fulfill verify passport event if it is open
+    Verify passport with ZKP, fulfilling the event.
+    One passport can't be verified twice.
   operationId: verifyPassport
   parameters:
     - $ref: '#/components/parameters/pathNullifier'
+    - in: header
+      name: Signature
+      description: Signature of the request
+      required: true
+      schema:
+        type: string
+        pattern: '^[a-f0-9]{64}$'
   requestBody:
     required: true
     content:

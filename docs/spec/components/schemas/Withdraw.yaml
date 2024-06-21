@@ -24,4 +24,4 @@ allOf:
           proof:
             type: object
             format: types.ZKProof
-            description: Iden3 ZK passport verification proof.
+            description: Query ZK passport verification proof.

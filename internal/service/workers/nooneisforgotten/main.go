@@ -231,7 +231,10 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 		return nil
 	}
 
-	events, err := pg.NewEvents(db).FilterByType(evtypes.TypeReferralSpecific).FilterByStatus(data.EventFulfilled).Select()
+	events, err := pg.NewEvents(db).
+		FilterByType(evtypes.TypeReferralSpecific).
+		FilterByStatus(data.EventFulfilled).
+		Select()
 	if err != nil {
 		return fmt.Errorf("failed to select passport scan events: %w", err)
 	}
