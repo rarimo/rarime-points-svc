@@ -57,7 +57,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	countryCode, err := extractCountry(proof)
+	countryCode, err := requests.ExtractCountry(proof)
 	if err != nil {
 		log.WithError(err).Error("Critical: invalid country code provided, while the proof was valid")
 		ape.RenderErr(w, problems.InternalError())
@@ -158,6 +158,8 @@ func isEligibleToWithdraw(
 	}
 
 	switch {
+	case !balance.IsPassportProven:
+		return mapValidationErr("data/attributes/proof", "passport must be proven beforehand")
 	case balance.Amount < amount:
 		return mapValidationErr("data/attributes/amount", "insufficient balance: %d", balance.Amount)
 	case !country.WithdrawalAllowed:

@@ -2,33 +2,75 @@ package requests
 
 import (
 	"encoding/json"
+	"math/big"
 	"net/http"
 	"regexp"
 	"strings"
 
 	"github.com/go-chi/chi"
-	validation "github.com/go-ozzo/ozzo-validation/v4"
+	val "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
+	zkptypes "github.com/iden3/go-rapidsnark/types"
 	"github.com/rarimo/rarime-points-svc/resources"
+	zk "github.com/rarimo/zkverifier-kit"
 )
 
-var nullifierRegexp = regexp.MustCompile("^0x[0-9a-fA-F]{64}$")
+var (
+	nullifierRegexp = regexp.MustCompile("^0x[0-9a-fA-F]{64}$")
+	hex32bRegexp    = regexp.MustCompile("^[0-9a-f]{64}$")
+	// endpoint is hardcoded to reuse handlers.VerifyPassport
+	verifyPassportPathRegexp = regexp.MustCompile("^/v1/public/balances/0x[0-9a-fA-F]{64}/verifypassport$")
+)
 
 func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, err error) {
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
-		err = newDecodeError("body", err)
-		return
+		return req, newDecodeError("body", err)
 	}
 
 	req.Data.ID = strings.ToLower(req.Data.ID)
+	var (
+		attr           = req.Data.Attributes
+		provingCountry = attr.Country   // validate only when proof is provided
+		proof          zkptypes.ZKProof // safe dereference
+	)
 
-	return req, validation.Errors{
-		"data/id": validation.Validate(req.Data.ID,
-			validation.Required,
-			validation.In(strings.ToLower(chi.URLParam(r, "nullifier"))),
-			validation.Match(nullifierRegexp)),
-		"data/type": validation.Validate(req.Data.Type,
-			validation.Required,
-			validation.In(resources.VERIFY_PASSPORT)),
-		"data/attributes/proof": validation.Validate(req.Data.Attributes.Proof, validation.Required),
+	if attr.Proof != nil {
+		proof = *attr.Proof
+		provingCountry, err = ExtractCountry(proof)
+		if err != nil {
+			return req, err
+		}
+	}
+
+	return req, val.Errors{
+		"data/id": val.Validate(req.Data.ID,
+			val.Required,
+			val.In(strings.ToLower(chi.URLParam(r, "nullifier"))),
+			val.Match(nullifierRegexp)),
+		"data/type": val.Validate(req.Data.Type,
+			val.Required,
+			val.In(resources.VERIFY_PASSPORT)),
+		"data/attributes/anonymous_id":      val.Validate(attr.AnonymousId, val.Required, val.Match(hex32bRegexp)),
+		"data/attributes/country":           val.Validate(attr.Country, val.Required, val.In(provingCountry)),
+		"data/attributes/proof":             val.Validate(attr.Proof, val.When(verifyPassportPathRegexp.MatchString(r.URL.Path), val.Required)),
+		"data/attributes/proof/proof":       val.Validate(proof.Proof, val.When(attr.Proof != nil, val.Required)),
+		"data/attributes/proof/pub_signals": val.Validate(proof.PubSignals, val.When(attr.Proof != nil, val.Required, val.Length(22, 22))),
 	}.Filter()
+}
+
+// ExtractCountry extracts country code from the proof, converting decimal UTF-8
+// code to ISO 3166-1 alpha-3 code.
+func ExtractCountry(proof zkptypes.ZKProof) (string, error) {
+	if len(proof.PubSignals) <= int(zk.Citizenship) {
+		return "", val.Errors{"country_code": val.ErrLengthTooShort}.Filter()
+	}
+
+	b, ok := new(big.Int).SetString(proof.PubSignals[zk.Citizenship], 10)
+	if !ok {
+		b = new(big.Int)
+	}
+
+	code := string(b.Bytes())
+
+	return code, val.Errors{"country_code": val.Validate(code, val.Required, is.CountryCode3)}.Filter()
 }
