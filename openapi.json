@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "version": "1.0.0",
+    "version": "1.2.0",
     "title": "rarime-points-svc",
     "description": ""
   },
@@ -210,6 +210,16 @@
         "parameters": [
           {
             "$ref": "#/components/parameters/pathNullifier"
+          },
+          {
+            "in": "header",
+            "name": "Signature",
+            "description": "Signature of the request",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
           }
         ],
         "requestBody": {
@@ -223,7 +233,7 @@
                 ],
                 "properties": {
                   "data": {
-                    "$ref": "#/components/schemas/JoinProgram"
+                    "$ref": "#/components/schemas/VerifyPassport"
                   }
                 }
               }
@@ -287,11 +297,21 @@
           "Points balance"
         ],
         "summary": "Verify passport",
-        "description": "Fulfill verify passport event if it is open\n",
+        "description": "Verify passport with ZKP, fulfilling the event.\nOne passport can't be verified twice.\n",
         "operationId": "verifyPassport",
         "parameters": [
           {
             "$ref": "#/components/parameters/pathNullifier"
+          },
+          {
+            "in": "header",
+            "name": "Signature",
+            "description": "Signature of the request",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
           }
         ],
         "requestBody": {
@@ -1592,14 +1612,25 @@
             "properties": {
               "attributes": {
                 "required": [
-                  "proof"
+                  "anonymous_id",
+                  "country"
                 ],
                 "type": "object",
                 "properties": {
+                  "anonymous_id": {
+                    "type": "string",
+                    "description": "Unique identifier of the passport.",
+                    "example": "2bd3a2532096fee10a45a40e444a11b4d00a707f3459376087747de05996fbf5"
+                  },
+                  "country": {
+                    "type": "string",
+                    "description": "ISO 3166-1 alpha-3 country code, must match the one provided in `proof`.\n",
+                    "example": "UKR"
+                  },
                   "proof": {
                     "type": "object",
                     "format": "types.ZKProof",
-                    "description": "Iden3 ZK passport verification proof."
+                    "description": "Query ZK passport verification proof.\nRequired for endpoint `/v2/balances/{nullifier}/verifypassport`.\n"
                   }
                 }
               }
@@ -1662,7 +1693,7 @@
                   "proof": {
                     "type": "object",
                     "format": "types.ZKProof",
-                    "description": "Iden3 ZK passport verification proof."
+                    "description": "Query ZK passport verification proof."
                   }
                 }
               }
