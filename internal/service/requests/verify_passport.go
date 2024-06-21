@@ -19,7 +19,8 @@ var (
 	nullifierRegexp = regexp.MustCompile("^0x[0-9a-fA-F]{64}$")
 	hex32bRegexp    = regexp.MustCompile("^[0-9a-f]{64}$")
 	// endpoint is hardcoded to reuse handlers.VerifyPassport
-	verifyPassportPathRegexp = regexp.MustCompile("^/v1/public/balances/0x[0-9a-fA-F]{64}/verifypassport$")
+	verifyPassportPathRegexp = regexp.MustCompile("^/integrations/rarime-points-svc/v1/public/balances/0x[0-9a-fA-F]{64}/verifypassport$")
+	joinProgramPathRegexp    = regexp.MustCompile("^/integrations/rarime-points-svc/v1/public/balances/0x[0-9a-fA-F]{64}/join_program$")
 )
 
 func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, err error) {
@@ -50,9 +51,11 @@ func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, er
 		"data/type": val.Validate(req.Data.Type,
 			val.Required,
 			val.In(resources.VERIFY_PASSPORT)),
-		"data/attributes/anonymous_id":      val.Validate(attr.AnonymousId, val.Required, val.Match(hex32bRegexp)),
-		"data/attributes/country":           val.Validate(attr.Country, val.Required, val.In(provingCountry)),
-		"data/attributes/proof":             val.Validate(attr.Proof, val.When(verifyPassportPathRegexp.MatchString(r.URL.Path), val.Required)),
+		"data/attributes/anonymous_id": val.Validate(attr.AnonymousId, val.Required, val.Match(hex32bRegexp)),
+		"data/attributes/country":      val.Validate(attr.Country, val.Required, val.In(provingCountry), is.CountryCode3),
+		"data/attributes/proof": val.Validate(attr.Proof,
+			val.When(verifyPassportPathRegexp.MatchString(r.URL.Path), val.Required),
+			val.When(joinProgramPathRegexp.MatchString(r.URL.Path), val.Nil)),
 		"data/attributes/proof/proof":       val.Validate(proof.Proof, val.When(attr.Proof != nil, val.Required)),
 		"data/attributes/proof/pub_signals": val.Validate(proof.PubSignals, val.When(attr.Proof != nil, val.Required, val.Length(22, 22))),
 	}.Filter()

@@ -7,10 +7,11 @@ import (
 )
 
 const (
-	ColAmount     = "amount"
-	ColLevel      = "level"
-	ColCountry    = "country"
-	ColIsPassport = "is_passport_proven"
+	ColAmount      = "amount"
+	ColLevel       = "level"
+	ColCountry     = "country"
+	ColIsPassport  = "is_passport_proven"
+	ColAnonymousID = "anonymous_id"
 )
 
 type Balance struct {
@@ -23,6 +24,7 @@ type Balance struct {
 	Level            int            `db:"level"`
 	Country          *string        `db:"country"`
 	IsPassportProven bool           `db:"is_passport_proven"`
+	AnonymousID      *string        `db:"anonymous_id"`
 }
 
 type BalancesQ interface {
@@ -45,6 +47,7 @@ type BalancesQ interface {
 
 	FilterByNullifier(...string) BalancesQ
 	FilterDisabled() BalancesQ
+	FilterByAnonymousID(id string) BalancesQ
 }
 
 type WithoutPassportEventBalance struct {

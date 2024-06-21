@@ -76,6 +76,7 @@ levels:
       withdrawal_allowed: true
 
 countries:
+  verification_key: "37bc75afc97f8bdcd21cda85ae7b2885b5f1205ae3d79942e56457230f1636a037cc7ebfe42998d66a3dd3446b9d29366271b4f2bd8e0d307db1d320b38fc02f"
   countries:
     - code: "UKR"
       reserve_limit: 100000

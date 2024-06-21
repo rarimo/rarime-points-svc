@@ -33,18 +33,25 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
+
 	log := Log(r).WithFields(map[string]any{
 		"balance.nullifier":    req.Data.ID,
 		"balance.anonymous_id": req.Data.Attributes.AnonymousId,
 		"balance.country":      req.Data.Attributes.Country,
 	})
 
-	gotSig := r.Header.Get("Signature")
-	wantSig := calculatePassportVerificationSignature(
-		CountriesConfig(r).VerificationKey,
-		req.Data.ID,
-		req.Data.Attributes.Country,
-		req.Data.Attributes.AnonymousId,
+	var (
+		country     = req.Data.Attributes.Country
+		anonymousID = req.Data.Attributes.AnonymousId
+		proof       = req.Data.Attributes.Proof
+
+		gotSig  = r.Header.Get("Signature")
+		wantSig = calculatePassportVerificationSignature(
+			CountriesConfig(r).VerificationKey,
+			req.Data.ID,
+			country,
+			anonymousID,
+		)
 	)
 
 	if gotSig != wantSig {
@@ -52,27 +59,51 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
-	if req.Data.Attributes.Proof == nil {
+	if proof == nil {
 		log.Debug("Proof is not provided: performing logic of joining program instead of full verification")
 	}
 
-	balance, errs := getAndVerifyBalanceEligibility(r, req.Data.ID, req.Data.Attributes.Proof)
+	balance, errs := getAndVerifyBalanceEligibility(r, req.Data.ID, proof)
 	if len(errs) > 0 {
 		ape.RenderErr(w, errs...)
 		return
 	}
 
+	byAnonymousID, err := BalancesQ(r).FilterByAnonymousID(anonymousID).Get()
+	if err != nil {
+		log.WithError(err).Error("Failed to get balance by anonymous ID")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+	if byAnonymousID != nil && byAnonymousID.Nullifier != balance.Nullifier {
+		log.Warn("Balance with the same anonymous ID already exists")
+		ape.RenderErr(w, problems.Conflict())
+		return
+	}
+
 	if balance.Country != nil {
 		if balance.IsPassportProven {
-			log.Debugf("Balance %s already verified", balance.Nullifier)
+			log.Warnf("Balance %s already verified", balance.Nullifier)
+			ape.RenderErr(w, problems.TooManyRequests())
+			return
+		}
+		if proof == nil {
+			log.Warnf("Balance %s tried to re-join program", balance.Nullifier)
 			ape.RenderErr(w, problems.TooManyRequests())
 			return
 		}
 
-		if *balance.Country != req.Data.Attributes.Country {
-			ape.RenderErr(w, problems.BadRequest(validation.Errors{
-				"country": fmt.Errorf("country mismatch: got %s, joined program with %s", req.Data.Attributes.Country, *balance.Country),
-			})...)
+		var balAID string
+		if balance.AnonymousID != nil {
+			balAID = *balance.AnonymousID
+		}
+
+		err = validation.Errors{
+			"data/attributes/country":      validation.Validate(*balance.Country, validation.Required, validation.In(country)),
+			"data/attributes/anonymous_id": validation.Validate(anonymousID, validation.Required, validation.In(balAID)),
+		}.Filter()
+		if err != nil {
+			ape.RenderErr(w, problems.BadRequest(err)...)
 			return
 		}
 
@@ -90,7 +121,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	err = EventsQ(r).Transaction(func() error {
-		return doPassportScanUpdates(r, *balance, req.Data.Attributes.Country, true)
+		return doPassportScanUpdates(r, *balance, country, anonymousID, proof != nil)
 	})
 	if err != nil {
 		log.WithError(err).Error("Failed to execute transaction")
@@ -195,8 +226,8 @@ func checkVerificationEligibility(r *http.Request, balance *data.Balance) (errs 
 // doPassportScanUpdates performs all the necessary updates when the passport
 // scan proof is provided. This logic is shared between verification and
 // withdrawal handlers.
-func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode string, proven bool) error {
-	country, err := updateBalanceCountry(r, balance, countryCode, proven)
+func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode, anonymousID string, proven bool) error {
+	country, err := updateBalanceCountry(r, balance, countryCode, anonymousID, proven)
 	if err != nil {
 		return fmt.Errorf("update balance country: %w", err)
 	}
@@ -247,7 +278,7 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode st
 	return nil
 }
 
-func updateBalanceCountry(r *http.Request, balance data.Balance, code string, proven bool) (*data.Country, error) {
+func updateBalanceCountry(r *http.Request, balance data.Balance, code, anonymousID string, proven bool) (*data.Country, error) {
 	country, err := getOrCreateCountry(CountriesQ(r), code)
 	if err != nil {
 		return nil, fmt.Errorf("get or create country: %w", err)
@@ -261,7 +292,10 @@ func updateBalanceCountry(r *http.Request, balance data.Balance, code string, pr
 		return nil, errors.New("countries mismatch")
 	}
 
-	toUpd := map[string]any{data.ColCountry: country.Code}
+	toUpd := map[string]any{
+		data.ColCountry:     country.Code,
+		data.ColAnonymousID: anonymousID,
+	}
 	if proven {
 		toUpd[data.ColIsPassport] = true
 	}

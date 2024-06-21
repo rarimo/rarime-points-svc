@@ -196,6 +196,10 @@ func (q *balances) FilterDisabled() data.BalancesQ {
 	return q.applyCondition(squirrel.NotEq{"referred_by": nil})
 }
 
+func (q *balances) FilterByAnonymousID(id string) data.BalancesQ {
+	return q.applyCondition(squirrel.Eq{"anonymous_id": id})
+}
+
 func (q *balances) applyCondition(cond squirrel.Sqlizer) data.BalancesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
