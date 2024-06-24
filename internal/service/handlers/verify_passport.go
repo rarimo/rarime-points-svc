@@ -98,9 +98,17 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			balAID = *balance.AnonymousID
 		}
 
+		proofCountry, err := requests.ExtractCountry(*proof)
+		if err != nil {
+			log.WithError(err).Error("failed to extract country")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+
 		err = validation.Errors{
-			"data/attributes/country":      validation.Validate(*balance.Country, validation.Required, validation.In(country)),
-			"data/attributes/anonymous_id": validation.Validate(anonymousID, validation.Required, validation.In(balAID)),
+			"data/attributes/country":                   validation.Validate(*balance.Country, validation.Required, validation.In(country)),
+			"data/attributes/anonymous_id":              validation.Validate(anonymousID, validation.Required, validation.In(balAID)),
+			"data/attributes/proof/pub_signals/country": validation.Validate(proofCountry, validation.Required, validation.In(*balance.Country)),
 		}.Filter()
 		if err != nil {
 			ape.RenderErr(w, problems.BadRequest(err)...)
