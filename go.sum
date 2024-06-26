@@ -2122,8 +2122,6 @@ github.com/rarimo/decentralized-auth-svc v0.0.0-20240522134350-2694eafa9509 h1:U
 github.com/rarimo/decentralized-auth-svc v0.0.0-20240522134350-2694eafa9509/go.mod h1:V9XSqZSBN/YmLdI6PW6GL2xNeJ94IXAnhcuvyQfVBL8=
 github.com/rarimo/saver-grpc-lib v1.0.0 h1:MGUVjYg7unmodYczVsLqlqZNkT4CIgKqdo6aQtL1qdE=
 github.com/rarimo/saver-grpc-lib v1.0.0/go.mod h1:DpugWK5B7Hi0bdC3MPe/9FD2zCxaRwsyykdwxtF1Zgg=
-github.com/rarimo/zkverifier-kit v0.2.2 h1:U2NrGQicGN/dNxYgEzbKO061ooCu2LTDoVL8cOLJdHw=
-github.com/rarimo/zkverifier-kit v0.2.2/go.mod h1:3YDg5dTkDRr4IdfaDHGYetopd6gS/2SuwSeseYTWwNw=
 github.com/rarimo/zkverifier-kit v1.0.0 h1:zMW85hyDP3Uk6p9Dk9U4TBzOf0Pry+RNlWpli1tUZ1Q=
 github.com/rarimo/zkverifier-kit v1.0.0/go.mod h1:3YDg5dTkDRr4IdfaDHGYetopd6gS/2SuwSeseYTWwNw=
 github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 h1:N/ElC8H3+5XpJzTSTfLsJV/mx9Q9g7kxmchpfZyxgzM=

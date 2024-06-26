@@ -1,0 +1,17 @@
+FROM golang:1.22-alpine3.20 as buildbase
+
+RUN apk add git build-base
+
+WORKDIR /go/src/github.com/rarimo/rarime-points-svc
+COPY . .
+COPY tests/mocked ./internal/service/handlers
+RUN GOOS=linux go build -o /usr/local/bin/rarime-points-svc /go/src/github.com/rarimo/rarime-points-svc
+
+
+FROM alpine:3.20
+
+COPY --from=buildbase /usr/local/bin/rarime-points-svc /usr/local/bin/rarime-points-svc
+COPY --from=buildbase /go/src/github.com/rarimo/rarime-points-svc/verification_key.json /verification_key.json
+RUN apk add --no-cache ca-certificates
+
+ENTRYPOINT ["rarime-points-svc"]

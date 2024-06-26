@@ -90,53 +90,11 @@ For services, we do use ***PostgresSQL*** database.
 You can [install it locally](https://www.postgresql.org/download/) or use [docker image](https://hub.docker.com/_/postgres/).
 
 ## Testing
-To run tests need to mock some logic in handlers/middleware:
-```go
-func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// claims, err := auth.ValidateJWT(r)
-			// if err != nil {
-			// 	log.WithError(err).Info("Got invalid auth or validation error")
-			// 	ape.RenderErr(w, problems.Unauthorized())
-			// 	return
-			// }
+In order to run the tests, you need to be in the project directory, have docker and docker compose installed. To start, you need to run the run_tests.sh script.
 
-			// if len(claims) == 0 {
-			// 	ape.RenderErr(w, problems.Unauthorized())
-			// 	return
-			// }
-
-			ctx := CtxUserClaims([]resources.Claim{{Nullifier: r.Header.Get("nullifier")}})(r.Context())
-			next.ServeHTTP(w, r.WithContext(ctx))
-		})
-	}
-}
-```
-and in handlers/verify_passport:
-```go
-	// proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
-    // err = Verifier(r).VerifyProof(*proof)
-    // if err != nil {
-    //	if errors.Is(err, identity.ErrContractCall) {
-    //		Log(r).WithError(err).Error("Failed to verify proof")
-    //		return nil, append(errs, problems.InternalError())
-    //	}
-    //	return nil, problems.BadRequest(err)
-    // }
-```
-and in handlers/withdraw(lines 49-58):
-```go
-	// validated in requests.NewWithdraw
-	// addr, _ := cosmos.AccAddressFromBech32(req.Data.Attributes.Address)
-	// never panics because of request validation
-	// proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
-
-	// err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr))
-	// if err != nil {
-	// 	ape.RenderErr(w, problems.BadRequest(err)...)
-	// 	return
-	// }
-```
-
-Run service with config-testing.yaml (you need to configure db url) and run tests.
+The script works as follows:
+1. If there is already an image rarime-points-svc:test - deletes it.
+2. Builds a new rarime-points-svc:test image (some logic mocked)
+3. Starts docker compose with test service and database.
+4. Runs tests
+5. Deletes created containers and everything related to them
