@@ -2,11 +2,14 @@ package main_test
 
 import (
 	"bytes"
+	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"net/url"
 	"os"
@@ -37,16 +40,16 @@ const (
 	defaultConfigFile     = "config-testing.yaml" // run service with this config for consistency with tests
 	defaultReferralsCount = 5
 
-	ukrCode = "5589842"
-	usaCode = "5591873"
-	gbrCode = "4670034"
-	deuCode = "4474197"
-	canCode = "4407630"
-	fraCode = "4608577"
-	indCode = "4804164"
-	mcoCode = "5063503"
-	belCode = "4343116"
-	mngCode = "5066311"
+	ukrCode = "UKR"
+	usaCode = "USA"
+	gbrCode = "GBR"
+	deuCode = "DEU"
+	canCode = "CAN"
+	fraCode = "FRA"
+	indCode = "IND"
+	mcoCode = "MCO"
+	belCode = "BEL"
+	mngCode = "MNG"
 
 	genesisBalance = "0x0000000000000000000000000000000000000000000000000000000000000000"
 	rarimoAddress  = "rarimo1h2077nfkksek386y8ks5m2wgd60wl3035n8gv0"
@@ -128,7 +131,7 @@ func getApiURL() (string, error) {
 		return "", fmt.Errorf("failed to figure out listener from service config: %w", err)
 	}
 
-	apiURL := fmt.Sprintf("http://%s/integrations/rarime-points-svc/v1/", cfg.Addr)
+	apiURL := fmt.Sprintf("http://localhost%s/integrations/rarime-points-svc/v1/", cfg.Addr)
 	return apiURL, nil
 }
 
@@ -181,7 +184,7 @@ func TestCreateBalance(t *testing.T) {
 	t.Run("NullifierUnauthorized", func(t *testing.T) {
 		n1, n2 := nextN(), nextN()
 		body := createBalanceBody(n1, genesisCode)
-		err := requestWithBody(balancesEndpoint, "POST", n2, body, nil)
+		err := requestWithBody(balancesEndpoint, "POST", n2, "", body, nil)
 		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		assert.Equal(t, "401", apiErr.Status)
@@ -242,22 +245,22 @@ func TestVerifyPassport(t *testing.T) {
 
 	countriesList := countriesResp.Data.Attributes.Countries
 
-	var ukr, can bool
+	var ukr, usa bool
 	// ensure the same behaviour whitelisted and banned countries
 	for _, c := range countriesList {
-		if c.Code == "UKR" {
+		if c.Code == ukrCode {
 			ukr = true
 			require.True(t, c.ReserveAllowed)
 			require.True(t, c.WithdrawalAllowed)
 			continue
 		}
-		if c.Code == "USA" {
-			can = true
+		if c.Code == usaCode {
+			usa = true
 			require.False(t, c.ReserveAllowed)
 			require.False(t, c.WithdrawalAllowed)
 		}
 	}
-	require.False(t, !ukr || !can)
+	require.False(t, !ukr || !usa)
 
 	// passport verification should lead to referral event appearance and claimed passport event
 	t.Run("VerifyPassport", func(t *testing.T) {
@@ -281,7 +284,7 @@ func TestVerifyPassport(t *testing.T) {
 		_, err = verifyPassport(n, "6974819")
 		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
-		assert.Equal(t, "500", apiErr.Status)
+		assert.Equal(t, "400", apiErr.Status)
 		getAndValidateBalance(t, n, false)
 	})
 }
@@ -820,9 +823,9 @@ func TestWithdrawals(t *testing.T) {
 
 func withdraw(nullifier, country string, amount int64) (resp resources.WithdrawalResponse, err error) {
 	proof := baseProof
-	proof.PubSignals[zk.Citizenship] = country
+	proof.PubSignals[zk.Citizenship] = code2dec(country)
 	body := withdrawBody(nullifier, proof, amount)
-	err = requestWithBody(balancesEndpoint+"/"+nullifier+"/withdrawals", "POST", nullifier, body, &resp)
+	err = requestWithBody(balancesEndpoint+"/"+nullifier+"/withdrawals", "POST", nullifier, "", body, &resp)
 	return
 
 }
@@ -845,7 +848,7 @@ func withdrawBody(nullifier string, proof zkptypes.ZKProof, amount int64) resour
 
 func claimEvent(id, nullifier string) (resp resources.EventResponse, err error) {
 	body := claimEventBody(id)
-	err = requestWithBody(eventsEndpoint+"/"+id, "PATCH", nullifier, body, &resp)
+	err = requestWithBody(eventsEndpoint+"/"+id, "PATCH", nullifier, "", body, &resp)
 	return
 }
 
@@ -863,7 +866,7 @@ func getEvents(nullifier string, types ...string) (resp resources.EventListRespo
 
 func createBalance(nullifier, code string) (resp resources.BalanceResponse, err error) {
 	body := createBalanceBody(nullifier, code)
-	err = requestWithBody(balancesEndpoint, "POST", nullifier, body, &resp)
+	err = requestWithBody(balancesEndpoint, "POST", nullifier, "", body, &resp)
 	return
 }
 
@@ -878,9 +881,9 @@ func getBalance(nullifier string) (resp resources.BalanceResponse, err error) {
 
 func verifyPassport(nullifier, country string) (resp resources.PassportEventStateResponse, err error) {
 	proof := baseProof
-	proof.PubSignals[zk.Citizenship] = country
-	body := verifyPassportBody(nullifier, proof)
-	err = requestWithBody(balancesEndpoint+"/"+nullifier+"/verifypassport", "POST", nullifier, body, &resp)
+	proof.PubSignals[zk.Citizenship] = code2dec(country)
+	body := verifyPassportBody(nullifier, country, nullifier[2:], &proof)
+	err = requestWithBody(balancesEndpoint+"/"+nullifier+"/verifypassport", "POST", nullifier, signature(globalCfg.Countries().VerificationKey, nullifier, country, nullifier[2:]), body, &resp)
 	return
 }
 
@@ -891,11 +894,11 @@ type editReferralsResponse struct {
 
 func editReferrals(nullifier string, count uint64) (resp editReferralsResponse, err error) {
 	req := requests.EditReferralsRequest{Nullifier: nullifier, Count: count}
-	err = requestWithBody("private/referrals", "POST", "", req, &resp)
+	err = requestWithBody("private/referrals", "POST", "", "", req, &resp)
 	return
 }
 
-func verifyPassportBody(nullifier string, proof zkptypes.ZKProof) resources.VerifyPassportRequest {
+func verifyPassportBody(nullifier, country, anonymousID string, proof *zkptypes.ZKProof) resources.VerifyPassportRequest {
 	return resources.VerifyPassportRequest{
 		Data: resources.VerifyPassport{
 			Key: resources.Key{
@@ -903,7 +906,9 @@ func verifyPassportBody(nullifier string, proof zkptypes.ZKProof) resources.Veri
 				Type: resources.VERIFY_PASSPORT,
 			},
 			Attributes: resources.VerifyPassportAttributes{
-				Proof: &proof,
+				AnonymousId: anonymousID,
+				Country:     country,
+				Proof:       proof,
 			},
 		},
 	}
@@ -932,7 +937,7 @@ func claimEventBody(id string) resources.Relation {
 	}
 }
 
-func requestWithBody(endpoint, method, user string, body, result any) error {
+func requestWithBody(endpoint, method, user, signature string, body, result any) error {
 	bodyJSON, err := json.Marshal(body)
 	if err != nil {
 		return fmt.Errorf("failed to marshal body: %w", err)
@@ -944,7 +949,7 @@ func requestWithBody(endpoint, method, user string, body, result any) error {
 		return fmt.Errorf("failed to create %s request: %w", method, err)
 	}
 
-	return doRequest(req, user, result)
+	return doRequest(req, user, signature, result)
 }
 
 func getRequest(endpoint string, query url.Values, user string, result any) error {
@@ -954,14 +959,18 @@ func getRequest(endpoint string, query url.Values, user string, result any) erro
 	}
 	req.URL.RawQuery = query.Encode()
 
-	return doRequest(req, user, result)
+	return doRequest(req, user, "", result)
 }
 
-func doRequest(req *http.Request, user string, result any) error {
+func doRequest(req *http.Request, user, signature string, result any) error {
 	reqLog := fmt.Sprintf("%s /%s?%s", req.Method, req.URL.Path, req.URL.Query().Encode())
 
 	if user != "" {
 		req.Header.Set("nullifier", user)
+	}
+
+	if signature != "" {
+		req.Header.Set("Signature", signature)
 	}
 
 	resp, err := (&http.Client{Timeout: requestTimeout}).Do(req)
@@ -998,4 +1007,35 @@ func doRequest(req *http.Request, user string, result any) error {
 func nextN() string {
 	currentNullifierIndex++
 	return nullifiers[currentNullifierIndex-1]
+}
+
+func signature(key []byte, nullifier, country, anonymousID string) string {
+	bNull, err := hex.DecodeString(nullifier[2:])
+	if err != nil {
+		panic(fmt.Errorf("nullifier was not properly validated as hex: %w", err))
+	}
+	bAID, err := hex.DecodeString(anonymousID)
+	if err != nil {
+		panic(fmt.Errorf("anonymousID was not properly validated as hex: %w", err))
+	}
+
+	h := hmac.New(sha256.New, key)
+	msg := append(bNull, []byte(country)...)
+	msg = append(msg, bAID...)
+	h.Write(msg)
+
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func code2dec(in string) (out string) {
+	return new(big.Int).SetBytes([]byte(in)).String()
+}
+
+func dec2code(in string) (out string) {
+	b, ok := new(big.Int).SetString(in, 10)
+	if !ok {
+		b = new(big.Int)
+	}
+
+	return string(b.Bytes())
 }
