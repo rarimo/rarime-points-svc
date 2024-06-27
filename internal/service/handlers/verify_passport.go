@@ -100,7 +100,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 
 		proofCountry, err := requests.ExtractCountry(*proof)
 		if err != nil {
-			log.WithError(err).Error("failed to extract country")
+			log.WithError(err).Error("failed to extract country while proof was successfully verified")
 			ape.RenderErr(w, problems.InternalError())
 			return
 		}
