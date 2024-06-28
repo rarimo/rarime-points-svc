@@ -264,7 +264,7 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 
 	countriesBalancesMap := make(map[string][]data.Balance, len(balances))
 	for _, balance := range balances {
-		if !balance.ReferredBy.Valid {
+		if !balance.ReferredBy.Valid || balance.Country == nil {
 			continue
 		}
 		// country can't be nil because of db query logic
