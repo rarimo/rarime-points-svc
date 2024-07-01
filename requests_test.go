@@ -903,7 +903,7 @@ func verifyPassportBody(nullifier string, proof zkptypes.ZKProof) resources.Veri
 				Type: resources.VERIFY_PASSPORT,
 			},
 			Attributes: resources.VerifyPassportAttributes{
-				Proof: proof,
+				Proof: &proof,
 			},
 		},
 	}
