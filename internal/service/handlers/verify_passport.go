@@ -93,9 +93,18 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var balAID string
-		if balance.AnonymousID != nil {
-			balAID = *balance.AnonymousID
+		if balance.AnonymousID != nil && *balance.AnonymousID != anonymousID {
+			log.Infof("Balance %s is updating anonymous ID", balance.Nullifier)
+			err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
+				data.ColAnonymousID: anonymousID,
+			})
+
+			if err != nil {
+				log.WithError(err).Error("Failed to update balance")
+				ape.RenderErr(w, problems.InternalError())
+				return
+			}
+			balance.AnonymousID = &anonymousID
 		}
 
 		proofCountry, err := requests.ExtractCountry(*proof)
@@ -107,7 +116,6 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 
 		err = validation.Errors{
 			"data/attributes/country":                   validation.Validate(*balance.Country, validation.Required, validation.In(country)),
-			"data/attributes/anonymous_id":              validation.Validate(anonymousID, validation.Required, validation.In(balAID)),
 			"data/attributes/proof/pub_signals/country": validation.Validate(proofCountry, validation.Required, validation.In(*balance.Country)),
 		}.Filter()
 		if err != nil {
