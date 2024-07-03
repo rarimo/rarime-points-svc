@@ -56,7 +56,7 @@ func (q *balances) Update(fields map[string]any) error {
 	return nil
 }
 
-// ApplyRankedPage is similar to the ApplyTo method for a page,
+// applyRankedPage is similar to the pgdb.OffsetParams.ApplyTo method,
 // but the sorting values are hardcoded because the fields must
 // be sorted in opposite directions
 func applyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) squirrel.SelectBuilder {
@@ -87,6 +87,7 @@ func applyRankedPage(page *pgdb.OffsetPageParams, sql squirrel.SelectBuilder) sq
 
 func (q *balances) Page(page *pgdb.OffsetPageParams) data.BalancesQ {
 	q.selector = applyRankedPage(page, q.selector)
+	q.rank = applyRankedPage(page, q.rank)
 	return q
 }
 
