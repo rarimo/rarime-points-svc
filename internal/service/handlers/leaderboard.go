@@ -24,16 +24,16 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	leadersCount, err := BalancesQ(r).FilterDisabled().Count()
-	if err != nil {
-		Log(r).WithError(err).Error("Failed to count balances")
-		ape.RenderErr(w, problems.InternalError())
-		return
-	}
-
 	resp := newLeaderboardResponse(leaders)
 	resp.Links = req.GetLinks(r)
 	if req.Count {
+		leadersCount, err := BalancesQ(r).FilterDisabled().Count()
+		if err != nil {
+			Log(r).WithError(err).Error("Failed to count balances")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+
 		_ = resp.PutMeta(struct {
 			EventsCount int64 `json:"events_count"`
 		}{leadersCount})
