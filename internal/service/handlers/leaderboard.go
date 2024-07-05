@@ -26,7 +26,7 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 
 	leadersCount, err := BalancesQ(r).FilterDisabled().Count()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to leaders count")
+		Log(r).WithError(err).Error("Failed to count balances")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
