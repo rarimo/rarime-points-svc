@@ -39,6 +39,8 @@ type BalancesQ interface {
 	GetWithRank(nullifier string) (*Balance, error)
 	SelectWithRank() ([]Balance, error)
 
+	Count() (int64, error)
+
 	// WithoutPassportEvent returns balances which already
 	// have scanned passport, but there no claimed events
 	// for this. Filters are not applied.
