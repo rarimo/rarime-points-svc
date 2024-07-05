@@ -17,6 +17,7 @@ type balances struct {
 	selector squirrel.SelectBuilder
 	updater  squirrel.UpdateBuilder
 	rank     squirrel.SelectBuilder
+	counter  squirrel.SelectBuilder
 }
 
 func NewBalances(db *pgdb.DB) data.BalancesQ {
@@ -25,6 +26,7 @@ func NewBalances(db *pgdb.DB) data.BalancesQ {
 		selector: squirrel.Select("*").From(balancesTable),
 		updater:  squirrel.Update(balancesTable),
 		rank:     squirrel.Select("*, ROW_NUMBER() OVER (ORDER BY amount DESC, updated_at ASC) AS rank").From(balancesTable),
+		counter:  squirrel.Select("COUNT(*) as count").From(balancesTable),
 	}
 }
 
@@ -124,6 +126,18 @@ func (q *balances) Get() (*data.Balance, error) {
 	return &res, nil
 }
 
+func (q *balances) Count() (int64, error) {
+	res := struct {
+		Count int64 `db:"count"`
+	}{}
+
+	if err := q.db.Get(&res, q.counter); err != nil {
+		return 0, fmt.Errorf("get balance: %w", err)
+	}
+
+	return res.Count, nil
+}
+
 func (q *balances) GetWithRank(nullifier string) (*data.Balance, error) {
 	var res data.Balance
 	stmt := fmt.Sprintf(`
@@ -205,5 +219,6 @@ func (q *balances) applyCondition(cond squirrel.Sqlizer) data.BalancesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
 	q.rank = q.rank.Where(cond)
+	q.counter = q.counter.Where(cond)
 	return q
 }
