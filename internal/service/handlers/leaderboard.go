@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"net/http"
 
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -32,23 +31,21 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := newLeaderboardResponse(leaders, leadersCount)
+	resp := newLeaderboardResponse(leaders)
 	resp.Links = req.GetLinks(r)
+	if req.Count {
+		_ = resp.PutMeta(struct {
+			EventsCount int64 `json:"events_count"`
+		}{leadersCount})
+	}
 	ape.Render(w, resp)
 }
 
-func newLeaderboardResponse(balances []data.Balance, totalLeaders int64) resources.BalanceListResponse {
+func newLeaderboardResponse(balances []data.Balance) resources.BalanceListResponse {
 	list := make([]resources.Balance, len(balances))
 	for i, balance := range balances {
 		list[i] = newBalanceModel(balance)
 	}
 
-	// must never panic
-	serMeta, _ := json.Marshal(struct {
-		TotalCount int64 `json:"total_count"`
-	}{
-		TotalCount: totalLeaders,
-	})
-
-	return resources.BalanceListResponse{Data: list, Meta: serMeta}
+	return resources.BalanceListResponse{Data: list}
 }

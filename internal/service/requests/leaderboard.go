@@ -9,6 +9,7 @@ import (
 
 type Leaderboard struct {
 	page.OffsetParams
+	Count bool `url:"count"`
 }
 
 func NewLeaderboard(r *http.Request) (req Leaderboard, err error) {
