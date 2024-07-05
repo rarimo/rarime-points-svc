@@ -93,6 +93,16 @@
           },
           {
             "$ref": "#/components/parameters/pageOrder"
+          },
+          {
+            "in": "query",
+            "name": "count",
+            "description": "Count total number of users.",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "example": true
+            }
           }
         ],
         "responses": {
@@ -110,6 +120,19 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/Balance"
+                      }
+                    },
+                    "meta": {
+                      "type": "object",
+                      "required": [
+                        "total_count"
+                      ],
+                      "properties": {
+                        "total_count": {
+                          "type": "integer",
+                          "description": "Appears when `count=true` is specified",
+                          "example": 18
+                        }
                       }
                     }
                   }
