@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  rarime-points:
+    image: rarime-points-svc:test
+    restart: on-failure
+    depends_on:
+      - rarime-points-db
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./tests/config-testing-0.yaml:/config.yaml
+    environment:
+      - KV_VIPER_FILE=/config.yaml
+    entrypoint: sh -c "rarime-points-svc migrate up && rarime-points-svc run service"
+
+  rarime-points-db:
+    image: postgres:16-alpine3.20
+    restart: unless-stopped
+    ports:
+      - "5454:5432"
+    environment:
+      - POSTGRES_USER=points
+      - POSTGRES_PASSWORD=points
+      - POSTGRES_DB=points
+      - PGDATA=/pgdata
+    volumes:
+      - points-data:/pgdata
+
+volumes:
+  points-data:
