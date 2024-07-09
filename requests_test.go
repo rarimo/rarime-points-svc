@@ -803,8 +803,6 @@ func TestWithdrawals(t *testing.T) {
 		require.Equal(t, "400", apiErr.Status)
 	})
 
-	// TODO: Not enough level to do withdraw
-
 	t.Run("WithdrawNotAllowed", func(t *testing.T) {
 		n := nextN()
 		createAndValidateBalance(t, n, genesisCode)
@@ -815,6 +813,17 @@ func TestWithdrawals(t *testing.T) {
 		require.Equal(t, 1, len(respEvents.Data))
 		claimEventAndValidate(t, respEvents.Data[0].ID, n, 1)
 		_, err = withdraw(n, belCode, 4)
+		var apiErr *jsonapi.ErrorObject
+		require.ErrorAs(t, err, &apiErr)
+		require.Equal(t, "400", apiErr.Status)
+	})
+
+	t.Run("InsufficientLevelToWithdraw", func(t *testing.T) {
+		n := nextN()
+		createAndValidateBalance(t, n, genesisCode)
+		_, err := verifyPassport(n, ukrCode)
+		require.NoError(t, err)
+		_, err = withdraw(n, ukrCode, 10)
 		var apiErr *jsonapi.ErrorObject
 		require.ErrorAs(t, err, &apiErr)
 		require.Equal(t, "400", apiErr.Status)
