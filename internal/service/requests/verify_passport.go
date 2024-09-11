@@ -64,16 +64,19 @@ func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, er
 // ExtractCountry extracts country code from the proof, converting decimal UTF-8
 // code to ISO 3166-1 alpha-3 code.
 func ExtractCountry(proof zkptypes.ZKProof) (string, error) {
-	if len(proof.PubSignals) <= int(zk.Citizenship) {
+	if len(proof.PubSignals) <= zk.Indexes(zk.GlobalPassport)[zk.Citizenship] {
 		return "", val.Errors{"country_code": val.ErrLengthTooShort}.Filter()
 	}
 
-	b, ok := new(big.Int).SetString(proof.PubSignals[zk.Citizenship], 10)
+	getter := zk.PubSignalGetter{Signals: proof.PubSignals, ProofType: zk.GlobalPassport}
+	code := getter.Get(zk.Citizenship)
+
+	b, ok := new(big.Int).SetString(code, 10)
 	if !ok {
 		b = new(big.Int)
 	}
 
-	code := string(b.Bytes())
+	code = string(b.Bytes())
 
 	return code, val.Errors{"country_code": val.Validate(code, val.Required, is.CountryCode3)}.Filter()
 }
