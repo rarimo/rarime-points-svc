@@ -29,6 +29,11 @@ func Run(args []string) bool {
 		migrateCmd     = app.Command("migrate", "migrate command")
 		migrateUpCmd   = migrateCmd.Command("up", "migrate db up")
 		migrateDownCmd = migrateCmd.Command("down", "migrate db down")
+
+		eventCmd     = app.Command("events", "manage events")
+		eventEmitCmd = eventCmd.Command("emit", "emit event")
+
+		onboarderBefore = eventEmitCmd.Arg("before", "balance onboarded before this timestamp").Required().Int()
 	)
 
 	cmd, err := app.Parse(args[1:])
@@ -48,6 +53,8 @@ func Run(args []string) bool {
 		err = MigrateUp(cfg)
 	case migrateDownCmd.FullCommand():
 		err = MigrateDown(cfg)
+	case eventEmitCmd.FullCommand():
+		emitEvent(cfg, *onboarderBefore)
 	default:
 		log.Errorf("unknown command %s", cmd)
 		return false

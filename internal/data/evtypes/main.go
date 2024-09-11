@@ -27,6 +27,7 @@ const (
 	TypeBeReferred       = "be_referred"
 	TypeReferralSpecific = "referral_specific"
 	TypePassportScan     = "passport_scan"
+	TypeEarlyTest        = "early_test"
 )
 
 const (

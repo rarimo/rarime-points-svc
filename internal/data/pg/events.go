@@ -190,7 +190,7 @@ func (q *events) FilterByID(ids ...string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"id": ids})
 }
 
-func (q *events) FilterByNullifier(nullifier string) data.EventsQ {
+func (q *events) FilterByNullifier(nullifier ...string) data.EventsQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 

@@ -58,7 +58,7 @@ type EventsQ interface {
 	SelectAbsentTypes(allTypes ...string) ([]ReopenableEvent, error)
 
 	FilterByID(...string) EventsQ
-	FilterByNullifier(string) EventsQ
+	FilterByNullifier(...string) EventsQ
 	FilterByStatus(...EventStatus) EventsQ
 	FilterByType(...string) EventsQ
 	FilterByNotType(types ...string) EventsQ
