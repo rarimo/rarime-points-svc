@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"context"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"net/http"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
@@ -27,7 +28,7 @@ func AuthMiddleware(auth *auth.Client, log *logan.Entry) func(http.Handler) http
 			// 	return
 			// }
 
-			ctx := CtxUserClaims([]resources.Claim{{Nullifier: r.Header.Get("nullifier")}})(r.Context())
+			ctx := handlers.CtxUserClaims([]resources.Claim{{Nullifier: r.Header.Get("nullifier")}})(r.Context())
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -45,11 +46,11 @@ func DBCloneMiddleware(db *pgdb.DB) func(http.Handler) http.Handler {
 			ctx := r.Context()
 
 			extenders := []ctxExtender{
-				CtxEventsQ(pg.NewEvents(clone)),
-				CtxBalancesQ(pg.NewBalances(clone)),
-				CtxWithdrawalsQ(pg.NewWithdrawals(clone)),
-				CtxReferralsQ(pg.NewReferrals(clone)),
-				CtxCountriesQ(pg.NewCountries(clone)),
+				handlers.CtxEventsQ(pg.NewEvents(clone)),
+				handlers.CtxBalancesQ(pg.NewBalances(clone)),
+				handlers.CtxWithdrawalsQ(pg.NewWithdrawals(clone)),
+				handlers.CtxReferralsQ(pg.NewReferrals(clone)),
+				handlers.CtxCountriesQ(pg.NewCountries(clone)),
 			}
 
 			for _, extender := range extenders {

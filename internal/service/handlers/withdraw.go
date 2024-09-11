@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -53,7 +54,14 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 
 	err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr))
 	if err != nil {
-		ape.RenderErr(w, problems.BadRequest(err)...)
+		var vErr validation.Errors
+		if errors.As(err, &vErr) {
+			ape.RenderErr(w, problems.BadRequest(err)...)
+			return
+		}
+
+		Log(r).WithError(err).Error("Failed to verify proof")
+		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
@@ -127,7 +135,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 }
 
 func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.WithdrawalResponse {
-	wm := newWithdrawalModel(w)
+	wm := NewWithdrawalModel(w)
 	wm.Relationships = &resources.WithdrawalRelationships{
 		Balance: resources.Relation{
 			Data: &resources.Key{
@@ -138,7 +146,7 @@ func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.Wit
 	}
 
 	resp := resources.WithdrawalResponse{Data: wm}
-	bm := newBalanceModel(balance)
+	bm := NewBalanceModel(balance)
 	resp.Included.Add(&bm)
 
 	return &resp

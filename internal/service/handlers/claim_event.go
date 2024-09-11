@@ -206,7 +206,7 @@ func newClaimEventResponse(
 	}
 
 	resp := resources.EventResponse{Data: eventModel}
-	inc := newBalanceModel(balance)
+	inc := NewBalanceModel(balance)
 	resp.Included.Add(&inc)
 
 	return resp

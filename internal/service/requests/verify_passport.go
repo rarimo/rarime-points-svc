@@ -57,7 +57,7 @@ func NewVerifyPassport(r *http.Request) (req resources.VerifyPassportRequest, er
 			val.When(verifyPassportPathRegexp.MatchString(r.URL.Path), val.Required),
 			val.When(joinProgramPathRegexp.MatchString(r.URL.Path), val.Nil)),
 		"data/attributes/proof/proof":       val.Validate(proof.Proof, val.When(attr.Proof != nil, val.Required)),
-		"data/attributes/proof/pub_signals": val.Validate(proof.PubSignals, val.When(attr.Proof != nil, val.Required, val.Length(22, 22))),
+		"data/attributes/proof/pub_signals": val.Validate(proof.PubSignals, val.When(attr.Proof != nil, val.Required, val.Length(23, 23))),
 	}.Filter()
 }
 

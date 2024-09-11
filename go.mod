@@ -15,7 +15,7 @@ require (
 	github.com/iden3/go-rapidsnark/types v0.0.3
 	github.com/rarimo/decentralized-auth-svc v0.0.0-20240522134350-2694eafa9509
 	github.com/rarimo/saver-grpc-lib v1.0.0
-	github.com/rarimo/zkverifier-kit v1.0.0
+	github.com/rarimo/zkverifier-kit v1.2.4
 	github.com/rubenv/sql-migrate v1.6.1
 	github.com/stretchr/testify v1.9.0
 	gitlab.com/distributed_lab/ape v1.7.1

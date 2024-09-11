@@ -44,7 +44,7 @@ func Leaderboard(w http.ResponseWriter, r *http.Request) {
 func newLeaderboardResponse(balances []data.Balance) resources.BalanceListResponse {
 	list := make([]resources.Balance, len(balances))
 	for i, balance := range balances {
-		list[i] = newBalanceModel(balance)
+		list[i] = NewBalanceModel(balance)
 	}
 
 	return resources.BalanceListResponse{Data: list}

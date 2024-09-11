@@ -43,12 +43,12 @@ func ListWithdrawals(w http.ResponseWriter, r *http.Request) {
 func newWithdrawalsResponse(withdrawals []data.Withdrawal) resources.WithdrawalListResponse {
 	list := make([]resources.Withdrawal, len(withdrawals))
 	for i, w := range withdrawals {
-		list[i] = newWithdrawalModel(w)
+		list[i] = NewWithdrawalModel(w)
 	}
 	return resources.WithdrawalListResponse{Data: list}
 }
 
-func newWithdrawalModel(w data.Withdrawal) resources.Withdrawal {
+func NewWithdrawalModel(w data.Withdrawal) resources.Withdrawal {
 	return resources.Withdrawal{
 		Key: resources.Key{
 			ID:   w.ID,
