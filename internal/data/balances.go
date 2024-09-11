@@ -47,9 +47,11 @@ type BalancesQ interface {
 	WithoutPassportEvent() ([]WithoutPassportEventBalance, error)
 	WithoutReferralEvent() ([]ReferredReferrer, error)
 
+	FilterByCreatedAtBefore(timestamp int) BalancesQ
 	FilterByNullifier(...string) BalancesQ
 	FilterDisabled() BalancesQ
 	FilterByAnonymousID(id string) BalancesQ
+	FilterUnverified() BalancesQ
 }
 
 type WithoutPassportEventBalance struct {

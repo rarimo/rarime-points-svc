@@ -215,6 +215,14 @@ func (q *balances) FilterByAnonymousID(id string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"anonymous_id": id})
 }
 
+func (q *balances) FilterByCreatedAtBefore(timestamp int) data.BalancesQ {
+	return q.applyCondition(squirrel.LtOrEq{"created_at": timestamp})
+}
+
+func (q *balances) FilterUnverified() data.BalancesQ {
+	return q.applyCondition(squirrel.NotEq{"anonymous_id": nil})
+}
+
 func (q *balances) applyCondition(cond squirrel.Sqlizer) data.BalancesQ {
 	q.selector = q.selector.Where(cond)
 	q.updater = q.updater.Where(cond)
