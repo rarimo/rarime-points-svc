@@ -30,10 +30,11 @@ func (c *config) Verifier() *zk.Verifier {
 			panic(fmt.Errorf("failed to figure out verifier: %w", err))
 		}
 
-		v, err := zk.NewPassportVerifier(nil,
+		v, err := zk.NewVerifier(nil,
 			zk.WithVerificationKeyFile(cfg.VerificationKeyPath),
 			zk.WithAgeAbove(cfg.AllowedAge),
-			zk.WithIdentityVerifier(c.ProvideVerifier()),
+			zk.WithPassportRootVerifier(c.ProvideVerifier()),
+			zk.WithProofType(zk.GlobalPassport),
 			zk.WithProofSelectorValue(proofSelectorValue),
 			zk.WithEventID(proofEventIDValue),
 			zk.WithIdentitiesCounter(maxIdentityCount),

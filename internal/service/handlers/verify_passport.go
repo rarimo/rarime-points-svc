@@ -21,7 +21,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
-	"github.com/rarimo/zkverifier-kit/identity"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
@@ -207,11 +206,13 @@ func getAndVerifyBalanceEligibility(
 	proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
 	err = Verifier(r).VerifyProof(*proof)
 	if err != nil {
-		if errors.Is(err, identity.ErrContractCall) {
-			Log(r).WithError(err).Error("Failed to verify proof")
-			return nil, append(errs, problems.InternalError())
+		var vErr validation.Errors
+		if errors.As(err, &vErr) {
+			return nil, problems.BadRequest(err)
 		}
-		return nil, problems.BadRequest(err)
+
+		Log(r).WithError(err).Error("Failed to verify proof")
+		return nil, append(errs, problems.InternalError())
 	}
 
 	return balance, nil

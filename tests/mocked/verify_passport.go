@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"math"
 	"math/big"
 	"net/http"
@@ -28,12 +29,12 @@ import (
 func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 	req, err := requests.NewVerifyPassport(r)
 	if err != nil {
-		Log(r).WithError(err).Debug("Bad request")
+		handlers.Log(r).WithError(err).Debug("Bad request")
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
 
-	log := Log(r).WithFields(map[string]any{
+	log := handlers.Log(r).WithFields(map[string]any{
 		"balance.nullifier":    req.Data.ID,
 		"balance.anonymous_id": req.Data.Attributes.AnonymousId,
 		"balance.country":      req.Data.Attributes.Country,
@@ -46,7 +47,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 
 		gotSig  = r.Header.Get("Signature")
 		wantSig = calculatePassportVerificationSignature(
-			CountriesConfig(r).VerificationKey,
+			handlers.CountriesConfig(r).VerificationKey,
 			req.Data.ID,
 			country,
 			anonymousID,
@@ -68,7 +69,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	byAnonymousID, err := BalancesQ(r).FilterByAnonymousID(anonymousID).Get()
+	byAnonymousID, err := handlers.BalancesQ(r).FilterByAnonymousID(anonymousID).Get()
 	if err != nil {
 		log.WithError(err).Error("Failed to get balance by anonymous ID")
 		ape.RenderErr(w, problems.InternalError())
@@ -106,7 +107,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
+		err = handlers.BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(map[string]any{
 			data.ColIsPassport: true,
 		})
 		if err != nil {
@@ -119,7 +120,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = EventsQ(r).Transaction(func() error {
+	err = handlers.EventsQ(r).Transaction(func() error {
 		return doPassportScanUpdates(r, *balance, country, anonymousID, proof != nil)
 	})
 	if err != nil {
@@ -128,7 +129,7 @@ func VerifyPassport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
+	event, err := handlers.EventsQ(r).FilterByNullifier(balance.Nullifier).
 		FilterByType(evtypes.TypePassportScan).
 		FilterByStatus(data.EventClaimed).Get()
 	if err != nil {
@@ -175,13 +176,13 @@ func getAndVerifyBalanceEligibility(
 	proof *zkptypes.ZKProof,
 ) (balance *data.Balance, errs []*jsonapi.ErrorObject) {
 
-	if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) {
+	if !auth.Authenticates(handlers.UserClaims(r), auth.UserGrant(nullifier)) {
 		return nil, append(errs, problems.Unauthorized())
 	}
 
-	balance, err := BalancesQ(r).FilterByNullifier(nullifier).Get()
+	balance, err := handlers.BalancesQ(r).FilterByNullifier(nullifier).Get()
 	if err != nil {
-		Log(r).WithError(err).Error("Failed to get balance by nullifier")
+		handlers.Log(r).WithError(err).Error("Failed to get balance by nullifier")
 		return nil, append(errs, problems.InternalError())
 	}
 
@@ -210,10 +211,10 @@ func getAndVerifyBalanceEligibility(
 func checkVerificationEligibility(r *http.Request, balance *data.Balance) (errs []*jsonapi.ErrorObject) {
 	switch {
 	case balance == nil:
-		Log(r).Debug("Balance absent")
+		handlers.Log(r).Debug("Balance absent")
 		return append(errs, problems.NotFound())
 	case !balance.ReferredBy.Valid:
-		Log(r).Debug("Balance inactive")
+		handlers.Log(r).Debug("Balance inactive")
 		return append(errs, problems.BadRequest(validation.Errors{
 			"referred_by": errors.New("user must be referred to withdraw"),
 		})...)
@@ -231,7 +232,7 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode, a
 		return fmt.Errorf("update balance country: %w", err)
 	}
 	if !country.ReserveAllowed || !country.WithdrawalAllowed || country.Reserved >= country.ReserveLimit {
-		Log(r).Infof("User %s scanned passport which country has restrictions: %+v", balance.Nullifier, country)
+		handlers.Log(r).Infof("User %s scanned passport which country has restrictions: %+v", balance.Nullifier, country)
 	}
 
 	// because for claim event must be country code
@@ -247,9 +248,9 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode, a
 	}
 
 	// Type not filtered as inactive because expired events can be claimed
-	evTypeRef := EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
+	evTypeRef := handlers.EventTypes(r).Get(evtypes.TypeReferralSpecific, evtypes.FilterInactive)
 	if evTypeRef == nil {
-		Log(r).Debug("Referral specific event type is inactive")
+		handlers.Log(r).Debug("Referral specific event type is inactive")
 		return nil
 	}
 
@@ -278,7 +279,7 @@ func doPassportScanUpdates(r *http.Request, balance data.Balance, countryCode, a
 }
 
 func updateBalanceCountry(r *http.Request, balance data.Balance, code, anonymousID string, proven bool) (*data.Country, error) {
-	country, err := getOrCreateCountry(CountriesQ(r), code)
+	country, err := getOrCreateCountry(handlers.CountriesQ(r), code)
 	if err != nil {
 		return nil, fmt.Errorf("get or create country: %w", err)
 	}
@@ -299,7 +300,7 @@ func updateBalanceCountry(r *http.Request, balance data.Balance, code, anonymous
 		toUpd[data.ColIsPassport] = true
 	}
 
-	err = BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(toUpd)
+	err = handlers.BalancesQ(r).FilterByNullifier(balance.Nullifier).Update(toUpd)
 	if err != nil {
 		return nil, fmt.Errorf("update balance country: %w", err)
 	}
@@ -308,13 +309,13 @@ func updateBalanceCountry(r *http.Request, balance data.Balance, code, anonymous
 }
 
 func fulfillOrClaimPassportScanEvent(r *http.Request, balance data.Balance, country data.Country) error {
-	evTypePassport := EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
+	evTypePassport := handlers.EventTypes(r).Get(evtypes.TypePassportScan, evtypes.FilterInactive)
 	if evTypePassport == nil {
-		Log(r).Debug("Passport scan event type is inactive")
+		handlers.Log(r).Debug("Passport scan event type is inactive")
 		return nil
 	}
 
-	event, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
+	event, err := handlers.EventsQ(r).FilterByNullifier(balance.Nullifier).
 		FilterByType(evtypes.TypePassportScan).
 		FilterByStatus(data.EventOpen).Get()
 	if err != nil {
@@ -326,7 +327,7 @@ func fulfillOrClaimPassportScanEvent(r *http.Request, balance data.Balance, coun
 	}
 
 	if !evTypePassport.AutoClaim || !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
-		_, err = EventsQ(r).
+		_, err = handlers.EventsQ(r).
 			FilterByID(event.ID).
 			Update(data.EventFulfilled, nil, nil)
 		if err != nil {
@@ -336,16 +337,16 @@ func fulfillOrClaimPassportScanEvent(r *http.Request, balance data.Balance, coun
 		return nil
 	}
 
-	_, err = EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &evTypePassport.Reward)
+	_, err = handlers.EventsQ(r).FilterByID(event.ID).Update(data.EventClaimed, nil, &evTypePassport.Reward)
 	if err != nil {
 		return fmt.Errorf("update event status: %w", err)
 	}
 
-	err = DoClaimEventUpdates(
-		Levels(r),
-		ReferralsQ(r),
-		BalancesQ(r),
-		CountriesQ(r),
+	err = handlers.DoClaimEventUpdates(
+		handlers.Levels(r),
+		handlers.ReferralsQ(r),
+		handlers.BalancesQ(r),
+		handlers.CountriesQ(r),
 		balance,
 		evTypePassport.Reward)
 	if err != nil {
@@ -358,29 +359,29 @@ func fulfillOrClaimPassportScanEvent(r *http.Request, balance data.Balance, coun
 // evTypeRef must not be nil
 func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig, nullifier string) error {
 	if !evTypeRef.AutoClaim {
-		Log(r).Debugf("auto claim for referral specific disabled")
+		handlers.Log(r).Debugf("auto claim for referral specific disabled")
 		return nil
 	}
 
 	// balance can't be nil because of previous logic
-	balance, err := BalancesQ(r).FilterByNullifier(nullifier).FilterDisabled().Get()
+	balance, err := handlers.BalancesQ(r).FilterByNullifier(nullifier).FilterDisabled().Get()
 	if err != nil {
 		return fmt.Errorf("failed to get balance: %w", err)
 	}
 
 	// country can't be nill because of previous logic
-	country, err := CountriesQ(r).FilterByCodes(*balance.Country).Get()
+	country, err := handlers.CountriesQ(r).FilterByCodes(*balance.Country).Get()
 	if err != nil {
 		return fmt.Errorf("failed to get referrer country: %w", err)
 	}
 
 	// if user country have restrictions for claim points then not claim events and return
 	if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
-		Log(r).Debug("Country disallowed for reserve or limit was reached after passport scan")
+		handlers.Log(r).Debug("Country disallowed for reserve or limit was reached after passport scan")
 		return nil
 	}
 
-	events, err := EventsQ(r).
+	events, err := handlers.EventsQ(r).
 		FilterByNullifier(balance.Nullifier).
 		FilterByType(evtypes.TypeReferralSpecific).
 		FilterByStatus(data.EventFulfilled).
@@ -410,16 +411,16 @@ func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig
 		eventsToClaimed[i] = events[i].ID
 	}
 
-	_, err = EventsQ(r).FilterByID(eventsToClaimed...).Update(data.EventClaimed, nil, &evTypeRef.Reward)
+	_, err = handlers.EventsQ(r).FilterByID(eventsToClaimed...).Update(data.EventClaimed, nil, &evTypeRef.Reward)
 	if err != nil {
 		return fmt.Errorf("update event status: %w", err)
 	}
 
-	err = DoClaimEventUpdates(
-		Levels(r),
-		ReferralsQ(r),
-		BalancesQ(r),
-		CountriesQ(r),
+	err = handlers.DoClaimEventUpdates(
+		handlers.Levels(r),
+		handlers.ReferralsQ(r),
+		handlers.BalancesQ(r),
+		handlers.CountriesQ(r),
 		*balance,
 		countToClaim*evTypeRef.Reward)
 	if err != nil {
@@ -435,7 +436,7 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 	}
 
 	// ReferredBy always valid because of the previous logic
-	referral, err := ReferralsQ(r).Get(balance.ReferredBy.String)
+	referral, err := handlers.ReferralsQ(r).Get(balance.ReferredBy.String)
 	if err != nil {
 		return fmt.Errorf("get referral by ID: %w", err)
 	}
@@ -443,7 +444,7 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 		return fmt.Errorf("critical: referred_by not null, but row in referrals absent")
 	}
 
-	referrerBalance, err := BalancesQ(r).FilterByNullifier(referral.Nullifier).Get()
+	referrerBalance, err := handlers.BalancesQ(r).FilterByNullifier(referral.Nullifier).Get()
 	if err != nil {
 		return fmt.Errorf("failed to get referrer balance: %w", err)
 	}
@@ -452,15 +453,15 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 	}
 
 	if !referrerBalance.ReferredBy.Valid {
-		Log(r).Debug("Referrer is genesis balance")
+		handlers.Log(r).Debug("Referrer is genesis balance")
 		return nil
 	}
 
 	if !evTypeRef.AutoClaim || referrerBalance.Country == nil {
 		if referrerBalance.Country == nil {
-			Log(r).Debug("Referrer not scan passport yet! Add fulfilled events")
+			handlers.Log(r).Debug("Referrer not scan passport yet! Add fulfilled events")
 		}
-		err = EventsQ(r).Insert(data.Event{
+		err = handlers.EventsQ(r).Insert(data.Event{
 			Nullifier: referral.Nullifier,
 			Type:      evTypeRef.Name,
 			Status:    data.EventFulfilled,
@@ -473,7 +474,7 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 		return nil
 	}
 
-	country, err := CountriesQ(r).FilterByCodes(*referrerBalance.Country).Get()
+	country, err := handlers.CountriesQ(r).FilterByCodes(*referrerBalance.Country).Get()
 	if err != nil {
 		return fmt.Errorf("failed to get referrer country: %w", err)
 	}
@@ -482,9 +483,9 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 	}
 
 	if !country.ReserveAllowed || country.Reserved >= country.ReserveLimit {
-		Log(r).Debug("Referrer country have ReserveAllowed false or limit reached")
+		handlers.Log(r).Debug("Referrer country have ReserveAllowed false or limit reached")
 
-		err = EventsQ(r).Insert(data.Event{
+		err = handlers.EventsQ(r).Insert(data.Event{
 			Nullifier: referral.Nullifier,
 			Type:      evTypeRef.Name,
 			Status:    data.EventFulfilled,
@@ -497,7 +498,7 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 		return nil
 	}
 
-	err = EventsQ(r).Insert(data.Event{
+	err = handlers.EventsQ(r).Insert(data.Event{
 		Nullifier:    referral.Nullifier,
 		Type:         evTypeRef.Name,
 		Status:       data.EventClaimed,
@@ -508,11 +509,11 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 		return fmt.Errorf("failed to insert claimed event for referrer: %w", err)
 	}
 
-	err = DoClaimEventUpdates(
-		Levels(r),
-		ReferralsQ(r),
-		BalancesQ(r),
-		CountriesQ(r),
+	err = handlers.DoClaimEventUpdates(
+		handlers.Levels(r),
+		handlers.ReferralsQ(r),
+		handlers.BalancesQ(r),
+		handlers.CountriesQ(r),
 		*referrerBalance,
 		evTypeRef.Reward)
 	if err != nil {

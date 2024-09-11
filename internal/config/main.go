@@ -7,7 +7,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/sbtcheck"
 	"github.com/rarimo/saver-grpc-lib/broadcaster"
 	zk "github.com/rarimo/zkverifier-kit"
-	"github.com/rarimo/zkverifier-kit/identity"
+	"github.com/rarimo/zkverifier-kit/root"
 	"gitlab.com/distributed_lab/kit/comfig"
 	"gitlab.com/distributed_lab/kit/kv"
 	"gitlab.com/distributed_lab/kit/pgdb"
@@ -34,7 +34,7 @@ type config struct {
 	comfig.Listenerer
 	auth.Auther
 	broadcaster.Broadcasterer
-	identity.VerifierProvider
+	root.VerifierProvider
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 	countrier.Countrier
@@ -53,7 +53,7 @@ func New(getter kv.Getter) Config {
 		Logger:           comfig.NewLogger(getter, comfig.LoggerOpts{}),
 		Auther:           auth.NewAuther(getter), //nolint:misspell
 		Broadcasterer:    broadcaster.New(getter),
-		VerifierProvider: identity.NewVerifierProvider(getter),
+		VerifierProvider: root.NewVerifierProvider(getter, root.PoseidonSMT),
 		EventTypeser:     evtypes.NewConfig(getter),
 		SbtChecker:       sbtcheck.NewConfig(getter),
 		Countrier:        countrier.NewConfig(getter),

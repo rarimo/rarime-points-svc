@@ -3,6 +3,7 @@ package handlers
 
 import (
 	"fmt"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"net/http"
 
 	cosmos "github.com/cosmos/cosmos-sdk/types"
@@ -23,13 +24,13 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
 	}
-	log := Log(r).WithFields(map[string]any{
+	log := handlers.Log(r).WithFields(map[string]any{
 		"nullifier":     req.Data.ID,
 		"points_amount": req.Data.Attributes.Amount,
 		"dest_address":  req.Data.Attributes.Address,
 	})
 
-	if PointPrice(r).Disabled {
+	if handlers.PointPrice(r).Disabled {
 		log.Debug("Withdrawal is disabled")
 		ape.RenderErr(w, problems.Forbidden())
 		return
@@ -64,7 +65,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	country, err := getOrCreateCountry(CountriesQ(r), countryCode) // +1 query is not critical
+	country, err := getOrCreateCountry(handlers.CountriesQ(r), countryCode) // +1 query is not critical
 	if err != nil {
 		log.WithError(err).Error("Failed to get or create country")
 		ape.RenderErr(w, problems.InternalError())
@@ -78,22 +79,22 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var withdrawal *data.Withdrawal
-	err = EventsQ(r).Transaction(func() error {
-		err = BalancesQ(r).FilterByNullifier(nullifier).Update(map[string]any{
+	err = handlers.EventsQ(r).Transaction(func() error {
+		err = handlers.BalancesQ(r).FilterByNullifier(nullifier).Update(map[string]any{
 			data.ColAmount: pg.AddToValue(data.ColAmount, -req.Data.Attributes.Amount),
 		})
 		if err != nil {
 			return fmt.Errorf("decrease points amount: %w", err)
 		}
 
-		err = CountriesQ(r).FilterByCodes(*balance.Country).Update(map[string]any{
+		err = handlers.CountriesQ(r).FilterByCodes(*balance.Country).Update(map[string]any{
 			data.ColWithdrawn: pg.AddToValue(data.ColWithdrawn, req.Data.Attributes.Amount),
 		})
 		if err != nil {
 			return fmt.Errorf("increase country withdrawn: %w", err)
 		}
 
-		withdrawal, err = WithdrawalsQ(r).Insert(data.Withdrawal{
+		withdrawal, err = handlers.WithdrawalsQ(r).Insert(data.Withdrawal{
 			Nullifier: nullifier,
 			Amount:    req.Data.Attributes.Amount,
 			Address:   req.Data.Attributes.Address,
@@ -116,7 +117,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// balance should exist cause of previous logic
-	balance, err = BalancesQ(r).GetWithRank(nullifier)
+	balance, err = handlers.BalancesQ(r).GetWithRank(nullifier)
 	if err != nil {
 		log.WithError(err).Error("Failed to get balance by nullifier with rank")
 		ape.RenderErr(w, problems.InternalError())
@@ -127,7 +128,7 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 }
 
 func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.WithdrawalResponse {
-	wm := newWithdrawalModel(w)
+	wm := handlers.NewWithdrawalModel(w)
 	wm.Relationships = &resources.WithdrawalRelationships{
 		Balance: resources.Relation{
 			Data: &resources.Key{
@@ -138,7 +139,7 @@ func newWithdrawResponse(w data.Withdrawal, balance data.Balance) *resources.Wit
 	}
 
 	resp := resources.WithdrawalResponse{Data: wm}
-	bm := newBalanceModel(balance)
+	bm := handlers.NewBalanceModel(balance)
 	resp.Included.Add(&bm)
 
 	return &resp
@@ -164,7 +165,7 @@ func isEligibleToWithdraw(
 		return mapValidationErr("data/attributes/amount", "insufficient balance: %d", balance.Amount)
 	case !country.WithdrawalAllowed:
 		return mapValidationErr("country", "withdrawal is not allowed for country=%s", country.Code)
-	case !Levels(r)[balance.Level].WithdrawalAllowed:
+	case !handlers.Levels(r)[balance.Level].WithdrawalAllowed:
 		return mapValidationErr("level", "must up level to have withdraw ability")
 	case balance.Country != nil && *balance.Country != country.Code:
 		return mapValidationErr("country", "country mismatch in proof and balance: %s", *balance.Country)
@@ -174,14 +175,14 @@ func isEligibleToWithdraw(
 }
 
 func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
-	urmo := req.Data.Attributes.Amount * PointPrice(r).PointPriceURMO
+	urmo := req.Data.Attributes.Amount * handlers.PointPrice(r).PointPriceURMO
 	tx := &bank.MsgSend{
-		FromAddress: Broadcaster(r).Sender(),
+		FromAddress: handlers.Broadcaster(r).Sender(),
 		ToAddress:   req.Data.Attributes.Address,
 		Amount:      cosmos.NewCoins(cosmos.NewInt64Coin("urmo", urmo)),
 	}
 
-	err := Broadcaster(r).BroadcastTx(r.Context(), tx)
+	err := handlers.Broadcaster(r).BroadcastTx(r.Context(), tx)
 	if err != nil {
 		return fmt.Errorf("broadcast withdrawal tx: %w", err)
 	}

@@ -57,9 +57,9 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 	ape.Render(w, newBalanceResponse(*balance, referrals))
 }
 
-// newBalanceModel forms a balance response without referral fields, which must
+// NewBalanceModel forms a balance response without referral fields, which must
 // only be accessed with authorization.
-func newBalanceModel(balance data.Balance) resources.Balance {
+func NewBalanceModel(balance data.Balance) resources.Balance {
 	return resources.Balance{
 		Key: resources.Key{
 			ID:   balance.Nullifier,
@@ -76,7 +76,7 @@ func newBalanceModel(balance data.Balance) resources.Balance {
 }
 
 func newBalanceResponse(balance data.Balance, referrals []data.Referral) resources.BalanceResponse {
-	resp := resources.BalanceResponse{Data: newBalanceModel(balance)}
+	resp := resources.BalanceResponse{Data: NewBalanceModel(balance)}
 	boolP := func(b bool) *bool { return &b }
 
 	resp.Data.Attributes.IsDisabled = boolP(!balance.ReferredBy.Valid)
