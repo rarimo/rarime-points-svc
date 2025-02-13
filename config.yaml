@@ -97,3 +97,10 @@ root_verifier:
 
 withdrawal:
   point_price_urmo: 1000000
+
+broadcaster:
+  rpc: "https://eth.../your-api-key"
+  chain_id: 1
+  sender_private_key: "private-key" # store pk in ENV
+  erc20_contract: "0x..."
+  gas_multiplier: 2.0
