@@ -81,10 +81,6 @@ countries:
 auth:
   addr: http://rarime-auth
 
-broadcaster:
-  addr: broadcaster
-  sender_account: "rarimo15hcd6tv7pe8hk2re7hu0zg0aphqdm2dtjrs0ds"
-
 verifier:
   verification_key_path: "./verification_key.json"
   allowed_age: 18
