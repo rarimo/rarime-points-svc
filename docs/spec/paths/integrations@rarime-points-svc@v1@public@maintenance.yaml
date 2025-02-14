@@ -16,5 +16,3 @@ get:
             properties:
               data:
                 $ref: '#/components/schemas/Maintenance'
-    500:
-      $ref: '#/components/responses/internalError'
