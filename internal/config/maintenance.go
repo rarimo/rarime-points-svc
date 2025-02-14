@@ -12,7 +12,7 @@ type Maintenance struct {
 }
 
 func (c *config) Maintenance() Maintenance {
-	return c.pointPrice.Do(func() interface{} {
+	return c.maintenance.Do(func() interface{} {
 		var cfg Maintenance
 
 		err := figure.Out(&cfg).
