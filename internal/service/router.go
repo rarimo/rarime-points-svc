@@ -25,6 +25,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxLevels(cfg.Levels()),
 			handlers.CtxVerifier(cfg.Verifier()),
 			handlers.CtxCountriesConfig(cfg.Countries()),
+			handlers.CtxMaintenance(cfg.Maintenance()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)
@@ -51,6 +52,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			r.Get("/point_price", handlers.GetPointPrice)
 			r.Get("/countries_config", handlers.GetCountriesConfig)
 			r.Get("/event_types", handlers.ListEventTypes)
+			r.Get("/maintenance", handlers.MaintenanceHandler)
 		})
 		// must be accessible only within the cluster
 		r.Route("/private", func(r chi.Router) {

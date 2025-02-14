@@ -26,6 +26,7 @@ type Config interface {
 	Levels() Levels
 	Verifier() *zk.Verifier
 	PointPrice() PointsPrice
+	Maintenance() Maintenance
 }
 
 type config struct {

@@ -8,6 +8,9 @@ db:
 listener:
   addr: localhost:8000
 
+maintenance:
+  is_maintenance: false
+
 event_types:
   types:
     - name: free_weekly

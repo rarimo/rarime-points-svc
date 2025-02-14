@@ -1,0 +1,15 @@
+allOf:
+  - $ref: '#/components/schemas/MaintenanceKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        type: object
+        required:
+          - maintenance
+        properties:
+          maintenance:
+            type: bool
+            example: false
+            description: "true if the service is under maintenance and false otherwise."
