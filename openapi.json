@@ -903,6 +903,36 @@
         }
       }
     },
+    "/integrations/rarime-points-svc/v1/public/maintenance": {
+      "get": {
+        "tags": [
+          "Maintenance"
+        ],
+        "summary": "Get maintenance status",
+        "description": "Returns true if the service is under maintenance and false otherwise.",
+        "operationId": "getMaintenanceStatus",
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Maintenance"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/integrations/rarime-points-svc/v1/public/point_price": {
       "get": {
         "tags": [
@@ -1493,6 +1523,48 @@
             "type": "string",
             "enum": [
               "join_program"
+            ]
+          }
+        }
+      },
+      "Maintenance": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/MaintenanceKey"
+          },
+          {
+            "type": "object",
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "type": "object",
+                "required": [
+                  "maintenance"
+                ],
+                "properties": {
+                  "maintenance": {
+                    "type": "bool",
+                    "example": false,
+                    "description": "true if the service is under maintenance and false otherwise."
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "MaintenanceKey": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "maintenance"
             ]
           }
         }
