@@ -1,0 +1,18 @@
+get:
+  tags:
+    - Maintenance
+  summary: Get maintenance status
+  description: Returns true if the service is under maintenance and false otherwise.
+  operationId: getMaintenanceStatus
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/Maintenance'

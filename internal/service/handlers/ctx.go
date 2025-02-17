@@ -30,6 +30,7 @@ const (
 	verifierCtxKey
 	levelsCtxKey
 	countriesConfigCtxKey
+	maintenanceCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -160,4 +161,14 @@ func CtxCountriesConfig(config countrier.Config) func(context.Context) context.C
 
 func CountriesConfig(r *http.Request) countrier.Config {
 	return r.Context().Value(countriesConfigCtxKey).(countrier.Config)
+}
+
+func CtxMaintenance(maintenance config.Maintenance) func(context.Context) context.Context {
+	return func(ctx context.Context) context.Context {
+		return context.WithValue(ctx, maintenanceCtxKey, maintenance)
+	}
+}
+
+func MaintenanceConfig(r *http.Request) config.Maintenance {
+	return r.Context().Value(maintenanceCtxKey).(config.Maintenance)
 }

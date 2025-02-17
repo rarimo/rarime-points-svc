@@ -26,6 +26,7 @@ type Config interface {
 	Levels() Levels
 	Verifier() *zk.Verifier
 	PointPrice() PointsPrice
+	Maintenance() Maintenance
 }
 
 type config struct {
@@ -39,10 +40,12 @@ type config struct {
 	sbtcheck.SbtChecker
 	countrier.Countrier
 
-	levels     comfig.Once
-	verifier   comfig.Once
-	pointPrice comfig.Once
-	getter     kv.Getter
+	levels      comfig.Once
+	verifier    comfig.Once
+	pointPrice  comfig.Once
+	maintenance comfig.Once
+
+	getter kv.Getter
 }
 
 func New(getter kv.Getter) Config {
