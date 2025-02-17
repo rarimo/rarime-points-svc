@@ -1,8 +1,8 @@
 openapi: 3.0.0
 info:
-  version: 1.2.0
+  version: 1.3.2
   title: rarime-points-svc
   description: ''
 servers:
-  - url: 'https://api.stage.rarime.com'
-    description: TokenD Developer Environment
+  - url: 'https://api.orgs.app.stage.rarime.com/'
+    description: Rarime Developer Environment
