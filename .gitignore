@@ -5,3 +5,4 @@ docker-compose.yaml
 docs/node_modules
 docs/web_deploy
 vendor/
+.DS_Store
