@@ -3,14 +3,15 @@ package handlers
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 
-	cosmos "github.com/cosmos/cosmos-sdk/types"
-	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/ethereum/go-ethereum/common"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/google/jsonapi"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/service/broadcaster"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	zk "github.com/rarimo/zkverifier-kit"
@@ -48,11 +49,11 @@ func Withdraw(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// validated in requests.NewWithdraw
-	addr, _ := cosmos.AccAddressFromBech32(req.Data.Attributes.Address)
+	addr := common.HexToAddress(req.Data.Attributes.Address)
 	// never panics because of request validation
 	proof.PubSignals[zk.Nullifier] = mustHexToInt(nullifier)
 
-	err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr))
+	err = Verifier(r).VerifyProof(proof, zk.WithEventData(addr.Bytes()))
 	if err != nil {
 		var vErr validation.Errors
 		if errors.As(err, &vErr) {
@@ -182,16 +183,16 @@ func isEligibleToWithdraw(
 }
 
 func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
-	urmo := req.Data.Attributes.Amount * PointPrice(r).PointPriceURMO
-	tx := &bank.MsgSend{
-		FromAddress: Broadcaster(r).Sender(),
-		ToAddress:   req.Data.Attributes.Address,
-		Amount:      cosmos.NewCoins(cosmos.NewInt64Coin("urmo", urmo)),
+	b, err := broadcaster.New(Broadcaster(r), Log(r))
+	if err != nil {
+		return fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	err := Broadcaster(r).BroadcastTx(r.Context(), tx)
-	if err != nil {
-		return fmt.Errorf("broadcast withdrawal tx: %w", err)
+	toAddr := common.HexToAddress(req.Data.Attributes.Address)
+	amount := big.NewInt(req.Data.Attributes.Amount * PointPrice(r).PointPriceURMO)
+
+	if err := b.BroadcastTransfer(r.Context(), toAddr, amount); err != nil {
+		return fmt.Errorf("failed to broadcast ERC20 transfer: %w", err)
 	}
 
 	return nil

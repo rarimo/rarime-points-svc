@@ -9,7 +9,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/countrier"
-	"github.com/rarimo/saver-grpc-lib/broadcaster"
 	zk "github.com/rarimo/zkverifier-kit"
 	"gitlab.com/distributed_lab/logan/v3"
 )
@@ -113,14 +112,14 @@ func UserClaims(r *http.Request) []resources.Claim {
 	return r.Context().Value(userClaimsCtxKey).([]resources.Claim)
 }
 
-func CtxBroadcaster(broadcaster broadcaster.Broadcaster) func(context.Context) context.Context {
+func CtxBroadcaster(entry config.Broadcaster) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
-		return context.WithValue(ctx, broadcasterCtxKey, broadcaster)
+		return context.WithValue(ctx, broadcasterCtxKey, entry)
 	}
 }
 
-func Broadcaster(r *http.Request) broadcaster.Broadcaster {
-	return r.Context().Value(broadcasterCtxKey).(broadcaster.Broadcaster)
+func Broadcaster(r *http.Request) config.Broadcaster {
+	return r.Context().Value(broadcasterCtxKey).(config.Broadcaster)
 }
 
 func CtxPointPrice(price config.PointsPrice) func(context.Context) context.Context {

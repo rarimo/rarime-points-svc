@@ -3,11 +3,13 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
+	"math/big"
 	"net/http"
 
-	cosmos "github.com/cosmos/cosmos-sdk/types"
-	bank "github.com/cosmos/cosmos-sdk/x/bank/types"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/rarimo/rarime-points-svc/internal/service/broadcaster"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/google/jsonapi"
 	"github.com/rarimo/rarime-points-svc/internal/data"
@@ -175,16 +177,16 @@ func isEligibleToWithdraw(
 }
 
 func broadcastWithdrawalTx(req resources.WithdrawRequest, r *http.Request) error {
-	urmo := req.Data.Attributes.Amount * handlers.PointPrice(r).PointPriceURMO
-	tx := &bank.MsgSend{
-		FromAddress: handlers.Broadcaster(r).Sender(),
-		ToAddress:   req.Data.Attributes.Address,
-		Amount:      cosmos.NewCoins(cosmos.NewInt64Coin("urmo", urmo)),
+	b, err := broadcaster.New(handlers.Broadcaster(r), handlers.Log(r))
+	if err != nil {
+		return fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	err := handlers.Broadcaster(r).BroadcastTx(r.Context(), tx)
-	if err != nil {
-		return fmt.Errorf("broadcast withdrawal tx: %w", err)
+	toAddr := common.HexToAddress(req.Data.Attributes.Address)
+	amount := big.NewInt(req.Data.Attributes.Amount * handlers.PointPrice(r).PointPriceURMO)
+
+	if err := b.BroadcastTransfer(r.Context(), toAddr, amount); err != nil {
+		return fmt.Errorf("failed to broadcast ERC20 transfer: %w", err)
 	}
 
 	return nil
