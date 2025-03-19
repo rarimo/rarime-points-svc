@@ -22,4 +22,5 @@ type ReferralsQ interface {
 	WithStatus() ReferralsQ
 	FilterByNullifier(string) ReferralsQ
 	FilterConsumed() ReferralsQ
+	FilterByID(nullifier string) ReferralsQ
 }

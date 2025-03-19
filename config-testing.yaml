@@ -141,3 +141,6 @@ root_verifier:
 
 withdrawal:
   point_price_urmo: 1000000 # 1 RMO
+
+exterminated_code:
+  code: ""

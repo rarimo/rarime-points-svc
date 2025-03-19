@@ -9,6 +9,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/countrier"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/expirywatch"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/nooneisforgotten"
+	"github.com/rarimo/rarime-points-svc/internal/service/workers/referrals"
 	"github.com/rarimo/rarime-points-svc/internal/service/workers/reopener"
 )
 
@@ -20,6 +21,7 @@ func runServices(ctx context.Context, cfg config.Config, wg *sync.WaitGroup) {
 		countrierSig        = make(chan struct{})
 		expiryWatchSig      = make(chan struct{})
 		noOneIsForgottenSig = make(chan struct{})
+		refCheckerSig       = make(chan struct{})
 	)
 
 	run := func(f func()) {
@@ -32,6 +34,8 @@ func runServices(ctx context.Context, cfg config.Config, wg *sync.WaitGroup) {
 
 	// these services can safely run in parallel and don't have dependencies
 	run(func() { reopener.Run(ctx, cfg, reopenerSig) })
+	run(func() { referrals.Run(ctx, cfg, refCheckerSig) })
+
 	run(func() { expirywatch.Run(ctx, cfg, expiryWatchSig) })
 	run(func() { countrier.Run(cfg, countrierSig) })
 
@@ -44,6 +48,8 @@ func runServices(ctx context.Context, cfg config.Config, wg *sync.WaitGroup) {
 	// service depends on all the workers for good UX, except sbtcheck, as it has
 	// long catchup period and users are fine to wait
 	<-countrierSig
+	<-refCheckerSig
+
 	<-expiryWatchSig
 	<-noOneIsForgottenSig
 	run(func() { service.Run(ctx, cfg) })

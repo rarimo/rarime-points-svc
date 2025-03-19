@@ -157,6 +157,10 @@ func (q *referrals) WithStatus() data.ReferralsQ {
 	return q
 }
 
+func (q *referrals) FilterByID(code string) data.ReferralsQ {
+	return q.applyCondition(squirrel.Eq{fmt.Sprintf("%s.ID", referralsTable): code})
+}
+
 func (q *referrals) FilterByNullifier(nullifier string) data.ReferralsQ {
 	return q.applyCondition(squirrel.Eq{fmt.Sprintf("%s.nullifier", referralsTable): nullifier})
 }

@@ -3,7 +3,6 @@ package handlers
 
 import (
 	"fmt"
-	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"net/http"
 
 	cosmos "github.com/cosmos/cosmos-sdk/types"
@@ -12,6 +11,7 @@ import (
 	"github.com/google/jsonapi"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"

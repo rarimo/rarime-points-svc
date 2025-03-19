@@ -3,8 +3,9 @@ package handlers
 
 import (
 	"context"
-	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"net/http"
+
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 
 	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/decentralized-auth-svc/resources"
