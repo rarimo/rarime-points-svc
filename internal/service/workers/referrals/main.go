@@ -22,6 +22,7 @@ func Run(ctx context.Context, cfg config.Config, sig chan struct{}) {
 	worker := newWorker(cfg, workerName)
 	task := gocron.NewTask(worker.job)
 	jobType := gocron.CronJob(
+		// Cron entry that launches the worker every 7 days at 6 am
 		"0 6 */7 * *",
 		false,
 	)

@@ -7,21 +7,21 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-type ExterminatedCode struct {
+type ExpiredCode struct {
 	Code string `fig:"code"`
 }
 
-func (c *config) ExterminatedCode() ExterminatedCode {
-	return c.exterminatedCode.Do(func() interface{} {
-		var cfg ExterminatedCode
+func (c *config) ExpiredCode() ExpiredCode {
+	return c.expiredCode.Do(func() interface{} {
+		var cfg ExpiredCode
 
 		err := figure.Out(&cfg).
-			From(kv.MustGetStringMap(c.getter, "exterminated_code")).
+			From(kv.MustGetStringMap(c.getter, "expired_code")).
 			Please()
 		if err != nil {
-			panic(fmt.Errorf("failed to figure out exterminated_code: %w", err))
+			panic(fmt.Errorf("failed to figure out expired_code: %w", err))
 		}
 
 		return cfg
-	}).(ExterminatedCode)
+	}).(ExpiredCode)
 }

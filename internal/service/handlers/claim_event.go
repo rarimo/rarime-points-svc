@@ -180,7 +180,7 @@ func doLvlUpAndReferralsUpdate(levels config.Levels, referralsQ data.ReferralsQ,
 			return 0, fmt.Errorf("failed to get referral count: %w", err)
 		}
 
-		refToAdd := prepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
+		refToAdd := PrepareReferralsToAdd(balance.Nullifier, uint64(refsCount), count)
 		if err = referralsQ.New().Insert(refToAdd...); err != nil {
 			return 0, fmt.Errorf("failed to insert referrals: %w", err)
 		}

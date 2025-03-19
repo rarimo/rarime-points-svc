@@ -101,5 +101,5 @@ root_verifier:
 withdrawal:
   point_price_urmo: 1000000
 
-exterminated_code:
+expired_code:
   code: ""

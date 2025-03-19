@@ -27,7 +27,7 @@ type Config interface {
 	Verifier() *zk.Verifier
 	PointPrice() PointsPrice
 	Maintenance() Maintenance
-	ExterminatedCode() ExterminatedCode
+	ExpiredCode() ExpiredCode
 }
 
 type config struct {
@@ -41,11 +41,11 @@ type config struct {
 	sbtcheck.SbtChecker
 	countrier.Countrier
 
-	levels           comfig.Once
-	verifier         comfig.Once
-	pointPrice       comfig.Once
-	maintenance      comfig.Once
-	exterminatedCode comfig.Once
+	levels      comfig.Once
+	verifier    comfig.Once
+	pointPrice  comfig.Once
+	maintenance comfig.Once
+	expiredCode comfig.Once
 
 	getter kv.Getter
 }

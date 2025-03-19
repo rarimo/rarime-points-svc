@@ -6,6 +6,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/pg"
+	"github.com/rarimo/rarime-points-svc/internal/service/handlers"
 	"gitlab.com/distributed_lab/logan/v3"
 	"gitlab.com/distributed_lab/logan/v3/errors"
 )
@@ -15,12 +16,12 @@ type worker struct {
 	rq   data.ReferralsQ
 	bq   data.BalancesQ
 	log  *logan.Entry
-	exc  config.ExterminatedCode
+	exc  config.ExpiredCode
 }
 
 type referralPair struct {
-	Referred *data.Balance
-	Referrer *data.Referral
+	GuestBalance *data.Balance
+	Referral     *data.Referral
 }
 
 func newWorker(cfg config.Config, workerName string) *worker {
@@ -29,7 +30,7 @@ func newWorker(cfg config.Config, workerName string) *worker {
 		rq:   pg.NewReferrals(cfg.DB().Clone()),
 		bq:   pg.NewBalances(cfg.DB().Clone()),
 		log:  cfg.Log().WithField("who", workerName),
-		exc:  cfg.ExterminatedCode(),
+		exc:  cfg.ExpiredCode(),
 	}
 }
 
@@ -37,87 +38,93 @@ func (w *worker) job() error {
 	w.rq = w.rq.New().WithStatus()
 	w.bq = w.bq.New().FilterDisabled()
 
-	referralPairs, refToUsageLeftMap, err := w.findReferralPairs()
+	referralPairs, codesForDelete, err := w.findReferralPairs()
 	if err != nil {
-		w.log.WithFields(logan.F{
-			"error": err,
-		}).Errorf("failed select referral pairs")
+		w.log.WithError(err).Error("failed select referral pairs")
 		panic(err)
 	}
 	w.log.Infof("Find %d pairs", len(referralPairs))
-	w.updateReferreds(referralPairs)
-	w.updateUsageLeft(refToUsageLeftMap)
+	refCodesCountMap := w.updateReferredBys(referralPairs)
+	if err = w.rq.DeleteByID(codesForDelete...); err != nil {
+		w.log.WithError(err).Error("failed delete referrals")
+		panic(err)
+	}
+	w.insertNewReferralCodes(refCodesCountMap)
 
 	return nil
 }
 
-func (w *worker) findReferralPairs() (referralPairList []referralPair, refToUsageLeftMap map[string]int32, err error) {
-	refToUsageLeftMap = make(map[string]int32)
-
-	referredBalances, err := w.bq.Select()
+func (w *worker) findReferralPairs() (referralPairList []referralPair, codesForDelete []string, err error) {
+	guestBalances, err := w.bq.Select()
 	if err != nil {
-		return referralPairList, nil, errors.Wrap(err, "failed to select referred balances")
+		return referralPairList, nil, errors.Wrap(err, "failed to select guests balances")
 	}
 
-	for _, referred := range referredBalances {
-		if !referred.ReferredBy.Valid {
+	for _, balance := range guestBalances {
+		if !balance.ReferredBy.Valid {
 			continue
 		}
-		referee, err := w.rq.Get(referred.ReferredBy.String)
+		referral, err := w.rq.Get(balance.ReferredBy.String)
 		if err != nil {
 			w.log.WithFields(logan.F{
-				"error":              err,
-				"referred_by":        referred.ReferredBy.String,
-				"referred_nullifier": referred.Nullifier,
-			}).Errorf("failed get referrale by referred_by")
+				"error":           err,
+				"referred_by":     balance.ReferredBy.String,
+				"guest_nullifier": balance.Nullifier,
+			}).Error("failed get referrale by referred_by")
 			continue
 		}
-		if referee.Status == data.StatusConsumed && referred.CreatedAt <= int32(time.Now().AddDate(0, 0, -7).Unix()) {
+		if referral.Status == data.StatusConsumed && balance.CreatedAt <= int32(time.Now().AddDate(0, 0, -7).Unix()) {
 			referralPairList = append(referralPairList, referralPair{
-				Referred: &referred,
-				Referrer: referee,
+				GuestBalance: &balance,
+				Referral:     referral,
 			})
+			codesForDelete = append(codesForDelete, referral.ID)
 
-			usageLeft, ok := refToUsageLeftMap[referee.Nullifier]
-			if !ok {
-				usageLeft = referee.UsageLeft
-			}
-			refToUsageLeftMap[referee.Nullifier] = usageLeft + 1
 			w.log.WithFields(logan.F{
-				"code":               referred.ReferredBy.String,
-				"referred_nullifier": referred.Nullifier,
-				"referee_nullifier":  referee.Nullifier,
+				"code":               balance.ReferredBy.String,
+				"guest_nullifier":    balance.Nullifier,
+				"referral_nullifier": referral.Nullifier,
 			}).Info("new pair for change")
 		}
 	}
 
-	return referralPairList, refToUsageLeftMap, nil
+	return referralPairList, codesForDelete, nil
 }
 
-func (w *worker) updateReferreds(pairs []referralPair) {
+func (w *worker) updateReferredBys(pairs []referralPair) map[string]int {
+	refCodesCountMap := make(map[string]int)
 	for _, referralEntry := range pairs {
 		w.bq = w.bq.New()
-		if err := w.bq.FilterByNullifier(referralEntry.Referred.Nullifier).Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
+		if err := w.bq.FilterByNullifier(referralEntry.GuestBalance.Nullifier).Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
 			w.log.WithFields(logan.F{
 				"error":              err,
-				"referred_nullifier": referralEntry.Referred.Nullifier,
-				"referee_nullifier":  referralEntry.Referrer.Nullifier,
-				"new_code":           referralEntry.Referrer.ID,
-			}).Errorf("failed change referred_by")
+				"guest_nullifier":    referralEntry.GuestBalance.Nullifier,
+				"referral_nullifier": referralEntry.Referral.Nullifier,
+				"new_code":           referralEntry.Referral.ID,
+			}).Error("failed change referred_by")
 		}
+		refCodesCountMap[referralEntry.Referral.Nullifier] = refCodesCountMap[referralEntry.Referral.Nullifier] + 1
 	}
+	return refCodesCountMap
 }
 
-func (w *worker) updateUsageLeft(refMap map[string]int32) {
-	for nullifier, usageLeft := range refMap {
-		w.rq = w.rq.New()
-		_, err := w.rq.FilterByNullifier(nullifier).Update(int(usageLeft))
-		if err != nil {
+func (w *worker) insertNewReferralCodes(refCodesCountMap map[string]int) {
+	for nullifier, refsCount := range refCodesCountMap {
+		timeStamp := uint64(time.Now().Unix())
+		refToAdd := handlers.PrepareReferralsToAdd(nullifier, uint64(refsCount), timeStamp)
+		if err := w.rq.New().Insert(refToAdd...); err != nil {
 			w.log.WithFields(logan.F{
-				"error":      err,
-				"nullifier":  nullifier,
-				"usage_left": usageLeft,
-			}).Errorf("failed change usage left")
+				"error":     err,
+				"nullifier": nullifier,
+				"timestamp": timeStamp,
+			}).Error("failed to insert referrals")
+			continue
 		}
+
+		w.log.WithFields(logan.F{
+			"timestamp": timeStamp,
+			"nullifier": nullifier,
+			"count":     refsCount,
+		}).Info("create new referrals")
 	}
 }

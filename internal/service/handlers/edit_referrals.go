@@ -104,7 +104,7 @@ func EditReferrals(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func prepareReferralsToAdd(nullifier string, count, index uint64) []data.Referral {
+func PrepareReferralsToAdd(nullifier string, count, index uint64) []data.Referral {
 	refCodes := referralid.NewMany(nullifier, count, index)
 	refs := make([]data.Referral, len(refCodes))
 

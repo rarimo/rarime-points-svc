@@ -18,6 +18,7 @@ type referrals struct {
 	updater  squirrel.UpdateBuilder
 	consumer squirrel.UpdateBuilder
 	counter  squirrel.SelectBuilder
+	deleter  squirrel.DeleteBuilder
 }
 
 func NewReferrals(db *pgdb.DB) data.ReferralsQ {
@@ -27,6 +28,7 @@ func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 		updater:  squirrel.Update(referralsTable),
 		consumer: squirrel.Update(referralsTable).Set("usage_left", squirrel.Expr("usage_left - 1")),
 		counter:  squirrel.Select("COUNT(*) as count").From(referralsTable),
+		deleter:  squirrel.Delete(referralsTable),
 	}
 }
 
@@ -103,6 +105,14 @@ func (q *referrals) Select() ([]data.Referral, error) {
 	}
 
 	return res, nil
+}
+
+func (q *referrals) DeleteByID(ids ...string) error {
+	if err := q.db.Exec(q.deleter.Where(squirrel.Eq{"id": ids})); err != nil {
+		return fmt.Errorf("delete referrals: %w", err)
+	}
+
+	return nil
 }
 
 func (q *referrals) Get(id string) (*data.Referral, error) {
