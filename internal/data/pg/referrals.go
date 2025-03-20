@@ -115,6 +115,10 @@ func (q *referrals) DeleteByID(ids ...string) error {
 	return nil
 }
 
+func (q *referrals) Transaction(f func() error) error {
+	return q.db.Transaction(f)
+}
+
 func (q *referrals) Get(id string) (*data.Referral, error) {
 	var res data.Referral
 

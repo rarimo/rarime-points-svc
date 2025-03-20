@@ -38,26 +38,53 @@ func (w *worker) job() error {
 	w.rq = w.rq.New().WithStatus()
 	w.bq = w.bq.New().FilterDisabled()
 
-	referralPairs, codesForDelete, err := w.findReferralPairs()
+	referralPairs, err := w.findReferralPairs()
 	if err != nil {
 		w.log.WithError(err).Error("failed select referral pairs")
-		panic(err)
+		return errors.Wrap(err, "failed select referral pairs")
 	}
 	w.log.Infof("Find %d pairs", len(referralPairs))
-	refCodesCountMap := w.updateReferredBys(referralPairs)
+
+	refCodesMap := make(map[string][]string)
+	for _, referralEntry := range referralPairs {
+		if err := w.updateReferredBys(referralEntry.GuestBalance.Nullifier); err != nil {
+			w.log.WithFields(logan.F{
+				"error":              err,
+				"guest_nullifier":    referralEntry.GuestBalance.Nullifier,
+				"referral_nullifier": referralEntry.Referral.Nullifier,
+				"referred_by":        referralEntry.GuestBalance.ReferredBy.String,
+			}).Error("failed change referred_by")
+			continue
+		}
+		refCodesMap[referralEntry.Referral.Nullifier] = append(refCodesMap[referralEntry.Referral.Nullifier], referralEntry.GuestBalance.ReferredBy.String)
+	}
+
+	var codesForDelete []string
+	for nullifier, codes := range refCodesMap {
+		timeStamp, err := w.insertNewReferralCodes(nullifier, len(codes))
+		if err != nil {
+			w.log.WithFields(logan.F{
+				"error":     err,
+				"nullifier": nullifier,
+				"timestamp": timeStamp,
+			}).Error("failed to insert referrals")
+			continue
+		}
+		codesForDelete = append(codesForDelete, codes...)
+	}
+
 	if err = w.rq.DeleteByID(codesForDelete...); err != nil {
 		w.log.WithError(err).Error("failed delete referrals")
-		panic(err)
+		return errors.Wrap(err, "failed delete referrals")
 	}
-	w.insertNewReferralCodes(refCodesCountMap)
 
 	return nil
 }
 
-func (w *worker) findReferralPairs() (referralPairList []referralPair, codesForDelete []string, err error) {
+func (w *worker) findReferralPairs() (referralPairList []referralPair, err error) {
 	guestBalances, err := w.bq.Select()
 	if err != nil {
-		return referralPairList, nil, errors.Wrap(err, "failed to select guests balances")
+		return referralPairList, errors.Wrap(err, "failed to select guest balances")
 	}
 
 	for _, balance := range guestBalances {
@@ -73,12 +100,12 @@ func (w *worker) findReferralPairs() (referralPairList []referralPair, codesForD
 			}).Error("failed get referrale by referred_by")
 			continue
 		}
-		if referral.Status == data.StatusConsumed && balance.CreatedAt <= int32(time.Now().AddDate(0, 0, -7).Unix()) {
+
+		if referral.Status == data.StatusConsumed && balance.CreatedAt <= int32(time.Now().Add(-w.exc.CodeLifetime*time.Second).Unix()) {
 			referralPairList = append(referralPairList, referralPair{
 				GuestBalance: &balance,
 				Referral:     referral,
 			})
-			codesForDelete = append(codesForDelete, referral.ID)
 
 			w.log.WithFields(logan.F{
 				"code":               balance.ReferredBy.String,
@@ -88,43 +115,27 @@ func (w *worker) findReferralPairs() (referralPairList []referralPair, codesForD
 		}
 	}
 
-	return referralPairList, codesForDelete, nil
+	return referralPairList, nil
 }
 
-func (w *worker) updateReferredBys(pairs []referralPair) map[string]int {
-	refCodesCountMap := make(map[string]int)
-	for _, referralEntry := range pairs {
-		w.bq = w.bq.New()
-		if err := w.bq.FilterByNullifier(referralEntry.GuestBalance.Nullifier).Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
-			w.log.WithFields(logan.F{
-				"error":              err,
-				"guest_nullifier":    referralEntry.GuestBalance.Nullifier,
-				"referral_nullifier": referralEntry.Referral.Nullifier,
-				"new_code":           referralEntry.Referral.ID,
-			}).Error("failed change referred_by")
+func (w *worker) updateReferredBys(guestNullifier string) error {
+	return w.bq.Transaction(func() error {
+		if err := w.bq.New().FilterByNullifier(guestNullifier).Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
+			return err
 		}
-		refCodesCountMap[referralEntry.Referral.Nullifier] = refCodesCountMap[referralEntry.Referral.Nullifier] + 1
-	}
-	return refCodesCountMap
+
+		return nil
+	})
 }
 
-func (w *worker) insertNewReferralCodes(refCodesCountMap map[string]int) {
-	for nullifier, refsCount := range refCodesCountMap {
-		timeStamp := uint64(time.Now().Unix())
+func (w *worker) insertNewReferralCodes(nullifier string, refsCount int) (uint64, error) {
+	timeStamp := uint64(time.Now().Unix())
+	return timeStamp, w.rq.Transaction(func() error {
 		refToAdd := handlers.PrepareReferralsToAdd(nullifier, uint64(refsCount), timeStamp)
 		if err := w.rq.New().Insert(refToAdd...); err != nil {
-			w.log.WithFields(logan.F{
-				"error":     err,
-				"nullifier": nullifier,
-				"timestamp": timeStamp,
-			}).Error("failed to insert referrals")
-			continue
+			return errors.Wrap(err, "failed to insert referrals")
 		}
 
-		w.log.WithFields(logan.F{
-			"timestamp": timeStamp,
-			"nullifier": nullifier,
-			"count":     refsCount,
-		}).Info("create new referrals")
-	}
+		return nil
+	})
 }

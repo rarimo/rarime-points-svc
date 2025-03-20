@@ -58,6 +58,10 @@ func (q *balances) Update(fields map[string]any) error {
 	return nil
 }
 
+func (q *balances) Transaction(f func() error) error {
+	return q.db.Transaction(f)
+}
+
 // applyRankedPage is similar to the pgdb.OffsetParams.ApplyTo method,
 // but the sorting values are hardcoded because the fields must
 // be sorted in opposite directions

@@ -31,6 +31,7 @@ type BalancesQ interface {
 	New() BalancesQ
 	Insert(Balance) error
 	Update(map[string]any) error
+	Transaction(f func() error) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)

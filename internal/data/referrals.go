@@ -19,6 +19,7 @@ type ReferralsQ interface {
 
 	Update(usageLeft int) (*Referral, error)
 	DeleteByID(ids ...string) error
+	Transaction(f func() error) error
 
 	WithStatus() ReferralsQ
 	FilterByNullifier(string) ReferralsQ

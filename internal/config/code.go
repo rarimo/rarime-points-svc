@@ -2,13 +2,16 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"gitlab.com/distributed_lab/figure/v3"
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
 type ExpiredCode struct {
-	Code string `fig:"code"`
+	Code           string        `fig:"code"`
+	CodeLifetime   time.Duration `fig:"code_lifetime"`
+	WorkerDuration time.Duration `fig:"worker_duration"`
 }
 
 func (c *config) ExpiredCode() ExpiredCode {
