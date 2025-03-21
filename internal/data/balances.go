@@ -49,6 +49,7 @@ type BalancesQ interface {
 	WithoutReferralEvent() ([]ReferredReferrer, error)
 
 	FilterByCreatedAtBefore(timestamp int) BalancesQ
+	FilterByIsPassportProven(nullifier ...string) BalancesQ
 	FilterByNullifier(...string) BalancesQ
 	FilterDisabled() BalancesQ
 	FilterByAnonymousID(id string) BalancesQ

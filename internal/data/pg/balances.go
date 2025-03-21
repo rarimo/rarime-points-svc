@@ -211,6 +211,10 @@ func (q *balances) FilterByNullifier(nullifier ...string) data.BalancesQ {
 	return q.applyCondition(squirrel.Eq{"nullifier": nullifier})
 }
 
+func (q *balances) FilterByIsPassportProven(nullifier ...string) data.BalancesQ {
+	return q.applyCondition(squirrel.Eq{"is_passport_proven": false})
+}
+
 func (q *balances) FilterDisabled() data.BalancesQ {
 	return q.applyCondition(squirrel.NotEq{"referred_by": nil})
 }

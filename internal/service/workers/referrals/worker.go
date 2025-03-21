@@ -61,7 +61,7 @@ func (w *worker) job() error {
 
 func (w *worker) findReferralPairs() (referralPairList []referralPair, err error) {
 	w.rq = w.rq.New().WithStatus()
-	w.bq = w.bq.New().FilterDisabled()
+	w.bq = w.bq.New().FilterDisabled().FilterByIsPassportProven()
 
 	guestBalances, err := w.bq.Select()
 	if err != nil {
