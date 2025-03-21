@@ -94,14 +94,14 @@ func (w *worker) findReferralPairs() (referralPairList []referralPair, err error
 }
 
 func (w *worker) updateReferralPair(referralEntry referralPair) error {
-	w.rq = w.rq.New()
-	w.bq = w.bq.New()
+	w.rq = w.rq.New().FilterByNullifier(referralEntry.Referral.Nullifier)
+	w.bq = w.bq.New().FilterByNullifier(referralEntry.WithoutPassportScanBalance.Nullifier)
 	return w.bq.Transaction(func() error {
-		if err := w.bq.FilterByNullifier(referralEntry.WithoutPassportScanBalance.Nullifier).Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
+		if err := w.bq.Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
 			return errors.Wrap(err, "failed change referred_by")
 		}
 
-		count, err := w.rq.FilterByNullifier(referralEntry.Referral.Nullifier).Count()
+		count, err := w.rq.Count()
 		if err != nil {
 			return errors.Wrap(err, "failed to get referral count")
 		}
