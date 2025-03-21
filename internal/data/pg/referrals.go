@@ -152,13 +152,14 @@ func (q *referrals) WithStatus() data.ReferralsQ {
 
 		status = fmt.Sprintf(`CASE
 			WHEN usage_left > 0 THEN '%s'
+			WHEN usage_left = -1 THEN '%s'
 			WHEN rr.country IS NOT NULL AND NOT c.reserve_allowed AND NOT c.withdrawal_allowed THEN '%s'
 			WHEN rr.country IS NOT NULL AND (c.reserved >= c.reserve_limit OR NOT c.reserve_allowed) THEN '%s'
 			WHEN rr.country IS NULL AND re.country IS NOT NULL THEN '%s'
 			WHEN rr.country IS NOT NULL AND re.country IS NOT NULL THEN '%s'
 			ELSE '%s'
 		END AS status`,
-			data.StatusActive, data.StatusBanned, data.StatusLimited,
+			data.StatusActive, data.StatusExpired, data.StatusBanned, data.StatusLimited,
 			data.StatusAwaiting, data.StatusRewarded, data.StatusConsumed,
 		)
 	)
@@ -168,6 +169,16 @@ func (q *referrals) WithStatus() data.ReferralsQ {
 		JoinClause(joinReferee).
 		JoinClause(joinCountry)
 
+	return q
+}
+
+// WithoutExpiredStatus filters out referral codes that have an “expired” status.
+// The status “expired” is assigned to codes that have been used, but the party that used them did not complete the passport scanning procedure by the set time.
+// In this case, usage_left is set to -1, and new codes are generated to replace the expired ones.
+// This allows you to keep a history of all codes used by the user.
+// It can be used only after applying the WithStatus filter, since the statuses are defined in it.
+func (q *referrals) WithoutExpiredStatus() data.ReferralsQ {
+	q.selector = q.selector.Where(squirrel.NotEq{"usage_left": -1})
 	return q
 }
 

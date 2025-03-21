@@ -25,28 +25,26 @@ type referralPair struct {
 }
 
 func newWorker(cfg config.Config, workerName string) *worker {
+	db := cfg.DB().Clone()
 	return &worker{
 		name: workerName,
-		rq:   pg.NewReferrals(cfg.DB().Clone()),
-		bq:   pg.NewBalances(cfg.DB().Clone()),
+		rq:   pg.NewReferrals(db),
+		bq:   pg.NewBalances(db),
 		log:  cfg.Log().WithField("who", workerName),
 		exc:  cfg.ExpiredCode(),
 	}
 }
 
 func (w *worker) job() error {
-
 	referralPairs, err := w.findReferralPairs()
 	if err != nil {
 		w.log.WithError(err).Error("failed select referral pairs")
 		return errors.Wrap(err, "failed select referral pairs")
 	}
 	w.log.Infof("Find %d pairs", len(referralPairs))
-	timeStamp := uint64(time.Now().Unix())
 
 	for _, referralEntry := range referralPairs {
-		timeStamp += 1
-		if err := w.updateReferralPair(referralEntry, timeStamp); err != nil {
+		if err := w.updateReferralPair(referralEntry); err != nil {
 			w.log.WithFields(logan.F{
 				"error":                           err,
 				"without_passport_scan_nullifier": referralEntry.WithoutPassportScanBalance.Nullifier,
@@ -60,8 +58,8 @@ func (w *worker) job() error {
 }
 
 func (w *worker) findReferralPairs() (referralPairList []referralPair, err error) {
-	w.rq = w.rq.New().WithStatus()
-	w.bq = w.bq.New().FilterDisabled().FilterByIsPassportProven()
+	w.rq = w.rq.New().WithStatus().WithoutExpiredStatus()
+	w.bq = w.bq.New().FilterDisabled().FilterByIsPassportProven(false).FilterByCreatedAtBefore(int(time.Now().Add(-w.exc.CodeLifetime * time.Second).Unix()))
 
 	withoutPassportScanBalances, err := w.bq.Select()
 	if err != nil {
@@ -69,9 +67,6 @@ func (w *worker) findReferralPairs() (referralPairList []referralPair, err error
 	}
 
 	for _, balance := range withoutPassportScanBalances {
-		if !balance.ReferredBy.Valid {
-			continue
-		}
 		referral, err := w.rq.Get(balance.ReferredBy.String)
 		if err != nil {
 			w.log.WithFields(logan.F{
@@ -81,8 +76,7 @@ func (w *worker) findReferralPairs() (referralPairList []referralPair, err error
 			}).Error("failed get referrale by referred_by")
 			continue
 		}
-
-		if referral.Status == data.StatusConsumed && balance.CreatedAt <= int32(time.Now().Add(-w.exc.CodeLifetime*time.Second).Unix()) {
+		if referral != nil && referral.Status == data.StatusConsumed {
 			referralPairList = append(referralPairList, referralPair{
 				WithoutPassportScanBalance: &balance,
 				Referral:                   referral,
@@ -99,18 +93,26 @@ func (w *worker) findReferralPairs() (referralPairList []referralPair, err error
 	return referralPairList, nil
 }
 
-func (w *worker) updateReferralPair(referralEntry referralPair, timeStamp uint64) error {
-	if err := w.bq.New().FilterByNullifier(referralEntry.WithoutPassportScanBalance.Nullifier).Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
-		return errors.Wrap(err, "failed change referred_by")
-	}
-	return w.rq.Transaction(func() error {
-		refToAdd := handlers.PrepareReferralsToAdd(referralEntry.Referral.Nullifier, 1, timeStamp)
+func (w *worker) updateReferralPair(referralEntry referralPair) error {
+	w.rq = w.rq.New()
+	w.bq = w.bq.New()
+	return w.bq.Transaction(func() error {
+		if err := w.bq.FilterByNullifier(referralEntry.WithoutPassportScanBalance.Nullifier).Update(map[string]any{"referred_by": w.exc.Code}); err != nil {
+			return errors.Wrap(err, "failed change referred_by")
+		}
+
+		count, err := w.rq.FilterByNullifier(referralEntry.Referral.Nullifier).Count()
+		if err != nil {
+			return errors.Wrap(err, "failed to get referral count")
+		}
+
+		refToAdd := handlers.PrepareReferralsToAdd(referralEntry.Referral.Nullifier, 1, count)
 		if err := w.rq.Insert(refToAdd...); err != nil {
 			return errors.Wrap(err, "failed to insert referrals")
 		}
 
-		if err := w.rq.DeleteByID(referralEntry.Referral.ID); err != nil {
-			return errors.Wrap(err, "failed delete referrals")
+		if _, err := w.rq.FilterByID(referralEntry.Referral.ID).Update(-1); err != nil {
+			return errors.Wrap(err, "failed update referrals")
 		}
 
 		return nil
