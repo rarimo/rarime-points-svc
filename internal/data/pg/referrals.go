@@ -18,6 +18,7 @@ type referrals struct {
 	updater  squirrel.UpdateBuilder
 	consumer squirrel.UpdateBuilder
 	counter  squirrel.SelectBuilder
+	deleter  squirrel.DeleteBuilder
 }
 
 func NewReferrals(db *pgdb.DB) data.ReferralsQ {
@@ -27,6 +28,7 @@ func NewReferrals(db *pgdb.DB) data.ReferralsQ {
 		updater:  squirrel.Update(referralsTable),
 		consumer: squirrel.Update(referralsTable).Set("usage_left", squirrel.Expr("usage_left - 1")),
 		counter:  squirrel.Select("COUNT(*) as count").From(referralsTable),
+		deleter:  squirrel.Delete(referralsTable),
 	}
 }
 
@@ -105,6 +107,18 @@ func (q *referrals) Select() ([]data.Referral, error) {
 	return res, nil
 }
 
+func (q *referrals) DeleteByID(ids ...string) error {
+	if err := q.db.Exec(q.deleter.Where(squirrel.Eq{"id": ids})); err != nil {
+		return fmt.Errorf("delete referrals: %w", err)
+	}
+
+	return nil
+}
+
+func (q *referrals) Transaction(f func() error) error {
+	return q.db.Transaction(f)
+}
+
 func (q *referrals) Get(id string) (*data.Referral, error) {
 	var res data.Referral
 
@@ -138,13 +152,14 @@ func (q *referrals) WithStatus() data.ReferralsQ {
 
 		status = fmt.Sprintf(`CASE
 			WHEN usage_left > 0 THEN '%s'
+			WHEN usage_left = -1 THEN '%s'
 			WHEN rr.country IS NOT NULL AND NOT c.reserve_allowed AND NOT c.withdrawal_allowed THEN '%s'
 			WHEN rr.country IS NOT NULL AND (c.reserved >= c.reserve_limit OR NOT c.reserve_allowed) THEN '%s'
 			WHEN rr.country IS NULL AND re.country IS NOT NULL THEN '%s'
 			WHEN rr.country IS NOT NULL AND re.country IS NOT NULL THEN '%s'
 			ELSE '%s'
 		END AS status`,
-			data.StatusActive, data.StatusBanned, data.StatusLimited,
+			data.StatusActive, data.StatusExpired, data.StatusBanned, data.StatusLimited,
 			data.StatusAwaiting, data.StatusRewarded, data.StatusConsumed,
 		)
 	)
@@ -155,6 +170,20 @@ func (q *referrals) WithStatus() data.ReferralsQ {
 		JoinClause(joinCountry)
 
 	return q
+}
+
+// WithoutExpiredStatus filters out referral codes that have an “expired” status.
+// The status “expired” is assigned to codes that have been used, but the party that used them did not complete the passport scanning procedure by the set time.
+// In this case, usage_left is set to -1, and new codes are generated to replace the expired ones.
+// This allows you to keep a history of all codes used by the user.
+// It can be used only after applying the WithStatus filter, since the statuses are defined in it.
+func (q *referrals) WithoutExpiredStatus() data.ReferralsQ {
+	q.selector = q.selector.Where(squirrel.NotEq{"usage_left": -1})
+	return q
+}
+
+func (q *referrals) FilterByID(code string) data.ReferralsQ {
+	return q.applyCondition(squirrel.Eq{fmt.Sprintf("%s.ID", referralsTable): code})
 }
 
 func (q *referrals) FilterByNullifier(nullifier string) data.ReferralsQ {

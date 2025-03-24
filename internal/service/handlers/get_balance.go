@@ -43,9 +43,15 @@ func GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	var referrals []data.Referral
 	if req.ReferralCodes {
+		// WithoutExpiredStatus filters out referral codes that have an “expired” status.
+		// The status “expired” is assigned to codes that have been used, but the party that used them did not complete the passport scanning procedure by the set time.
+		// In this case, usage_left is set to -1, and new codes are generated to replace the expired ones.
+		// This allows you to keep a history of all codes used by the user.
+		// It can be used only after applying the WithStatus filter, since the statuses are defined in it.
 		referrals, err = ReferralsQ(r).
 			FilterByNullifier(req.Nullifier).
 			WithStatus().
+			WithoutExpiredStatus().
 			Select()
 		if err != nil {
 			Log(r).WithError(err).Error("Failed to get referrals by nullifier with rewarding field")

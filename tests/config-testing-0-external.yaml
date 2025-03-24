@@ -138,3 +138,8 @@ root_verifier:
 
 withdrawal:
   point_price_urmo: 1000000 # 1 RMO
+
+expired_code:
+  code: ""
+  code_lifetime: 168h
+  worker_duration: 168h

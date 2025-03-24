@@ -17,6 +17,10 @@ const (
 	StatusAwaiting = "awaiting"
 	StatusRewarded = "rewarded"
 	StatusConsumed = "consumed"
+	// The status “expired” is assigned to codes that have been used, but the party that used them did not complete the passport scanning procedure by the set time.
+	// In this case, usage_left is set to -1, and new codes are generated to replace the expired ones.
+	// This allows you to keep a history of all codes used by the user.
+	StatusExpired = "expired"
 )
 
 type CountriesQ interface {

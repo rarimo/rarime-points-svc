@@ -31,6 +31,7 @@ type BalancesQ interface {
 	New() BalancesQ
 	Insert(Balance) error
 	Update(map[string]any) error
+	Transaction(f func() error) error
 
 	Page(*pgdb.OffsetPageParams) BalancesQ
 	Select() ([]Balance, error)
@@ -48,6 +49,7 @@ type BalancesQ interface {
 	WithoutReferralEvent() ([]ReferredReferrer, error)
 
 	FilterByCreatedAtBefore(timestamp int) BalancesQ
+	FilterByIsPassportProven(isProven bool) BalancesQ
 	FilterByNullifier(...string) BalancesQ
 	FilterDisabled() BalancesQ
 	FilterByAnonymousID(id string) BalancesQ

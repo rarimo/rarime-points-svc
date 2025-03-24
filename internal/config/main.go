@@ -27,6 +27,7 @@ type Config interface {
 	Verifier() *zk.Verifier
 	PointPrice() PointsPrice
 	Maintenance() Maintenance
+	ExpiredCode() ExpiredCode
 }
 
 type config struct {
@@ -44,6 +45,7 @@ type config struct {
 	verifier    comfig.Once
 	pointPrice  comfig.Once
 	maintenance comfig.Once
+	expiredCode comfig.Once
 
 	getter kv.Getter
 }
