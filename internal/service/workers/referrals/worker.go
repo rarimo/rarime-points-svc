@@ -59,7 +59,7 @@ func (w *worker) job() error {
 
 func (w *worker) findReferralPairs() (referralPairList []referralPair, err error) {
 	w.rq = w.rq.New().WithStatus().WithoutExpiredStatus()
-	w.bq = w.bq.New().FilterDisabled().FilterByIsPassportProven(false).FilterByCreatedAtBefore(int(time.Now().Add(-w.exc.CodeLifetime * time.Second).Unix()))
+	w.bq = w.bq.New().FilterDisabled().FilterByIsPassportProven(false).FilterByCreatedAtBefore(int(time.Now().Add(-w.exc.CodeLifetime).Unix()))
 
 	withoutPassportScanBalances, err := w.bq.Select()
 	if err != nil {
@@ -111,6 +111,8 @@ func (w *worker) updateReferralPair(referralEntry referralPair) error {
 			return errors.Wrap(err, "failed to insert referrals")
 		}
 
+		// The status “expired” is assigned to codes that have been used, but the party that used them did not complete the passport scanning procedure by the set time.
+		// In this case, usage_left is set to -1.
 		if _, err := w.rq.FilterByID(referralEntry.Referral.ID).Update(-1); err != nil {
 			return errors.Wrap(err, "failed update referrals")
 		}

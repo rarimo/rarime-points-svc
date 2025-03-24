@@ -3,7 +3,6 @@ package referrals
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/go-co-op/gocron/v2"
 	"github.com/rarimo/rarime-points-svc/internal/config"
@@ -23,7 +22,7 @@ func Run(ctx context.Context, cfg config.Config, sig chan struct{}) {
 	worker := newWorker(cfg, workerName)
 	task := gocron.NewTask(worker.job)
 	jobType := gocron.DurationJob(
-		worker.exc.WorkerDuration * time.Second,
+		worker.exc.WorkerDuration,
 	)
 
 	_, err = s.NewJob(jobType, task)

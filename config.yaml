@@ -103,5 +103,5 @@ withdrawal:
 
 expired_code:
   code: ""
-  code_lifetime: 604800
-  worker_duration: 604800
+  code_lifetime: 168h
+  worker_duration: 168h
