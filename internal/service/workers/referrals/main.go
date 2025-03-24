@@ -33,10 +33,8 @@ func Run(ctx context.Context, cfg config.Config, sig chan struct{}) {
 
 	s.Start()
 
-	select {
-	case <-ctx.Done():
-		if err := s.Shutdown(); err != nil {
-			panic(fmt.Errorf("%v: failed to shutdown scheduler: %w", workerName, err))
-		}
+	<-ctx.Done()
+	if err := s.Shutdown(); err != nil {
+		panic(fmt.Errorf("%v: failed to shutdown scheduler: %w", workerName, err))
 	}
 }
