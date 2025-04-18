@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"net/http"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/rarimo/decentralized-auth-svc/pkg/auth"
 	"github.com/rarimo/rarime-points-svc/internal/config"
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
@@ -37,12 +40,12 @@ func FaceVerify(w http.ResponseWriter, r *http.Request) {
 		"proof":     proof,
 	})
 
-	// if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) ||
-	// 	new(big.Int).SetBytes(hexutil.MustDecode(nullifier)).String() != proof.PubSignals[FaceChallengedNullifier] {
-	// 	log.Debug("failed to authenticate user")
-	// 	ape.RenderErr(w, problems.Unauthorized())
-	// 	return
-	// }
+	if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) ||
+		new(big.Int).SetBytes(hexutil.MustDecode(nullifier)).String() != proof.PubSignals[FaceChallengedNullifier] {
+		log.Debug("failed to authenticate user")
+		ape.RenderErr(w, problems.Unauthorized())
+		return
+	}
 
 	balance, err := BalancesQ(r).FilterByNullifier(nullifier).Get()
 	if err != nil {
