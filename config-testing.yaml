@@ -150,3 +150,4 @@ expired_code:
 face_verifier:
   rpc: evm_rpc_url
   contract: ""
+  verification_key_path: "./verification_key.json"

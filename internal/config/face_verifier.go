@@ -20,8 +20,6 @@ import (
 	"gitlab.com/distributed_lab/kit/kv"
 )
 
-const faceVerificationKey = "./verification_key.json"
-
 var (
 	ErrInvalidRoot = errors.New("invalid root")
 )
@@ -47,8 +45,9 @@ type faceVerifier struct {
 }
 
 type FaceVerifier struct {
-	RPC              *ethclient.Client `fig:"rpc,required"`
-	FaceStateAddress common.Address    `fig:"contract,required"`
+	RPC                 *ethclient.Client `fig:"rpc,required"`
+	FaceStateAddress    common.Address    `fig:"contract,required"`
+	VerificationKeyPath string            `fig:"verification_key_path,required"`
 
 	verificationKey []byte
 }
@@ -66,7 +65,7 @@ func (c *faceVerifier) FaceVerifier() *FaceVerifier {
 			panic(fmt.Errorf("failed to figure out face verifier config: %w", err))
 		}
 
-		cfg.verificationKey, err = os.ReadFile(faceVerificationKey)
+		cfg.verificationKey, err = os.ReadFile(cfg.VerificationKeyPath)
 		if err != nil {
 			panic(fmt.Errorf("failed to read faceVerificationKey: %w", err))
 		}
