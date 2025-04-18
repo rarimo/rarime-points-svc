@@ -26,6 +26,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxVerifier(cfg.Verifier()),
 			handlers.CtxCountriesConfig(cfg.Countries()),
 			handlers.CtxMaintenance(cfg.Maintenance()),
+			handlers.CtxFaceVerifier(cfg.FaceVerifier()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)
@@ -34,6 +35,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			r.Route("/balances", func(r chi.Router) {
 				r.Use(handlers.AuthMiddleware(cfg.Auth(), cfg.Log()))
 				r.Post("/", handlers.CreateBalance)
+				r.Post("/verifyface", handlers.FaceVerify)
 				r.Route("/{nullifier}", func(r chi.Router) {
 					r.Get("/", handlers.GetBalance)
 					r.Post("/verifypassport", handlers.VerifyPassport)

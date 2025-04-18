@@ -1,0 +1,15 @@
+allOf:
+  - $ref: '#/components/schemas/FaceEventStateKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        required:
+          - claimed
+        type: object
+        properties:
+          claimed:
+            type: bool
+            example: true
+            description: If face scan event was automatically claimed

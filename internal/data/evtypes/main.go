@@ -22,12 +22,13 @@ const (
 )
 
 const (
-	TypeGetPoH           = "get_poh"
-	TypeFreeWeekly       = "free_weekly"
-	TypeBeReferred       = "be_referred"
-	TypeReferralSpecific = "referral_specific"
-	TypePassportScan     = "passport_scan"
-	TypeEarlyTest        = "early_test"
+	TypeGetPoH            = "get_poh"
+	TypeFreeWeekly        = "free_weekly"
+	TypeBeReferred        = "be_referred"
+	TypeReferralSpecific  = "referral_specific"
+	TypePassportScan      = "passport_scan"
+	TypeEarlyTest         = "early_test"
+	TypeFaceParticipation = "face_scan"
 )
 
 const (

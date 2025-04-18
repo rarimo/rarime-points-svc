@@ -146,3 +146,7 @@ expired_code:
   code: ""
   code_lifetime: 168h
   worker_duration: 168h
+
+face_verifier:
+  rpc: evm_rpc_url
+  contract: ""

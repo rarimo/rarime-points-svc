@@ -22,6 +22,7 @@ type Config interface {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 	countrier.Countrier
+	FaceVerifierer
 
 	Levels() Levels
 	Verifier() *zk.Verifier
@@ -40,6 +41,7 @@ type config struct {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 	countrier.Countrier
+	FaceVerifierer
 
 	levels      comfig.Once
 	verifier    comfig.Once
@@ -62,5 +64,6 @@ func New(getter kv.Getter) Config {
 		EventTypeser:     evtypes.NewConfig(getter),
 		SbtChecker:       sbtcheck.NewConfig(getter),
 		Countrier:        countrier.NewConfig(getter),
+		FaceVerifierer:   NewFaceVerifier(getter),
 	}
 }

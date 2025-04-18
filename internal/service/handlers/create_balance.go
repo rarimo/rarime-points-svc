@@ -118,7 +118,16 @@ func createBalanceWithEvents(nullifier, refBy string, events []data.Event, r *ht
 		Level:      0,
 	}
 
+	faceEventBalance := data.FaceEventBalance{
+		Nullifier: nullifier,
+	}
+
 	err := BalancesQ(r).Insert(balance)
+	if err != nil {
+		return fmt.Errorf("add balance: %w", err)
+	}
+
+	err = FaceEventBalancesQ(r).Insert(faceEventBalance)
 	if err != nil {
 		return fmt.Errorf("add balance: %w", err)
 	}
@@ -144,7 +153,16 @@ func createBalanceWithEventsAndReferrals(nullifier, refBy string, events []data.
 			Level:      0,
 		}
 
+		faceEventBalance := data.FaceEventBalance{
+			Nullifier: nullifier,
+		}
+
 		err := BalancesQ(r).Insert(balance)
+		if err != nil {
+			return fmt.Errorf("add balance: %w", err)
+		}
+
+		err = FaceEventBalancesQ(r).Insert(faceEventBalance)
 		if err != nil {
 			return fmt.Errorf("add balance: %w", err)
 		}

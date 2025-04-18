@@ -1,0 +1,51 @@
+post:
+  tags:
+    - Points balance
+  summary: Verify face
+  description: |
+    Verify face with ZKP, fulfilling the event.
+    One face can't be verified twice.
+  operationId: verifyFace
+  parameters:
+    - $ref: '#/components/parameters/pathNullifier'
+  requestBody:
+    required: true
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/VerifyFace'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/FaceEventStateKey'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    404:
+      description: Balance not exists.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    429:
+      description: Face already verified or event absent for user.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    500:
+      $ref: '#/components/responses/internalError'
