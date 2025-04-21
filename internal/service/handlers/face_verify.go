@@ -77,7 +77,7 @@ func FaceVerify(w http.ResponseWriter, r *http.Request) {
 		log.Debugf("No face event found for nullifier=%s", nullifier)
 
 		evNamesWithoutFaceEvent := EventTypes(r).Names(evtypes.FilterByNames(evtypes.TypeFaceParticipation))
-		events := EventTypes(r).PrepareEvents(nullifier, evtypes.FilterNotOpenable, evtypes.FilterByNames(evNamesWithoutFaceEvent...))
+		events := EventTypes(r).PrepareEvents(nullifier, evtypes.FilterByNames(evNamesWithoutFaceEvent...))
 
 		Log(r).Debugf("%d events will be added for nullifier=%s", len(events), nullifier)
 		if err = EventsQ(r).Insert(events...); err != nil {
