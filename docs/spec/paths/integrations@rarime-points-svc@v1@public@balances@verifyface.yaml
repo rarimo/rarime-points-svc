@@ -18,8 +18,17 @@ post:
             data:
               $ref: '#/components/schemas/VerifyFace'
   responses:
-    204:
-      description: No content
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/FaceEventStateKey'
     400:
       $ref: '#/components/responses/invalidParameter'
     401:
@@ -30,7 +39,7 @@ post:
         application/vnd.api+json:
           schema:
             $ref: '#/components/schemas/Errors'
-    429:
+    409:
       description: Face already verified or event absent for user.
       content:
         application/vnd.api+json:

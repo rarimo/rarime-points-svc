@@ -13,6 +13,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/internal/data"
 	"github.com/rarimo/rarime-points-svc/internal/data/evtypes"
 	"github.com/rarimo/rarime-points-svc/internal/service/requests"
+	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
 )
@@ -102,5 +103,22 @@ func FaceVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	event, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
+		FilterByType(evtypes.TypeFaceParticipation).
+		FilterByStatus(data.EventFulfilled).Get()
+	if err != nil {
+		log.WithError(err).Error("Failed to get fulfilled event")
+		ape.RenderErr(w, problems.InternalError())
+		return
+	}
+
+	ape.Render(w, resources.FaceEventState{
+		Key: resources.Key{
+			ID:   event.ID,
+			Type: resources.FACE_EVENT_STATE,
+		},
+		Attributes: resources.FaceEventStateAttributes{
+			Fulfilled: event.Status == data.EventFulfilled,
+		},
+	})
 }
