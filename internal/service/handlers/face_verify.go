@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -70,43 +69,8 @@ func FaceVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The event, if active, is opened for new users, so there must be at least one event.
-	// If the no_auto_open parameter is set to true, the event will be created during the verification request only for these users.
-	// If the no_auto_open parameter is false, then this event will be created for everyone and this logic will simply not work.
-	if len(faceUserEvents) == 0 {
-		log.Debugf("No face event found for nullifier=%s", nullifier)
-
-		evNamesWithoutFaceEvent := EventTypes(r).Names(evtypes.FilterByNames(evtypes.TypeFaceParticipation))
-		events := EventTypes(r).PrepareEvents(nullifier, evtypes.FilterByNames(evNamesWithoutFaceEvent...))
-
-		Log(r).Debugf("%d events will be added for nullifier=%s", len(events), nullifier)
-		if err = EventsQ(r).Insert(events...); err != nil {
-			Log(r).WithError(err).Error("Failed to create face event")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-
-		faceUserEvents, err = EventsQ(r).FilterByNullifier(nullifier).FilterByType(evtypes.TypeFaceParticipation).Select()
-		if err != nil {
-			log.WithError(err).Error("Failed to get user face events")
-			ape.RenderErr(w, problems.InternalError())
-			return
-		}
-	}
-
-	faceID := struct {
-		RootSMT string `json:"root_smt"`
-	}{}
-
-	err = json.Unmarshal(faceUserEvents[0].Meta, &faceID)
-	if err != nil {
-		log.WithError(err).Errorf("Failed to parse event meta with eventID=%s", faceUserEvents[0].ID)
-		ape.RenderErr(w, problems.InternalError())
-		return
-	}
-
-	if faceID.RootSMT == proof.PubSignals[RootSMT] {
-		log.Debugf("Face event already fulfilled")
+	if len(faceUserEvents) > 0 {
+		log.Debugf("User has already verified face")
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
@@ -125,13 +89,15 @@ func FaceVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, err = EventsQ(r).FilterByNullifier(nullifier).FilterByType(evtypes.TypeFaceParticipation).FilterByStatus(data.EventOpen).Update(
-		data.EventFulfilled,
-		json.RawMessage(fmt.Sprintf(`{"root_smt": "%s"}`, proof.PubSignals[RootSMT])),
-		nil,
-	)
-	if err != nil {
-		log.WithError(err).Error("Failed to insert poll event")
+	newEvent := data.Event{
+		Nullifier: nullifier,
+		Type:      evtypes.TypeFaceParticipation,
+		Status:    data.EventFulfilled,
+		Meta:      data.Jsonb(fmt.Sprintf(`{"root_smt": "%s"}`, proof.PubSignals[RootSMT])),
+	}
+
+	if err = EventsQ(r).Insert(newEvent); err != nil {
+		Log(r).WithError(err).Error("Failed to create face event")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
