@@ -32,7 +32,6 @@ const (
 	countriesConfigCtxKey
 	maintenanceCtxKey
 	faceVerifierCtxKey
-	faceEventBalancesCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -183,14 +182,4 @@ func CtxFaceVerifier(v *config.FaceVerifier) func(context.Context) context.Conte
 
 func FaceVerifier(r *http.Request) *config.FaceVerifier {
 	return r.Context().Value(faceVerifierCtxKey).(*config.FaceVerifier)
-}
-
-func CtxFaceEventBalancesQ(q data.FaceEventBalanceQ) func(context.Context) context.Context {
-	return func(ctx context.Context) context.Context {
-		return context.WithValue(ctx, faceEventBalancesCtxKey, q)
-	}
-}
-
-func FaceEventBalancesQ(r *http.Request) data.FaceEventBalanceQ {
-	return r.Context().Value(faceEventBalancesCtxKey).(data.FaceEventBalanceQ).New()
 }
