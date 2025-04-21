@@ -70,7 +70,9 @@ func FaceVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// The event, if it is active, opens up to new users, so there should be at least one.
+	// The event, if active, is opened for new users, so there must be at least one event.
+	// If the no_auto_open parameter is set to true, the event will be created during the verification request only for these users.
+	// If the no_auto_open parameter is false, then this event will be created for everyone and this logic will simply not work.
 	if len(faceUserEvents) == 0 {
 		log.Debugf("No face event found for nullifier=%s", nullifier)
 
