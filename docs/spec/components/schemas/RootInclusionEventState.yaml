@@ -1,0 +1,15 @@
+allOf:
+  - $ref: '#/components/schemas/RootInclusionEventStateKey'
+  - type: object
+    required:
+      - attributes
+    properties:
+      attributes:
+        required:
+          - fulfilled
+        type: object
+        properties:
+          fulfilled:
+            type: bool
+            example: true
+            description: If root inclusion event was fulfilled

@@ -1,0 +1,18 @@
+allOf:
+  - $ref: '#/components/schemas/RootInclusionVerifyKey'
+  - type: object
+    x-go-is-request: true
+    required:
+      - attributes
+    properties:
+      attributes:
+        required:
+          - proof
+        type: object
+        properties:
+          proof:
+            type: object
+            format: types.ZKProof
+            description: |
+              Query ZK root inclusion verification proof.
+              Required for endpoint `/v2/balances/root_verify`.

@@ -28,6 +28,7 @@ const (
 	TypeReferralSpecific = "referral_specific"
 	TypePassportScan     = "passport_scan"
 	TypeEarlyTest        = "early_test"
+	TypeRootInclusion    = "root_inclusion"
 )
 
 const (

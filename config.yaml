@@ -105,3 +105,8 @@ expired_code:
   code: ""
   code_lifetime: 168h
   worker_duration: 168h
+
+root_inclusion_verifier:
+  rpc: evm_rpc_url
+  contract: ""
+  verification_key_path: "./verification_key.json"
