@@ -10,4 +10,4 @@ properties:
     pattern: '^0x[0-9a-fA-F]{64}$'
   type:
     type: string
-    enum: [ root_inclusion_verify ]
+    enum: [ likeness_registry ]

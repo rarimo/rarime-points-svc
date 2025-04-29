@@ -1,5 +1,5 @@
 allOf:
-  - $ref: '#/components/schemas/RootInclusionEventStateKey'
+  - $ref: '#/components/schemas/LikenessRegistryEventStateKey'
   - type: object
     required:
       - attributes
@@ -12,4 +12,4 @@ allOf:
           fulfilled:
             type: bool
             example: true
-            description: If root inclusion event was fulfilled
+            description: If likeness registry event was fulfilled

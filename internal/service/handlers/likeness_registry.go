@@ -23,8 +23,8 @@ const (
 	RootChallengedNullifier
 )
 
-func RootInclusionVerify(w http.ResponseWriter, r *http.Request) {
-	req, err := requests.NewRootInclusionVerify(r)
+func LiklessRegistry(w http.ResponseWriter, r *http.Request) {
+	req, err := requests.NewLikenessRegistryVerify(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
@@ -56,29 +56,29 @@ func RootInclusionVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	evType := EventTypes(r).Get(evtypes.TypeRootInclusion, evtypes.FilterInactive)
+	evType := EventTypes(r).Get(evtypes.TypeLikenessRegistry, evtypes.FilterInactive)
 	if evType == nil {
-		log.Infof("Event root inclusion type is inactive")
+		log.Infof("Event likeness registry type is inactive")
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
-	userEventsRootInclusion, err := EventsQ(r).FilterByNullifier(nullifier).FilterByType(evtypes.TypeRootInclusion).Select()
+	userEventsRootInclusion, err := EventsQ(r).FilterByNullifier(nullifier).FilterByType(evtypes.TypeLikenessRegistry).Select()
 	if err != nil {
-		log.WithError(err).Error("Failed to get user root inclusion events")
+		log.WithError(err).Error("Failed to get user likeness registry events")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	if len(userEventsRootInclusion) > 0 {
-		log.Debugf("User has already verified root inclusion")
+		log.Debugf("User has already verified likeness in registry")
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
 
 	err = RootInclusionVerifier(r).VerifyProof(proof)
 	if err != nil {
-		log.WithError(err).Debug("Failed to verify root inclusion proof")
+		log.WithError(err).Debug("Failed to verify likeness proof")
 		if errors.Is(err, config.ErrInvalidRoot) {
 			ape.RenderErr(w, problems.BadRequest(validation.Errors{
 				"proof": err,
@@ -92,19 +92,19 @@ func RootInclusionVerify(w http.ResponseWriter, r *http.Request) {
 
 	newEvent := data.Event{
 		Nullifier: nullifier,
-		Type:      evtypes.TypeRootInclusion,
+		Type:      evtypes.TypeLikenessRegistry,
 		Status:    data.EventFulfilled,
 		Meta:      data.Jsonb(fmt.Sprintf(`{"root_smt": "%s"}`, proof.PubSignals[RootSMT])),
 	}
 
 	if err = EventsQ(r).Insert(newEvent); err != nil {
-		Log(r).WithError(err).Error("Failed to create root inclusion event")
+		Log(r).WithError(err).Error("Failed to create likeness event")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
 	event, err := EventsQ(r).FilterByNullifier(balance.Nullifier).
-		FilterByType(evtypes.TypeRootInclusion).
+		FilterByType(evtypes.TypeLikenessRegistry).
 		FilterByStatus(data.EventFulfilled).Get()
 	if err != nil {
 		log.WithError(err).Error("Failed to get fulfilled event")
@@ -112,12 +112,12 @@ func RootInclusionVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ape.Render(w, resources.RootInclusionEventState{
+	ape.Render(w, resources.LikenessRegistryEventState{
 		Key: resources.Key{
 			ID:   event.ID,
-			Type: resources.ROOT_INCLUSION_EVENT_STATE,
+			Type: resources.LIKENESS_REGISTRY_EVENT_STATE,
 		},
-		Attributes: resources.RootInclusionEventStateAttributes{
+		Attributes: resources.LikenessRegistryEventStateAttributes{
 			Fulfilled: event.Status == data.EventFulfilled,
 		},
 	})

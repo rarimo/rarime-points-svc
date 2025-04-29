@@ -1,5 +1,5 @@
 allOf:
-  - $ref: '#/components/schemas/RootInclusionVerifyKey'
+  - $ref: '#/components/schemas/LikenessRegistryKey'
   - type: object
     x-go-is-request: true
     required:
@@ -15,4 +15,4 @@ allOf:
             format: types.ZKProof
             description: |
               Query ZK root inclusion verification proof.
-              Required for endpoint `/v2/balances/root_verify`.
+              Required for endpoint `/v2/balances/likeness_registry`.

@@ -1,11 +1,11 @@
 post:
   tags:
     - Points balance
-  summary: Root inclusion verify 
+  summary: Likeness registry
   description: |
-    Verify root inclusion with ZKP, fulfilling the event.
-    One root inclusion can't be verified twice.
-  operationId: rootInclusionVerify
+    Verify likeness inclusion with ZKP, fulfilling the event.
+    One likeness can't be verified twice in registry.
+  operationId: likenessRegistryVerify
   requestBody:
     required: true
     content:
@@ -16,7 +16,7 @@ post:
             - data
           properties:
             data:
-              $ref: '#/components/schemas/RootInclusionVerify'
+              $ref: '#/components/schemas/LikenessRegistry'
   responses:
     200:
       description: Success
@@ -28,7 +28,7 @@ post:
               - data
             properties:
               data:
-                $ref: '#/components/schemas/RootInclusionEventState'
+                $ref: '#/components/schemas/LikenessRegistryEventState'
     400:
       $ref: '#/components/responses/invalidParameter'
     401:

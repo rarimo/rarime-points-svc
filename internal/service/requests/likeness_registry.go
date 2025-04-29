@@ -8,7 +8,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/resources"
 )
 
-func NewRootInclusionVerify(r *http.Request) (req resources.RootInclusionVerifyRequest, err error) {
+func NewLikenessRegistryVerify(r *http.Request) (req resources.LikenessRegistryRequest, err error) {
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		err = newDecodeError("body", err)
 		return
