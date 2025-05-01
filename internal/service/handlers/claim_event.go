@@ -154,7 +154,7 @@ func DoClaimEventUpdates(
 	countriesQ data.CountriesQ,
 	balance data.Balance,
 	reward int64,
-	ignoreCountryLimit ...bool) (err error) {
+	ignoreCountryLimit bool) (err error) {
 
 	level, err := doLvlUpAndReferralsUpdate(levels, referralsQ, balance, reward)
 	if err != nil {
@@ -169,13 +169,13 @@ func DoClaimEventUpdates(
 		return fmt.Errorf("update balance amount and level: %w", err)
 	}
 
-	if len(ignoreCountryLimit) > 0 && !ignoreCountryLimit[0] {
+	if !ignoreCountryLimit {
 		err = countriesQ.FilterByCodes(*balance.Country).Update(map[string]any{
 			data.ColReserved: pg.AddToValue(data.ColReserved, reward),
 		})
-	}
-	if err != nil {
-		return fmt.Errorf("increase country reserve: %w", err)
+		if err != nil {
+			return fmt.Errorf("increase country reserve: %w", err)
+		}
 	}
 
 	return nil

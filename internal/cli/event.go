@@ -78,7 +78,7 @@ func emitEvent(cfg config.Config, timestamp int) {
 				return fmt.Errorf("failed to update %s events for user=%s: %w", evtypes.TypeEarlyTest, balance.Nullifier, err)
 			}
 
-			err := handlers.DoClaimEventUpdates(lvls, referralsQ, balancesQ, countriesQ, balance, evType.Reward)
+			err := handlers.DoClaimEventUpdates(lvls, referralsQ, balancesQ, countriesQ, balance, evType.Reward, evType.IgnoreCountryLimit)
 			if err != nil {
 				return fmt.Errorf("failed to do lvlup and referrals updates: %w", err)
 			}

@@ -65,7 +65,6 @@ event_types:
       frequency: one-time
       short_description: Likeness registry event
       description: Likeness registry event 
-      auto_claim: false
       no_auto_open: true
       ignore_country_limit: true
 
