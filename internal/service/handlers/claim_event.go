@@ -62,21 +62,23 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	country, err := CountriesQ(r).FilterByCodes(*balance.Country).Get()
-	if err != nil || country == nil { // country must exist if no errors
-		Log(r).WithError(err).Error("Failed to get country by code")
-		ape.RenderErr(w, problems.InternalError())
-		return
-	}
-	if !country.ReserveAllowed {
-		Log(r).Infof("Reserve is not allowed for country=%s", *balance.Country)
-		ape.RenderErr(w, problems.Forbidden())
-		return
-	}
-	if country.Reserved >= country.ReserveLimit {
-		Log(r).Infof("Reserve limit is reached for country=%s", *balance.Country)
-		ape.RenderErr(w, problems.Forbidden())
-		return
+	if !evType.IgnoreCountryLimit {
+		country, err := CountriesQ(r).FilterByCodes(*balance.Country).Get()
+		if err != nil || country == nil { // country must exist if no errors
+			Log(r).WithError(err).Error("Failed to get country by code")
+			ape.RenderErr(w, problems.InternalError())
+			return
+		}
+		if !country.ReserveAllowed {
+			Log(r).Infof("Reserve is not allowed for country=%s", *balance.Country)
+			ape.RenderErr(w, problems.Forbidden())
+			return
+		}
+		if country.Reserved >= country.ReserveLimit {
+			Log(r).Infof("Reserve limit is reached for country=%s", *balance.Country)
+			ape.RenderErr(w, problems.Forbidden())
+			return
+		}
 	}
 
 	err = EventsQ(r).Transaction(func() error {
@@ -127,7 +129,8 @@ func claimEvent(r *http.Request, event *data.Event, balance *data.Balance) (clai
 		BalancesQ(r),
 		CountriesQ(r),
 		*balance,
-		evType.Reward)
+		evType.Reward,
+		evType.IgnoreCountryLimit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to do claim event updates: %w", err)
 	}
@@ -140,14 +143,18 @@ func claimEvent(r *http.Request, event *data.Event, balance *data.Balance) (clai
 // lvlup and update referrals count;
 // accruing points;
 //
-// Balance must be active and with verified passport
+// Balance must be active and with verified passport;
+//
+// ignoreCountryLimit determines whether to ignore checking and updating the country reserve.
+// If true, the country reserve is not checked and updated.
 func DoClaimEventUpdates(
 	levels config.Levels,
 	referralsQ data.ReferralsQ,
 	balancesQ data.BalancesQ,
 	countriesQ data.CountriesQ,
 	balance data.Balance,
-	reward int64) (err error) {
+	reward int64,
+	ignoreCountryLimit ...bool) (err error) {
 
 	level, err := doLvlUpAndReferralsUpdate(levels, referralsQ, balance, reward)
 	if err != nil {
@@ -162,9 +169,11 @@ func DoClaimEventUpdates(
 		return fmt.Errorf("update balance amount and level: %w", err)
 	}
 
-	err = countriesQ.FilterByCodes(*balance.Country).Update(map[string]any{
-		data.ColReserved: pg.AddToValue(data.ColReserved, reward),
-	})
+	if len(ignoreCountryLimit) > 0 && !ignoreCountryLimit[0] {
+		err = countriesQ.FilterByCodes(*balance.Country).Update(map[string]any{
+			data.ColReserved: pg.AddToValue(data.ColReserved, reward),
+		})
+	}
 	if err != nil {
 		return fmt.Errorf("increase country reserve: %w", err)
 	}
