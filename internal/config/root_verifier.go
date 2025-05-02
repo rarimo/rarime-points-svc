@@ -1,14 +1,12 @@
 package config
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math/big"
 	"os"
 
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	rootsmt "github.com/rarimo/rarime-points-svc/tests/mocked/root_smt"
+	"github.com/rarimo/rarime-points-svc/tests/mocked/faceregistry"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -21,13 +19,16 @@ import (
 )
 
 var (
-	ErrInvalidRoot = errors.New("invalid root")
+	ErrUserNotRegistered = errors.New("user not registered in the face registry")
 )
 
 const (
-	PubSignalNullifierTreeRoot = iota
-	PubSignalChallengedNullifier
+	PubSignalNullifier = iota
+	PubSignalEventID
+	PubSignalNonce
 )
+
+const likenessRegistryEventID = "00000000000000000000000000000000000000000000000000000000000000000000000000000"
 
 type RootInclusionVerifierer interface {
 	RootInclusionVerifier() *RootInclusionVerifier
@@ -45,9 +46,10 @@ type rootVerifier struct {
 }
 
 type RootInclusionVerifier struct {
-	RPC                 *ethclient.Client `fig:"rpc,required"`
-	RootSMTAddress      common.Address    `fig:"contract,required"`
-	VerificationKeyPath string            `fig:"verification_key_path,required"`
+	RPC                     *ethclient.Client `fig:"rpc,required"`
+	RootSMTAddress          common.Address    `fig:"contract,required"`
+	VerificationKeyPath     string            `fig:"verification_key_path,required"`
+	LikenessRegistryEventID string            `fig:"likeness_registry_event_id,required"`
 
 	verificationKey []byte
 }
@@ -55,7 +57,7 @@ type RootInclusionVerifier struct {
 func (c *rootVerifier) RootInclusionVerifier() *RootInclusionVerifier {
 	return c.once.Do(func() interface{} {
 
-		var cfg RootInclusionVerifier
+		cfg := RootInclusionVerifier{LikenessRegistryEventID: likenessRegistryEventID}
 
 		err := figure.Out(&cfg).
 			From(kv.MustGetStringMap(c.getter, "root_inclusion_verifier")).
@@ -75,30 +77,27 @@ func (c *rootVerifier) RootInclusionVerifier() *RootInclusionVerifier {
 }
 
 func (v *RootInclusionVerifier) VerifyProof(proof zkptypes.ZKProof) error {
-	root := decimalTo32Bytes(proof.PubSignals[PubSignalNullifierTreeRoot])
-	if root == [32]byte{} {
-		return ErrInvalidRoot
+	nullifier, ok := new(big.Int).SetString(proof.PubSignals[PubSignalNullifier], 10)
+	if !ok {
+		return fmt.Errorf("failed to convert nullifier to *big.Int")
 	}
 
-	rootSMTCaller, err := rootsmt.NewRootSMTFiltererMock(v.RootSMTAddress, v.RPC)
+	faceRegistryCaller, err := faceregistry.NewFaceRegistryCaller(v.RootSMTAddress, v.RPC)
 	if err != nil {
-		return fmt.Errorf("failed to create root inclusion smt caller: %w", err)
+		return fmt.Errorf("failed to create face registry caller: %w", err)
 	}
 
-	latestBlock, err := v.RPC.BlockNumber(context.TODO())
+	ok, err = faceRegistryCaller.IsUserRegistered(nil, nullifier)
 	if err != nil {
-		return fmt.Errorf("failed to get latest block: %w", err)
+		return fmt.Errorf("failed to check is user registered: %w", err)
+	}
+	if !ok {
+		return ErrUserNotRegistered
 	}
 
-	it, err := rootSMTCaller.FilterRootUpdated(&bind.FilterOpts{
-		Start: max(0, latestBlock-5000),
-	}, [][32]byte{root})
+	err = checkCmpBigIntFromStrings(proof.PubSignals[PubSignalEventID], v.LikenessRegistryEventID)
 	if err != nil {
-		return fmt.Errorf("failed to get root: %w", err)
-	}
-
-	if ok := it.Next(); !ok {
-		return ErrInvalidRoot
+		return fmt.Errorf("failed to check event id: %w", err)
 	}
 
 	if err = zkpverifier.VerifyGroth16(proof, v.verificationKey); err != nil {
@@ -108,14 +107,17 @@ func (v *RootInclusionVerifier) VerifyProof(proof zkptypes.ZKProof) error {
 	return nil
 }
 
-func decimalTo32Bytes(root string) [32]byte {
-	b, ok := new(big.Int).SetString(root, 10)
+func checkCmpBigIntFromStrings(a, b string) error {
+	aInt, ok := new(big.Int).SetString(a, 10)
 	if !ok {
-		return [32]byte{}
+		return fmt.Errorf("failed to convert %s to *big.Int", a)
 	}
-
-	var bytes [32]byte
-	b.FillBytes(bytes[:])
-
-	return bytes
+	bInt, ok := new(big.Int).SetString(b, 10)
+	if !ok {
+		return fmt.Errorf("failed to convert %s to *big.Int", b)
+	}
+	if aInt.Cmp(bInt) != 0 {
+		return fmt.Errorf("is not equal")
+	}
+	return nil
 }

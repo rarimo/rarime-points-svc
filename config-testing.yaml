@@ -158,4 +158,5 @@ expired_code:
 root_inclusion_verifier:
   rpc: evm_rpc_url
   contract: ""
-  verification_key_path: "./verification_key.json"
+  verification_key_path: "./likeness_verification_key.json"
+  likeness_registry_event_id: ""

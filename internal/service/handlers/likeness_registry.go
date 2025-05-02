@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"net/http"
 
@@ -16,11 +15,6 @@ import (
 	"github.com/rarimo/rarime-points-svc/resources"
 	"gitlab.com/distributed_lab/ape"
 	"gitlab.com/distributed_lab/ape/problems"
-)
-
-const (
-	RootSMT = iota
-	RootChallengedNullifier
 )
 
 func LiklessRegistry(w http.ResponseWriter, r *http.Request) {
@@ -39,7 +33,7 @@ func LiklessRegistry(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if !auth.Authenticates(UserClaims(r), auth.UserGrant(nullifier)) ||
-		new(big.Int).SetBytes(hexutil.MustDecode(nullifier)).String() != proof.PubSignals[RootChallengedNullifier] {
+		new(big.Int).SetBytes(hexutil.MustDecode(nullifier)).String() != proof.PubSignals[config.PubSignalNullifier] {
 		log.Debug("failed to authenticate user")
 		ape.RenderErr(w, problems.Unauthorized())
 		return
@@ -79,7 +73,7 @@ func LiklessRegistry(w http.ResponseWriter, r *http.Request) {
 	err = RootInclusionVerifier(r).VerifyProof(proof)
 	if err != nil {
 		log.WithError(err).Debug("Failed to verify likeness proof")
-		if errors.Is(err, config.ErrInvalidRoot) {
+		if errors.Is(err, config.ErrUserNotRegistered) {
 			ape.RenderErr(w, problems.BadRequest(validation.Errors{
 				"proof": err,
 			})...)
@@ -94,7 +88,6 @@ func LiklessRegistry(w http.ResponseWriter, r *http.Request) {
 		Nullifier: nullifier,
 		Type:      evtypes.TypeLikenessRegistry,
 		Status:    data.EventFulfilled,
-		Meta:      data.Jsonb(fmt.Sprintf(`{"root_smt": "%s"}`, proof.PubSignals[RootSMT])),
 	}
 
 	if err = EventsQ(r).Insert(newEvent); err != nil {
