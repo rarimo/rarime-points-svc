@@ -50,12 +50,6 @@ func FilterByNames(names ...string) func(EventConfig) bool {
 	}
 }
 
-func FilterByAutoClaim(autoClaim bool) func(EventConfig) bool {
-	return func(ev EventConfig) bool {
-		return ev.AutoClaim != autoClaim
-	}
-}
-
 func FilterByFlags(flags ...string) func(EventConfig) bool {
 	return func(ev EventConfig) bool {
 		if len(flags) == 0 {

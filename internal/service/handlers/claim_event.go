@@ -52,17 +52,20 @@ func ClaimEvent(w http.ResponseWriter, r *http.Request) {
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
-	if balance == nil || balance.Country == nil {
-		msg := "did not verify passport"
-		if balance == nil {
-			msg = "is disabled"
-		}
-		Log(r).Infof("Balance nullifier=%s %s", event.Nullifier, msg)
+
+	if balance == nil {
+		Log(r).Infof("Balance nullifier=%s is disabled", event.Nullifier)
 		ape.RenderErr(w, problems.Forbidden())
 		return
 	}
 
 	if !evType.IgnoreCountryLimit {
+		if balance.Country == nil {
+			Log(r).Infof("Balance nullifier=%s did not verify passport", event.Nullifier)
+			ape.RenderErr(w, problems.Forbidden())
+			return
+		}
+
 		country, err := CountriesQ(r).FilterByCodes(*balance.Country).Get()
 		if err != nil || country == nil { // country must exist if no errors
 			Log(r).WithError(err).Error("Failed to get country by code")
