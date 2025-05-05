@@ -18,7 +18,7 @@ import (
 )
 
 func LiklessRegistry(w http.ResponseWriter, r *http.Request) {
-	req, err := requests.NewLikenessRegistryVerify(r)
+	req, err := requests.NewLikenessRegistryVerifyRequest(r)
 	if err != nil {
 		ape.RenderErr(w, problems.BadRequest(err)...)
 		return
@@ -57,20 +57,20 @@ func LiklessRegistry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	userEventsRootInclusion, err := EventsQ(r).FilterByNullifier(nullifier).FilterByType(evtypes.TypeLikenessRegistry).Select()
+	userLikenessRegistryEvents, err := EventsQ(r).FilterByNullifier(nullifier).FilterByType(evtypes.TypeLikenessRegistry).Select()
 	if err != nil {
 		log.WithError(err).Error("Failed to get user likeness registry events")
 		ape.RenderErr(w, problems.InternalError())
 		return
 	}
 
-	if len(userEventsRootInclusion) > 0 {
+	if len(userLikenessRegistryEvents) > 0 {
 		log.Debugf("User has already verified likeness in registry")
 		ape.RenderErr(w, problems.Conflict())
 		return
 	}
 
-	err = RootInclusionVerifier(r).VerifyProof(proof)
+	err = LikenessRegistryVerifier(r).VerifyProof(proof)
 	if err != nil {
 		log.WithError(err).Debug("Failed to verify likeness proof")
 		if errors.Is(err, config.ErrUserNotRegistered) {

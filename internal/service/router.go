@@ -26,7 +26,7 @@ func Run(ctx context.Context, cfg config.Config) {
 			handlers.CtxVerifier(cfg.Verifier()),
 			handlers.CtxCountriesConfig(cfg.Countries()),
 			handlers.CtxMaintenance(cfg.Maintenance()),
-			handlers.CtxRootInclusionVerifier(cfg.RootInclusionVerifier()),
+			handlers.CtxLikenessRegistryVerifier(cfg.LikenessRegistryVerifier()),
 		),
 		handlers.DBCloneMiddleware(cfg.DB()),
 	)

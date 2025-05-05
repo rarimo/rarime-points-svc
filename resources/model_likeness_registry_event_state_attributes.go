@@ -5,6 +5,6 @@
 package resources
 
 type LikenessRegistryEventStateAttributes struct {
-	// If root inclusion event was fulfilled
+	// If likeness registry event was fulfilled
 	Fulfilled bool `json:"fulfilled"`
 }

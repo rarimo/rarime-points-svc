@@ -6,6 +6,8 @@ post:
     Verify likeness inclusion with ZKP, fulfilling the event.
     One likeness can't be verified twice in registry.
   operationId: likenessRegistryVerify
+  security:
+    - BearerAuth: []
   requestBody:
     required: true
     content:

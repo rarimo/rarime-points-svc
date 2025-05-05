@@ -28,13 +28,13 @@ const (
 	PubSignalNonce
 )
 
-const likenessRegistryEventID = "00000000000000000000000000000000000000000000000000000000000000000000000000000"
+var maxEventID, _ = new(big.Int).SetString("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 
-type RootInclusionVerifierer interface {
-	RootInclusionVerifier() *RootInclusionVerifier
+type LikenessRegistryVerifierer interface {
+	LikenessRegistryVerifier() *LikenessRegistryVerifier
 }
 
-func NewRootInclusionVerifier(getter kv.Getter) RootInclusionVerifierer {
+func NewLikenessRegistryVerifier(getter kv.Getter) LikenessRegistryVerifierer {
 	return &rootVerifier{
 		getter: getter,
 	}
@@ -45,7 +45,7 @@ type rootVerifier struct {
 	getter kv.Getter
 }
 
-type RootInclusionVerifier struct {
+type LikenessRegistryVerifier struct {
 	RPC                     *ethclient.Client `fig:"rpc,required"`
 	RootSMTAddress          common.Address    `fig:"contract,required"`
 	VerificationKeyPath     string            `fig:"verification_key_path,required"`
@@ -54,17 +54,17 @@ type RootInclusionVerifier struct {
 	verificationKey []byte
 }
 
-func (c *rootVerifier) RootInclusionVerifier() *RootInclusionVerifier {
+func (c *rootVerifier) LikenessRegistryVerifier() *LikenessRegistryVerifier {
 	return c.once.Do(func() interface{} {
 
-		cfg := RootInclusionVerifier{LikenessRegistryEventID: likenessRegistryEventID}
+		var cfg LikenessRegistryVerifier
 
 		err := figure.Out(&cfg).
-			From(kv.MustGetStringMap(c.getter, "root_inclusion_verifier")).
+			From(kv.MustGetStringMap(c.getter, "likeness_registry_verifier")).
 			With(figure.EthereumHooks, figure.BaseHooks).
 			Please()
 		if err != nil {
-			panic(fmt.Errorf("failed to figure out root inclusion verifier config: %w", err))
+			panic(fmt.Errorf("failed to figure out likeness registry verifier config: %w", err))
 		}
 
 		cfg.verificationKey, err = os.ReadFile(cfg.VerificationKeyPath)
@@ -72,11 +72,20 @@ func (c *rootVerifier) RootInclusionVerifier() *RootInclusionVerifier {
 			panic(fmt.Errorf("failed to read verification key: %w", err))
 		}
 
+		eventID, ok := new(big.Int).SetString(cfg.LikenessRegistryEventID, 10)
+		if !ok {
+			panic(fmt.Errorf("event_id must be valid decimal"))
+		}
+
+		if eventID.Cmp(maxEventID) == 1 {
+			panic(fmt.Errorf("event_id must be less than 31 bytes"))
+		}
+
 		return &cfg
-	}).(*RootInclusionVerifier)
+	}).(*LikenessRegistryVerifier)
 }
 
-func (v *RootInclusionVerifier) VerifyProof(proof zkptypes.ZKProof) error {
+func (v *LikenessRegistryVerifier) VerifyProof(proof zkptypes.ZKProof) error {
 	nullifier, ok := new(big.Int).SetString(proof.PubSignals[PubSignalNullifier], 10)
 	if !ok {
 		return fmt.Errorf("failed to convert nullifier to *big.Int")
@@ -95,29 +104,13 @@ func (v *RootInclusionVerifier) VerifyProof(proof zkptypes.ZKProof) error {
 		return ErrUserNotRegistered
 	}
 
-	err = checkCmpBigIntFromStrings(proof.PubSignals[PubSignalEventID], v.LikenessRegistryEventID)
-	if err != nil {
-		return fmt.Errorf("failed to check event id: %w", err)
+	if proof.PubSignals[PubSignalEventID] != v.LikenessRegistryEventID {
+		return fmt.Errorf("invalid likeness regitry event id")
 	}
 
 	if err = zkpverifier.VerifyGroth16(proof, v.verificationKey); err != nil {
 		return fmt.Errorf("failed to verify proof: %w", err)
 	}
 
-	return nil
-}
-
-func checkCmpBigIntFromStrings(a, b string) error {
-	aInt, ok := new(big.Int).SetString(a, 10)
-	if !ok {
-		return fmt.Errorf("failed to convert %s to *big.Int", a)
-	}
-	bInt, ok := new(big.Int).SetString(b, 10)
-	if !ok {
-		return fmt.Errorf("failed to convert %s to *big.Int", b)
-	}
-	if aInt.Cmp(bInt) != 0 {
-		return fmt.Errorf("is not equal")
-	}
 	return nil
 }

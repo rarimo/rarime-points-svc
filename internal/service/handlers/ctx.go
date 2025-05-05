@@ -31,7 +31,7 @@ const (
 	levelsCtxKey
 	countriesConfigCtxKey
 	maintenanceCtxKey
-	rootVerifierCtxKey
+	likenessVerifierCtxKey
 )
 
 func CtxLog(entry *logan.Entry) func(context.Context) context.Context {
@@ -174,12 +174,12 @@ func MaintenanceConfig(r *http.Request) config.Maintenance {
 	return r.Context().Value(maintenanceCtxKey).(config.Maintenance)
 }
 
-func CtxRootInclusionVerifier(v *config.RootInclusionVerifier) func(context.Context) context.Context {
+func CtxLikenessRegistryVerifier(v *config.LikenessRegistryVerifier) func(context.Context) context.Context {
 	return func(ctx context.Context) context.Context {
-		return context.WithValue(ctx, rootVerifierCtxKey, v)
+		return context.WithValue(ctx, likenessVerifierCtxKey, v)
 	}
 }
 
-func RootInclusionVerifier(r *http.Request) *config.RootInclusionVerifier {
-	return r.Context().Value(rootVerifierCtxKey).(*config.RootInclusionVerifier)
+func LikenessRegistryVerifier(r *http.Request) *config.LikenessRegistryVerifier {
+	return r.Context().Value(likenessVerifierCtxKey).(*config.LikenessRegistryVerifier)
 }

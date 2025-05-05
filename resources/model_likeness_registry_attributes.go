@@ -7,6 +7,6 @@ package resources
 import "github.com/iden3/go-rapidsnark/types"
 
 type LikenessRegistryAttributes struct {
-	// Query ZK root inclusion verification proof. Required for endpoint `/v2/balances/root_verify`.
+	// Query ZK likeness verification proof. Required for endpoint `/v2/balances/likeness_registry`.
 	Proof types.ZKProof `json:"proof"`
 }

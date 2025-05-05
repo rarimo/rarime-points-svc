@@ -14,5 +14,5 @@ allOf:
             type: object
             format: types.ZKProof
             description: |
-              Query ZK root inclusion verification proof.
+              Query ZK likeness verification proof.
               Required for endpoint `/v2/balances/likeness_registry`.

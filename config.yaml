@@ -114,7 +114,7 @@ expired_code:
   code_lifetime: 168h
   worker_duration: 168h
 
-root_inclusion_verifier:
+likeness_registry_verifier:
   rpc: evm_rpc_url
   contract: ""
   verification_key_path: "./likeness_verification_key.json"

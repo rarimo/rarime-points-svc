@@ -8,7 +8,7 @@ import (
 	"github.com/rarimo/rarime-points-svc/resources"
 )
 
-func NewLikenessRegistryVerify(r *http.Request) (req resources.LikenessRegistryRequest, err error) {
+func NewLikenessRegistryVerifyRequest(r *http.Request) (req resources.LikenessRegistryRequest, err error) {
 	if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
 		err = newDecodeError("body", err)
 		return
@@ -20,6 +20,6 @@ func NewLikenessRegistryVerify(r *http.Request) (req resources.LikenessRegistryR
 
 	return req, val.Errors{
 		"data/attributes/proof/proof":       val.Validate(proof.Proof, val.Required),
-		"data/attributes/proof/pub_signals": val.Validate(proof.PubSignals, val.Required, val.Length(4, 4)),
+		"data/attributes/proof/pub_signals": val.Validate(proof.PubSignals, val.Required, val.Length(3, 3)),
 	}.Filter()
 }
