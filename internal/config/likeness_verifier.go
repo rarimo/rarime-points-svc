@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/rarimo/rarime-points-svc/tests/mocked/faceregistry"
+	"github.com/rarimo/rarime-points-svc/internal/contracts"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -20,6 +20,7 @@ import (
 
 var (
 	ErrUserNotRegistered = errors.New("user not registered in the face registry")
+	maxEventID, _        = new(big.Int).SetString("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 )
 
 const (
@@ -28,33 +29,31 @@ const (
 	PubSignalNonce
 )
 
-var maxEventID, _ = new(big.Int).SetString("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
-
 type LikenessRegistryVerifierer interface {
 	LikenessRegistryVerifier() *LikenessRegistryVerifier
 }
 
 func NewLikenessRegistryVerifier(getter kv.Getter) LikenessRegistryVerifierer {
-	return &rootVerifier{
+	return &likenessVerifier{
 		getter: getter,
 	}
 }
 
-type rootVerifier struct {
+type likenessVerifier struct {
 	once   comfig.Once
 	getter kv.Getter
 }
 
 type LikenessRegistryVerifier struct {
 	RPC                     *ethclient.Client `fig:"rpc,required"`
-	RootSMTAddress          common.Address    `fig:"contract,required"`
+	LikenessContract        common.Address    `fig:"contract,required"`
 	VerificationKeyPath     string            `fig:"verification_key_path,required"`
 	LikenessRegistryEventID string            `fig:"likeness_registry_event_id,required"`
 
 	verificationKey []byte
 }
 
-func (c *rootVerifier) LikenessRegistryVerifier() *LikenessRegistryVerifier {
+func (c *likenessVerifier) LikenessRegistryVerifier() *LikenessRegistryVerifier {
 	return c.once.Do(func() interface{} {
 
 		var cfg LikenessRegistryVerifier
@@ -91,7 +90,7 @@ func (v *LikenessRegistryVerifier) VerifyProof(proof zkptypes.ZKProof) error {
 		return fmt.Errorf("failed to convert nullifier to *big.Int")
 	}
 
-	faceRegistryCaller, err := faceregistry.NewFaceRegistryCaller(v.RootSMTAddress, v.RPC)
+	faceRegistryCaller, err := contracts.NewFaceRegistryCaller(v.LikenessContract, v.RPC)
 	if err != nil {
 		return fmt.Errorf("failed to create face registry caller: %w", err)
 	}
@@ -105,7 +104,7 @@ func (v *LikenessRegistryVerifier) VerifyProof(proof zkptypes.ZKProof) error {
 	}
 
 	if proof.PubSignals[PubSignalEventID] != v.LikenessRegistryEventID {
-		return fmt.Errorf("invalid likeness regitry event id")
+		return fmt.Errorf("invalid likeness registry event id")
 	}
 
 	if err = zkpverifier.VerifyGroth16(proof, v.verificationKey); err != nil {
