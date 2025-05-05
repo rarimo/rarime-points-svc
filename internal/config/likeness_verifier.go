@@ -20,7 +20,7 @@ import (
 
 var (
 	ErrUserNotRegistered = errors.New("user not registered in the face registry")
-	maxEventID, _        = new(big.Int).SetString("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
+	maxEventID, _        = new(big.Int).SetString("ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16)
 )
 
 const (
