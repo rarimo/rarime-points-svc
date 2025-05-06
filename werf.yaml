@@ -47,3 +47,7 @@ import:
     add: /go/src/github.com/rarimo/rarime-points-svc/verification_key.json
     to: /verification_key.json
     after: setup
+  - image: builder
+    add: /go/src/github.com/rarimo/rarime-points-svc/likeness_verification_key.json
+    to: /likeness_verification_key.json
+    after: setup
