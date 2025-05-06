@@ -529,6 +529,88 @@
         }
       }
     },
+    "/integrations/rarime-points-svc/v1/public/balances/likeness_registry": {
+      "post": {
+        "tags": [
+          "Points balance"
+        ],
+        "summary": "Likeness registry",
+        "description": "Verify likeness inclusion with ZKP, fulfilling the event.\nOne likeness can't be verified twice in registry.\n",
+        "operationId": "likenessRegistryVerify",
+        "security": [
+          {
+            "BearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/vnd.api+json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "data"
+                ],
+                "properties": {
+                  "data": {
+                    "$ref": "#/components/schemas/LikenessRegistry"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "data"
+                  ],
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LikenessRegistryEventState"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/invalidParameter"
+          },
+          "401": {
+            "$ref": "#/components/responses/invalidAuth"
+          },
+          "404": {
+            "description": "Balance not exists.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Root already verified or event absent for user.",
+            "content": {
+              "application/vnd.api+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/internalError"
+          }
+        }
+      }
+    },
     "/integrations/rarime-points-svc/v1/public/countries_config": {
       "get": {
         "tags": [
@@ -1527,6 +1609,105 @@
           }
         }
       },
+      "LikenessRegistry": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LikenessRegistryKey"
+          },
+          {
+            "type": "object",
+            "x-go-is-request": true,
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "required": [
+                  "proof"
+                ],
+                "type": "object",
+                "properties": {
+                  "proof": {
+                    "type": "object",
+                    "format": "types.ZKProof",
+                    "description": "Query ZK likeness verification proof.\nRequired for endpoint `/v2/balances/likeness_registry`.\n"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LikenessRegistryEventState": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/LikenessRegistryEventStateKey"
+          },
+          {
+            "type": "object",
+            "required": [
+              "attributes"
+            ],
+            "properties": {
+              "attributes": {
+                "required": [
+                  "fulfilled"
+                ],
+                "type": "object",
+                "properties": {
+                  "fulfilled": {
+                    "type": "bool",
+                    "example": true,
+                    "description": "If likeness registry event was fulfilled"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LikenessRegistryEventStateKey": {
+        "type": "object",
+        "required": [
+          "id",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Nullifier of the points owner",
+            "example": "0x123...abc",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "likeness_registry_event_state"
+            ]
+          }
+        }
+      },
+      "LikenessRegistryKey": {
+        "type": "object",
+        "required": [
+          "id",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Nullifier of the points owner",
+            "example": "0x123...abc",
+            "pattern": "^0x[0-9a-fA-F]{64}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "likeness_registry"
+            ]
+          }
+        }
+      },
       "Maintenance": {
         "allOf": [
           {
@@ -2008,6 +2189,13 @@
           "example": "0x123...abc",
           "pattern": "^0x[0-9a-fA-F]{64}$"
         }
+      }
+    },
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   }
