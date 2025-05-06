@@ -49,6 +49,14 @@ event_types:
       short_description: Short description
       no_auto_open: true
       auto_claim: true
+    - name: likeness_registry
+      title: Likeness registry event
+      reward: 5
+      frequency: one-time
+      short_description: Likeness registry event
+      description: Likeness registry event 
+      no_auto_open: true
+      ignore_country_limit: true
 
 levels:
   levels:
@@ -105,3 +113,9 @@ expired_code:
   code: ""
   code_lifetime: 168h
   worker_duration: 168h
+
+likeness_registry_verifier:
+  rpc: evm_rpc_url
+  contract: ""
+  verification_key_path: "./likeness_verification_key.json"
+  likeness_registry_event_id: ""

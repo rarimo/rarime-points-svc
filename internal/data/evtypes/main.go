@@ -28,6 +28,7 @@ const (
 	TypeReferralSpecific = "referral_specific"
 	TypePassportScan     = "passport_scan"
 	TypeEarlyTest        = "early_test"
+	TypeLikenessRegistry = "likeness_registry"
 )
 
 const (
@@ -51,6 +52,8 @@ type EventConfig struct {
 	Disabled         bool       `fig:"disabled"`
 	ActionURL        *url.URL   `fig:"action_url"`
 	Logo             *url.URL   `fig:"logo"`
+	// IgnoreCountryLimit determines whether to ignore checking and updating the country reserve.
+	IgnoreCountryLimit bool `fig:"ignore_country_limit"`
 }
 
 func (e EventConfig) Flag() string {

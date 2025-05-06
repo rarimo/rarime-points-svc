@@ -22,6 +22,7 @@ type Config interface {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 	countrier.Countrier
+	LikenessRegistryVerifierer
 
 	Levels() Levels
 	Verifier() *zk.Verifier
@@ -40,6 +41,7 @@ type config struct {
 	evtypes.EventTypeser
 	sbtcheck.SbtChecker
 	countrier.Countrier
+	LikenessRegistryVerifierer
 
 	levels      comfig.Once
 	verifier    comfig.Once
@@ -52,15 +54,16 @@ type config struct {
 
 func New(getter kv.Getter) Config {
 	return &config{
-		getter:           getter,
-		Databaser:        pgdb.NewDatabaser(getter),
-		Listenerer:       comfig.NewListenerer(getter),
-		Logger:           comfig.NewLogger(getter, comfig.LoggerOpts{}),
-		Auther:           auth.NewAuther(getter), //nolint:misspell
-		Broadcasterer:    broadcaster.New(getter),
-		VerifierProvider: root.NewVerifierProvider(getter, root.PoseidonSMT),
-		EventTypeser:     evtypes.NewConfig(getter),
-		SbtChecker:       sbtcheck.NewConfig(getter),
-		Countrier:        countrier.NewConfig(getter),
+		getter:                     getter,
+		Databaser:                  pgdb.NewDatabaser(getter),
+		Listenerer:                 comfig.NewListenerer(getter),
+		Logger:                     comfig.NewLogger(getter, comfig.LoggerOpts{}),
+		Auther:                     auth.NewAuther(getter), //nolint:misspell
+		Broadcasterer:              broadcaster.New(getter),
+		VerifierProvider:           root.NewVerifierProvider(getter, root.PoseidonSMT),
+		EventTypeser:               evtypes.NewConfig(getter),
+		SbtChecker:                 sbtcheck.NewConfig(getter),
+		Countrier:                  countrier.NewConfig(getter),
+		LikenessRegistryVerifierer: NewLikenessRegistryVerifier(getter),
 	}
 }

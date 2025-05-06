@@ -138,7 +138,8 @@ func updatePassportScanEvents(db *pgdb.DB, types evtypes.Types, levels config.Le
 				pg.NewBalances(db),
 				pg.NewCountries(db),
 				countriesBalancesMap[country.Code][i].Balance,
-				evType.Reward)
+				evType.Reward,
+				evType.IgnoreCountryLimit)
 			if err != nil {
 				return fmt.Errorf("failed to do claim event updates for passport scan: %w", err)
 			}
@@ -297,7 +298,8 @@ func claimReferralSpecificEvents(db *pgdb.DB, types evtypes.Types, levels config
 				pg.NewBalances(db),
 				pg.NewCountries(db),
 				balance,
-				evType.Reward)
+				evType.Reward,
+				evType.IgnoreCountryLimit)
 			if err != nil {
 				return fmt.Errorf("failed to do claim event updates for referral specific event: %w", err)
 			}

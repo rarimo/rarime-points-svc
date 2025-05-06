@@ -1,0 +1,51 @@
+post:
+  tags:
+    - Points balance
+  summary: Likeness registry
+  description: |
+    Verify likeness inclusion with ZKP, fulfilling the event.
+    One likeness can't be verified twice in registry.
+  operationId: likenessRegistryVerify
+  security:
+    - BearerAuth: []
+  requestBody:
+    required: true
+    content:
+      application/vnd.api+json:
+        schema:
+          type: object
+          required:
+            - data
+          properties:
+            data:
+              $ref: '#/components/schemas/LikenessRegistry'
+  responses:
+    200:
+      description: Success
+      content:
+        application/vnd.api+json:
+          schema:
+            type: object
+            required:
+              - data
+            properties:
+              data:
+                $ref: '#/components/schemas/LikenessRegistryEventState'
+    400:
+      $ref: '#/components/responses/invalidParameter'
+    401:
+      $ref: '#/components/responses/invalidAuth'
+    404:
+      description: Balance not exists.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    409:
+      description: Root already verified or event absent for user.
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/Errors'
+    500:
+      $ref: '#/components/responses/internalError'

@@ -358,7 +358,8 @@ func fulfillOrClaimPassportScanEvent(r *http.Request, balance data.Balance, coun
 		BalancesQ(r),
 		CountriesQ(r),
 		balance,
-		evTypePassport.Reward)
+		evTypePassport.Reward,
+		evTypePassport.IgnoreCountryLimit)
 	if err != nil {
 		return fmt.Errorf("failed to do claim event updates for passport scan: %w", err)
 	}
@@ -432,7 +433,8 @@ func claimReferralSpecificEvents(r *http.Request, evTypeRef *evtypes.EventConfig
 		BalancesQ(r),
 		CountriesQ(r),
 		*balance,
-		countToClaim*evTypeRef.Reward)
+		countToClaim*evTypeRef.Reward,
+		evTypeRef.IgnoreCountryLimit)
 	if err != nil {
 		return fmt.Errorf("failed to do claim event updates for referral specific events: %w", err)
 	}
@@ -525,7 +527,8 @@ func addEventForReferrer(r *http.Request, evTypeRef *evtypes.EventConfig, balanc
 		BalancesQ(r),
 		CountriesQ(r),
 		*referrerBalance,
-		evTypeRef.Reward)
+		evTypeRef.Reward,
+		evTypeRef.IgnoreCountryLimit)
 	if err != nil {
 		return fmt.Errorf("failed to do claim event updates for referrer referral specific events: %w", err)
 	}
