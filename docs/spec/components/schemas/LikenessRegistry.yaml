@@ -15,4 +15,4 @@ allOf:
             format: types.ZKProof
             description: |
               Query ZK likeness verification proof.
-              Required for endpoint `/v2/balances/likeness_registry`.
+              Required for endpoint `/v1/public/balances/likeness_registry`.
