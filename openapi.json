@@ -1630,7 +1630,7 @@
                   "proof": {
                     "type": "object",
                     "format": "types.ZKProof",
-                    "description": "Query ZK likeness verification proof.\nRequired for endpoint `/v2/balances/likeness_registry`.\n"
+                    "description": "Query ZK likeness verification proof.\nRequired for endpoint `/v1/public/balances/likeness_registry`.\n"
                   }
                 }
               }
